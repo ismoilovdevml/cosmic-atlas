@@ -1,0 +1,34 @@
+{
+  "catalog": "data/tiles/catalogs/seti.json",
+  "bytes": 34974,
+  "started_utc": "2026-11-13T18:41:08Z",
+  "finished_utc": "2026-11-13T18:41:12Z",
+  "as_of": "2026-11-13",
+  "statement": "No confirmed extraterrestrial signal has ever been detected.",
+  "counts": {
+    "messages": 31,
+    "distinct_message_projects": 15,
+    "seti_signal": 3
+  },
+  "wiki_check_missing_dates": [],
+  "service": {
+    "wikipedia": "https://en.wikipedia.org/w/index.php?title=Active_SETI&action=raw",
+    "simbad_tap": "https://simbad.harvard.edu/simbad/sim-tap/sync",
+    "bv21": "https://people.smp.uq.edu.au/HolgerBaumgardt/globular/orbits_table.txt",
+    "gaia_dr3": "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=I%2F355%2Fgaiadr3&-out.max=unlimited&-oc.form=dec&-out.add=_RAJ&-out.add=_DEJ&-out=Source&-out=RA_ICRS&-out=DE_ICRS&-out=Plx&-out=e_Plx&Source=6766185791864654720",
+    "bj21": "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=I%2F352%2Fgedr3dis&-out.max=unlimited&-oc.form=dec&-out.add=_RAJ&-out.add=_DEJ&-out=Source&-out=rgeo&-out=b_rgeo&-out=B_rgeo&Source=6766185791864654720"
+  },
+  "light_front": "light_front_ly = Julian years between the send date and as_of (1 ly per yr); marker at that distance toward the target",
+  "skipped": "Breakthrough Listen nearby-star list (Isaacson et al. 2017): no matching kind in the content contract",
+  "citations": [
+    "Zaitsev 2006, Messaging to Extra-Terrestrial Intelligence, arXiv:physics/0610031 (Table 3)",
+    "The Staff at the National Astronomy and Ionosphere Center 1975, Icarus 26, 462 (The Arecibo message of 1974)",
+    "Wikipedia, 'Active SETI' (table of messages sent; its sources: Zaitsev VAK-2004, BBC News 2008-10-09, lonesignal.com, sonarcalling.com), wikitext fetched at build time",
+    "Baumgardt & Vasiliev 2021, MNRAS 505, 5957 (M13 distance 7.42 +- 0.08 kpc)",
+    "Ehman 1998, The Big Ear Wow! Signal: What We Know and Don't Know About It After 20 Years (bigear.org/wow20th.htm)",
+    "Mendez et al. 2025, Arecibo Wow! II: Revised Properties of the Wow! Signal, arXiv:2508.10657",
+    "Mendez, Ortiz Ceballos & Zuluaga 2024, Arecibo Wow! I: An Astrophysical Explanation, arXiv:2408.08513",
+    "Caballero 2022, An approximation to determine the source of the WOW! Signal, Int. J. Astrobiology (arXiv:2011.06090)",
+    "SIMBAD (Wenger et al. 2000) parallax, Gaia DR3 for the stars"
+  ]
+}
