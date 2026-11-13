@@ -1,0 +1,9 @@
+[
+  {
+    "AllowedOrigins": ["https://ismoilovdevml.github.io", "http://localhost:5173", "http://127.0.0.1:5173"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["Range"],
+    "ExposeHeaders": ["Content-Length", "Content-Range", "ETag"],
+    "MaxAgeSeconds": 86400
+  }
+]
