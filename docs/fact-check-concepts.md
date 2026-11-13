@@ -76,3 +76,12 @@ See the end of this file for the sources re-opened after writing.
 | pulsar | Crab pulsar spin | 30 times/s (P0 = 0.033392 s) | NASA Hubble Crab page; ATNF J0534+2200 |
 | pulsar | Pioneer 10 plaque, 14 pulsars | — | NASA Science, Pioneer 10 |
 | pulsar | Crab distance in atlas | 2.0 kpc | atlas messier-ngc.json (SIMBAD) ; ATNF DIST 2.000 kpc |
+| nebula | nebula types (emission red from ionised H, reflection, dark, planetary); Pillars of Creation photographed by Hubble 1995; M42 smudge below Orion's belt | — | BBC Sky at Night beginner's guide to nebulae |
+| nebula | molecular clouds | 1,000–10 million M☉, hundreds of ly | NASA Science, Stars |
+| nebula | M42 | closest large star-forming region; V = 4.0; ≈1,500 ly (NASA); four Trapezium stars | NASA Hubble Messier 42 page |
+| nebula | M42 distance in atlas | 433 pc ≈ 1,410 ly | atlas messier-ngc.json (SIMBAD mesDistance) |
+| nebula | M57 | ≈2,000 ly (NASA) vs 787 pc ≈ 2,570 ly (atlas) | NASA Hubble Messier 57 page; atlas messier-ngc.json |
+| nebula | planetary nebula name by Herschel, look like Uranus | — | ESA/Hubble potw1250a |
+| nebula | Merope reflection nebula destroyed by radiation | — | NASA Hubble Messier 45 page |
+| nebula | M8, M16, NGC 7293 distances | 1.27, 1.69 kpc, 200 pc | atlas messier-ngc.json |
+| nebula | M78, M43 without distance | — | data/raw/messier-ngc/PROVENANCE.json (no_distance list) |
