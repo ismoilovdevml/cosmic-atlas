@@ -153,6 +153,13 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| spacecraft | Pioneer 10 | launched 2 Mar 1972; Jupiter 4 Dec 1973; last signal 23 Jan 2003 from 12.23 billion km (11 h 20 min); towards Aldebaran, ≈2 million yr; plaque with 14 pulsars | NASA Science, Pioneer 10 |
+| spacecraft | Pioneer 11 | launched 6 Apr 1973; Jupiter 3 Dec 1974; Saturn 1 Sep 1979; last contact 30 Sep 1995 | NASA Science, Pioneer 11 |
+| spacecraft | Voyager 2 | launched 20 Aug 1977; Jupiter 1979, Saturn 1981, Uranus 24 Jan 1986, Neptune 25 Aug 1989; only spacecraft at Uranus and Neptune; interstellar 2018 | NASA Science, Voyager 2 |
+| spacecraft | Voyager 1 | launched 5 Sep 1977; Jupiter 5 Mar 1979; Saturn 12 Nov 1980; 164.7 au and 17.0 km/s on 21 Aug 2024; one light-day on 18 Nov 2026 | NASA Science, Voyager 1 |
+| spacecraft | Voyager 1 heliopause 25 Aug 2012; plasma > 40 × denser | — | NASA JPL release 12 Sep 2013 |
+| spacecraft | New Horizons | launched 19 Jan 2006; Pluto 14 Jul 2015; Arrokoth 1 Jan 2019; ≈58,536 km/h highest launch speed | NASA Science, New Horizons |
+| spacecraft | 1 light-day vs Proxima | 173 au vs 268,550 au (< 1/1000) | computed (c × 86,400 s; 1.302 pc × 206,265) |
 | neutron-star | formation (protons+electrons → neutrons; 1–3 M☉ core); ≈20 km; ≈1.5 M☉ ("half a million Earth masses"); sugar cube ≈ 1 trillion kg; field trillions × Earth; magnetar ≈1,000 × stronger; densest known object | — | NASA Imagine, Neutron stars |
 | neutron-star | progenitor ≥ ≈8 M☉ | — | NASA Imagine, Supernovae |
 | neutron-star | PSR J0952−0607 | 2.35 ± 0.17 M☉; accreted ≈1 M☉ if born typical; M_max > 2.19 M☉ (1σ) | Romani et al. 2022 abstract |
