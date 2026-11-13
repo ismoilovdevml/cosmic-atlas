@@ -153,6 +153,12 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| seti | Project Ozma | April 1960 (8 Apr), Frank Drake, Tau Ceti and Epsilon Eridani; false alarm from high-altitude plane; first SETI experiment and first false alarm | Astronomy.com, April 8 1960 |
+| seti | Breakthrough Listen | announced 20 Jul 2015; $100 M; 10 yr; GBT 100 m, Parkes 64 m, APF optical; 1 M nearest stars, Galactic plane and centre, 100 nearest galaxies; open data | breakthroughinitiatives.org/news/1 |
+| seti | Wow! signal | 15 Aug 1977 ≈11:16 pm EDT; Big Ear (Ohio State); 1420.4556 MHz, one 10 kHz channel; ≈72 s (6 × 12 s); Sagittarius; never re-detected; origin open | Ehman, bigear.org/wow20th.htm |
+| seti | 2024 HI-cloud maser-flare hypothesis (magnetar/SGR); natural narrowband HI signals found | — | Méndez et al. 2024 abstract |
+| seti | blc1 | 29 Apr 2019, Parkes, Proxima Centauri, ≈982 MHz; shown to be human interference (2021) | Sheikh et al. 2021 abstract |
+| seti | Ran (ε Eri) distance | 3.2 pc | atlas named-stars.json (Hipparcos 2007) |
 | interstellar-message | Arecibo message | 16 Nov 1974; 1,679 bits = 23 × 73; ≈3 min at 10 bit/s; 1 MW transmitter; to M13; arrives in ≈25,000 yr; DNA, human figure, Solar System, telescope; sent during upgrade ceremony | National Geographic Arecibo article |
 | interstellar-message | Arecibo dish size | 300 m | Zaitsev 2006 (arXiv:physics/0610031) |
 | interstellar-message | Cosmic Call 1 (1999, 4 stars, 370,967 bits); Teen Age Message (2001, 6 stars); Cosmic Call 2 (2003, 5 stars); Evpatoria 70 m radar, 150 kW | — | Zaitsev 2006 text |
