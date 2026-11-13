@@ -11,6 +11,7 @@
 
 import * as THREE from 'three/webgpu';
 import type { Vec3 } from '../math/frames';
+import { kindColor, kindInfo } from '../objects/kinds';
 
 export interface LabelItem {
   name: string;
@@ -29,7 +30,8 @@ const MAX_LABELS = 28;
 const PAD = 8;
 const FADE_S = 0.3;
 
-/** camera-focus distances (pc) at which each kind of object is 'at scale' and may be labelled */
+/** camera-focus distances (pc) at which each kind of object is 'at scale' and may be labelled;
+ *  kinds not listed here use the window of their kinds.ts entry, then the galaxy default */
 export const SCALE_WINDOWS: Record<string, [number, number]> = {
   star: [0, 3000],
   wd: [0, 1000],
@@ -39,6 +41,13 @@ export const SCALE_WINDOWS: Record<string, [number, number]> = {
   galaxy: [2e4, 2e8],
   qso: [1e6, 1e10],
 };
+
+export function scaleWindow(kind: string): [number, number] {
+  const fixed = SCALE_WINDOWS[kind];
+  if (fixed) return fixed;
+  const k = kindInfo(kind);
+  return k.minScale !== undefined || k.maxScale !== undefined ? [k.minScale ?? 0, k.maxScale ?? Infinity] : [2e4, 2e8];
+}
 
 interface State {
   el: HTMLButtonElement;
@@ -73,6 +82,11 @@ export class LabelLayer {
       el.tabIndex = -1;
       el.textContent = it.name;
       el.dataset.kind = it.kind.includes('galaxy') ? 'galaxy' : it.kind === 'model' ? 'model' : 'star';
+      // marker ring and text tint in the kind colour (kinds.ts); the model keeps its own style
+      if (it.kind !== 'model') {
+        el.style.setProperty('--kc', kindColor(it.kind));
+        el.classList.add('kc');
+      }
       el.style.opacity = '0';
       if (it.onClick) el.onclick = it.onClick;
       this.root.appendChild(el);
@@ -89,7 +103,7 @@ export class LabelLayer {
     if (this.enabled) {
       for (const it of this.items) {
         if (it.kind === 'model' && this.modelOpacity < 0.15) continue;
-        const win = SCALE_WINDOWS[it.kind] ?? [2e4, 2e8];
+        const win = scaleWindow(it.kind);
         if (focusDist < (it.minScale ?? win[0]) || focusDist > (it.maxScale ?? win[1])) continue;
         const dx = it.xyz[0] - camPos[0];
         const dy = it.xyz[1] - camPos[1];
