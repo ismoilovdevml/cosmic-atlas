@@ -81,6 +81,8 @@ SOURCES = {
                "doi": "10.1051/aas:2000332"},
 }
 
+SHORT = {"hyperleda": "HyperLEDA (Makarov+ 2014)", "openngc": "OpenNGC (LEDA)", "leda2003": "HyperLEDA 2003 (Paturel+ 2003)",
+         "ungc": "UNGC (Karachentsev+ 2013)", "mcc": "McConnachie 2012", "derived": "derived from b/a (q0 = 0.2)"}
 AXES_DEF = {"hyperleda": "D25", "openngc": "D25", "leda2003": "D25", "ungc": "a26 (Holmberg)", "mcc": "2 r_h"}
 
 
@@ -453,6 +455,30 @@ def assemble(objs, leda, l03, ngc, ungc, mcc) -> list[dict]:
                 break
         if o["spread_arcmin"] > 3:
             flags.append(f"catalogue positions differ by {o['spread_arcmin']:.1f} arcmin")
+        # docs/content-contract.md section 3: kind, docs slug, unit-suffixed facts with a per-key citation
+        prim = o["entries"][0]
+        rec["kind"] = "lg_galaxy" if any(e["kind"] == "lg_galaxy" for e in o["entries"]) else "galaxy"
+        rec["docs"] = "local-group" if rec["kind"] == "lg_galaxy" else "galaxy"
+        facts, fref = {}, {}
+        dist = prim.get("dist_pc")
+        if rec.get("major_arcmin") and dist and np.isfinite(dist) and dist > 0:
+            kpc = np.radians(1 / 60) * dist / 1e3
+            facts["major_kpc"] = round(rec["major_arcmin"] * kpc, 2)
+            fref["major_kpc"] = f"{SHORT[rec['axes_src']]} {rec['axes_def']} at {dist / 1e6:.3g} Mpc ({prim['ref']})"
+            if rec.get("minor_arcmin"):
+                facts["minor_kpc"] = round(rec["minor_arcmin"] * kpc, 2)
+                fref["minor_kpc"] = fref["major_kpc"]
+        if rec.get("incl_deg") is not None:
+            facts["inclination_deg"] = rec["incl_deg"]
+            fref["inclination_deg"] = SHORT[rec["incl_src"]]
+        if rec.get("pa_deg") is not None:
+            facts["position_angle_deg"] = rec["pa_deg"]
+            fref["position_angle_deg"] = SHORT[rec["pa_src"]]
+        if rec.get("morph"):
+            facts["type"] = rec["morph"]
+            fref["type"] = SHORT[rec["morph_src"]]
+        if facts:
+            rec["facts"], rec["facts_ref"] = facts, fref
         rec["cats"] = o["cats"]
         if flags:
             rec["flags"] = flags
@@ -506,6 +532,8 @@ def main() -> None:
             "shape": "disk (thin oriented disk) or spheroid (E/dE/dSph: drawn as a camera-facing ellipse)",
             "t": "de Vaucouleurs numerical type T", "morph": "morphological type string",
             "mag": "apparent magnitude copied from the first catalogue entry that has one (mag_band, mag_src)",
+            "kind/docs/facts/facts_ref": "docs/content-contract.md section 3 (facts: major_kpc/minor_kpc at the "
+                                         "primary entry's catalogue distance, inclination_deg, position_angle_deg, type)",
             "keys": "every name/alias of the merged catalogue entries (viewer looks shapes up by catalogKey)",
             "*_src": "key into sources",
         },
