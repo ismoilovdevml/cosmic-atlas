@@ -89,7 +89,8 @@ More detail: [web/README.md](web/README.md) (the viewer), [docs/prior-work.md](d
   Cosmicflows-4, HyperLEDA, CDS (SIMBAD, VizieR, HiPS), OpenNGC (CC BY-SA 4.0; our derived NGC
   catalogues carry the same licence), and every paper cited in the
   catalogues.
-- **Images:** NASA Blue Marble (public domain), Solar System Scope textures (CC BY 4.0), DSS2
+- **Images:** NASA Blue Marble and Black Marble 2016 night lights (public domain), Solar System
+  Scope textures (CC BY 4.0), DSS2
   colour via CDS and IRSA.
 - **Rendering ideas:** learned from [skymap](https://github.com/rulkens/skymap) (MIT,
   © 2026 Alexander Rulkens) and re-implemented.

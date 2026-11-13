@@ -15,7 +15,9 @@ export type TargetRef =
   | { xyz: Vec3 }
   /** a Solar System body by id ('earth', 'mars', ...), at its position when the beat plays */
   | { body: string; fallback: Vec3 }
-  | { between: [TargetRef, TargetRef]; t: number };
+  | { between: [TargetRef, TargetRef]; t: number }
+  /** the viewer's own spot on Earth (browser geolocation, kept in memory only) */
+  | { here: true };
 
 /** a fixed distance (pc) or a multiple of the outer edge of the active galaxy layers */
 export type DistRef = number | { galaxyEdge: number };
@@ -35,12 +37,16 @@ export interface Beat {
   show?: string[];
   /** look at the target from its day side: yaw = Sun direction + yawDeg (default 0) */
   sunSide?: boolean;
+  /** keep the focus locked to this Solar System body after arriving (it moves ~30 km/s) */
+  follow?: string;
 }
 
 export interface Tour {
   id: string;
   label: string;
   beats: Beat[];
+  /** stay at the last beat instead of flying back to where the tour started */
+  stayAtEnd?: boolean;
 }
 
 export interface TourContext {
@@ -50,6 +56,8 @@ export interface TourContext {
   lookbackText(dPc: number): string;
   /** live position of a Solar System body (null if the Solar System layer is absent) */
   body?(id: string): Vec3 | null;
+  /** camera looking straight down at the viewer's location, or null without a location */
+  here?(): { focus: Vec3; yaw: number; pitch: number } | null;
 }
 
 export function resolveTarget(t: TargetRef, ctx: TourContext): Vec3 {
@@ -58,6 +66,7 @@ export function resolveTarget(t: TargetRef, ctx: TourContext): Vec3 {
   if ('xyz' in t) return [...t.xyz] as Vec3;
   if ('catalog' in t) return ctx.catalog(t.catalog) ?? ([...t.fallback] as Vec3);
   if ('body' in t) return ctx.body?.(t.body) ?? ([...t.fallback] as Vec3);
+  if ('here' in t) return ctx.here?.()?.focus ?? ctx.body?.('earth') ?? [0, 0, 0];
   const a = resolveTarget(t.between[0], ctx);
   const b = resolveTarget(t.between[1], ctx);
   return [a[0] + (b[0] - a[0]) * t.t, a[1] + (b[1] - a[1]) * t.t, a[2] + (b[2] - a[2]) * t.t];
@@ -69,10 +78,17 @@ export function resolveBeat(b: Beat, ctx: TourContext) {
   const focus = resolveTarget(b.target, ctx);
   let yaw = b.yawDeg !== undefined ? (b.yawDeg * Math.PI) / 180 : undefined;
   if (b.sunSide && Math.hypot(focus[0], focus[1]) > 0) yaw = Math.atan2(-focus[1], -focus[0]) + (yaw ?? 0);
+  let pitch = (b.pitchDeg * Math.PI) / 180;
+  const here = 'here' in b.target ? ctx.here?.() : null;
+  if (here) {
+    // straight down the local vertical, so the viewer's spot is in the middle of the screen
+    yaw = here.yaw;
+    pitch = here.pitch;
+  }
   return {
     focus,
     dist,
-    pitch: (b.pitchDeg * Math.PI) / 180,
+    pitch,
     yaw,
     title: t(b.title),
     text: t(b.text, { edgeLookback: ctx.lookbackText(edge * 0.9) }),
@@ -125,6 +141,53 @@ export const SCALE_TOUR: Tour = {
     {
       id: 'cosmic-web', target: { sun: true }, dist: { galaxyEdge: 1.4 }, pitchDeg: 29, dwellMs: 4500, title: 'tour.scale.cosmic-web.title',
       text: 'tour.scale.cosmic-web.text',
+    },
+  ],
+};
+
+/** beats that need the viewer's location; dropped when it is unknown (permission denied) */
+export const needsHere = (b: Beat) => 'here' in b.target;
+
+const KM_PC = 1 / 3.0856775814913673e13;
+
+/** "Show me": from the cosmic web down to the viewer's own spot on Earth (reverse powers of ten) */
+export const SHOW_ME_TOUR: Tour = {
+  id: 'show-me',
+  label: 'showme.label',
+  stayAtEnd: true,
+  beats: [
+    {
+      id: 'web', target: { sun: true }, dist: { galaxyEdge: 1.4 }, pitchDeg: 29, dwellMs: 4200,
+      title: 'tour.me.web.title', text: 'tour.me.web.text',
+    },
+    {
+      id: 'local-group',
+      target: { between: [{ gc: true }, { catalog: ['Andromeda (M31)', 'M31', 'Andromeda Galaxy'], fallback: [-368258, 608681, -281281] }], t: 0.4 },
+      dist: 2.6e6, pitchDeg: 29, dwellMs: 3800, title: 'tour.me.lg.title', text: 'tour.me.lg.text',
+    },
+    {
+      id: 'milky-way', target: { gc: true }, dist: 7e4, pitchDeg: 87.5, dwellMs: 4200, show: ['milky-way-model'],
+      title: 'tour.me.mw.title', text: 'tour.me.mw.text',
+    },
+    {
+      id: 'neighbours', target: { sun: true }, dist: 6, pitchDeg: 22, dwellMs: 3600,
+      title: 'tour.me.near.title', text: 'tour.me.near.text',
+    },
+    {
+      id: 'solar', target: { sun: true }, dist: 2.4e-4, pitchDeg: 35, dwellMs: 3800, show: ['solar'],
+      title: 'tour.me.solar.title', text: 'tour.me.solar.text',
+    },
+    {
+      id: 'earth', target: { body: 'earth', fallback: [0, 0, 0] }, dist: 2.6e-8, pitchDeg: 25, yawDeg: 40, sunSide: true,
+      dwellMs: 3600, show: ['solar'], follow: 'earth', title: 'tour.me.earth.title', text: 'tour.me.earth.text',
+    },
+    {
+      id: 'region', target: { here: true }, dist: 4500 * KM_PC, pitchDeg: 0, dwellMs: 3200, show: ['solar'], follow: 'earth',
+      title: 'tour.me.region.title', text: 'tour.me.region.text',
+    },
+    {
+      id: 'here', target: { here: true }, dist: 1200 * KM_PC, pitchDeg: 0, dwellMs: 0, show: ['solar'], follow: 'earth',
+      title: 'tour.me.here.title', text: 'tour.me.here.text',
     },
   ],
 };

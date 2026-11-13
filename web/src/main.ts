@@ -37,10 +37,10 @@ import { formatHash, parseHash, type SelRef } from './state/hash';
 import { factRows, planetRows } from './objects/facts';
 import { findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
-import { SCALE_TOUR, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
+import { SCALE_TOUR, SHOW_ME_TOUR, needsHere, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
 import { ScaleRail } from './ui/rail';
 // --- Solar System hook (web/src/solar): live planets, time control, probes
-import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, solarInfo, tr as solarTr, type SolarEntry } from './solar';
+import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, observerGalacticXyz, solarInfo, tr as solarTr, type SolarEntry } from './solar';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -466,6 +466,8 @@ class App {
       onClick: () => this.nav.flyTo({ focus: [R0_PC, 0, 0], dist: 6e4, pitch: 1.5 }) });
     for (const m of this.mw.labels) items.push({ name: tOr(MW_LABEL_KEYS[m.name] ?? '', m.name), xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
+    this.labelItems = items;
+    if (this.hereLabel) items.push(this.hereLabel);
     this.dirty = true;
   }
 
@@ -523,6 +525,13 @@ class App {
     }
     const moved = this.nav.update(dt);
     this.solar.follow(this.nav); // --- Solar System hook: keep the focus on a moving body
+    if (this.here && this.hereLabel) {
+      const p = observerGalacticXyz(this.here.lat, this.here.lon, 0, this.solar.clock.now());
+      this.hereLabel.xyz[0] = p[0]; this.hereLabel.xyz[1] = p[1]; this.hereLabel.xyz[2] = p[2];
+      // close to the ground the planet's own label (at its centre, right under the pin) would win
+      const earth = this.solar.bodies.find((b) => b.def.id === 'earth');
+      if (earth) earth.label.hidden = this.solar.followId === 'earth' && this.nav.view.dist < 3e-10;
+    }
     this.nav.applyToCamera();
     const cam = this.nav.camPos();
     const D = this.nav.view.dist;
@@ -536,8 +545,7 @@ class App {
     if (want && gpuFree) {
       this.dirty = false;
       this.renderFrame(cam, D, dt);
-      clearTimeout(this.hashTimer);
-      this.hashTimer = window.setTimeout(() => this.writeHash(), 400);
+      this.scheduleHash();
     }
     this.labels.modelOpacity = this.mwFade * (this.mw.visible ? 1 : 0);
     if (want || this.labels.animating) this.labels.update(this.camera, cam, D, window.innerWidth, window.innerHeight, this.occluders(), dt);
@@ -1219,6 +1227,7 @@ class App {
 
     $('info-close').addEventListener('click', () => this.closeInfo());
     $('tour').addEventListener('click', () => (this.tourAbort ? this.stopTour(true) : void this.runTour(SCALE_TOUR)));
+    $('showme').addEventListener('click', () => void this.showMe());
     $('home').addEventListener('click', () => void this.nav.flyTo({ focus: [0, 0, 0], dist: 6 }));
     $('copy-link').addEventListener('click', async () => {
       this.writeHash();
@@ -1465,7 +1474,42 @@ class App {
       lookbackText: (d) => describeLookback(d).ago,
       // --- Solar System hook: live body positions for tour beats
       body: (id) => (this.solar.bodies.some((b) => b.def.id === id) ? ([...this.solar.positionOf(id as 'earth')] as Vec3) : null),
+      here: () => {
+        if (!this.here) return null;
+        const v = flyTargetForLatLon(this.here.lat, this.here.lon, this.solar.clock.now());
+        return { focus: v.focus, yaw: v.yaw, pitch: v.pitch };
+      },
     };
+  }
+
+  /** viewer location for "Show me": rounded to 0.01° (~1 km), kept in memory only, never in the URL */
+  private here: { lat: number; lon: number } | null = null;
+  /** live label pinned to the viewer's place (xyz updated every frame as the Earth moves) */
+  private hereLabel: LabelItem | null = null;
+  private labelItems: LabelItem[] | null = null;
+
+  /** "Show me": ask for the location (on this click only), then fly cosmic web -> Earth -> here */
+  private async showMe() {
+    this.stopTour(false);
+    if (!this.here && 'geolocation' in navigator) {
+      this.status(t('showme.locating'));
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }));
+        this.here = { lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100 };
+        this.status('');
+        if (!this.hereLabel) {
+          this.hereLabel = { name: t('showme.pin'), xyz: [0, 0, 0], kind: 'here', absMag: -60, minScale: 0, maxScale: 5e-7 }; // brightest: wins label culling
+          this.labelItems?.push(this.hereLabel);
+        }
+      } catch (e) {
+        this.status(t('showme.denied', { msg: (e as GeolocationPositionError).message || 'denied' }), 'warn');
+      }
+    } else if (!this.here) {
+      this.status(t('showme.denied', { msg: 'no geolocation' }), 'warn');
+    }
+    const tour = this.here ? SHOW_ME_TOUR : { ...SHOW_ME_TOUR, beats: SHOW_ME_TOUR.beats.filter((b) => !needsHere(b)) };
+    await this.runTour(tour);
   }
 
   private async runTour(tour: Tour) {
@@ -1483,7 +1527,7 @@ class App {
       this.nav.cancelFlight();
       cap.hidden = true;
       btn.setAttribute('aria-pressed', 'false');
-      btn.querySelector('span')!.textContent = t(tour.label);
+      btn.querySelector('span')!.textContent = t(SCALE_TOUR.label);
       this.tourBeat = null;
       for (const [id, on] of Object.entries(snap.layers)) if (this.layerVisibility()[id] !== on) this.setLayerVisible(id, on);
       if (snap.sel) this.selection = snap.sel;
@@ -1501,9 +1545,20 @@ class App {
       const r = resolveBeat(beat, ctx); // targets resolved now, at playback
       for (const id of beat.show ?? []) this.setLayerVisible(id, true);
       this.showCaption(beat);
+      this.solar.attach(null);
       const ok = await this.nav.flyTo({ focus: r.focus, dist: r.dist, pitch: r.pitch, ...(r.yaw !== undefined ? { yaw: r.yaw } : {}) }, { durationScale: 1.15 });
       if (!ok || stopped) return;
+      if (beat.follow) this.solar.attach(beat.follow as 'earth'); // moving body: keep the focus on it
       await new Promise((res) => setTimeout(res, this.nav.reducedMotion ? 4000 : beat.dwellMs));
+    }
+    if (tour.stayAtEnd) {
+      // keep the last caption up; the scene (layers) is restored but the camera stays here
+      const last = tour.beats[tour.beats.length - 1];
+      this.stopTour(false);
+      if (last) this.showCaption(last);
+      $('caption').hidden = false;
+      this.scheduleHash(); // at=Earth: the viewer's own coordinates never go into the URL
+      return;
     }
     this.stopTour(true);
   }
@@ -1521,14 +1576,20 @@ class App {
 
   // ------------------------------------------------------------------ deep links
 
+  /** throttled, not debounced: while the focus follows a moving planet the view changes every
+   *  frame, and a debounce would never fire, so the URL would never update */
   private scheduleHash() {
-    clearTimeout(this.hashTimer);
-    this.hashTimer = window.setTimeout(() => this.writeHash(), 400);
+    if (this.hashTimer) return;
+    this.hashTimer = window.setTimeout(() => {
+      this.hashTimer = 0;
+      this.writeHash();
+    }, 400);
   }
 
   private writeHash() {
     const v = this.nav.view;
-    if (this.nav.flying || this.tourAbort) return;
+    if (this.tourAbort) return; // a tour ends with its own scheduleHash()
+    if (this.nav.flying) return void this.scheduleHash(); // try again once the flight lands
     const at = this.hashAnchor();
     const h = formatHash({
       view: { focus: v.focus, dist: v.dist, yawDeg: v.yaw * DEG, pitchDeg: v.pitch * DEG },

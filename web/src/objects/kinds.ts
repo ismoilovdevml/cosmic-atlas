@@ -36,6 +36,8 @@ export const KINDS: Record<string, KindInfo> = {
   message:      { doc: 'interstellar-message',  label: 'kind.message',      color: '#ffd1f0', minScale: 0, maxScale: 1000 },
   seti_signal:  { doc: 'seti',                  label: 'kind.seti_signal',  color: '#ffd1f0', minScale: 0, maxScale: 1e4 },
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },
+  // the viewer's own place on Earth (Show me); only drawn within ~0.1 AU
+  here:         { doc: 'earth',                 label: 'kind.here',         color: '#ffd27a', minScale: 0, maxScale: 5e-7 },
 };
 
 /**

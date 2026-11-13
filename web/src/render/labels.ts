@@ -24,6 +24,8 @@ export interface LabelItem {
   /** physical radius (pc) of an extended object; its label hides when the object is under a pixel */
   sizePc?: number;
   onClick?: () => void;
+  /** temporarily skipped (e.g. a planet's label while the camera is down at its surface) */
+  hidden?: boolean;
 }
 
 const MAX_LABELS = 28;
@@ -102,6 +104,7 @@ export class LabelLayer {
     const cands: C[] = [];
     if (this.enabled) {
       for (const it of this.items) {
+        if (it.hidden) continue;
         if (it.kind === 'model' && this.modelOpacity < 0.15) continue;
         const win = scaleWindow(it.kind);
         if (focusDist < (it.minScale ?? win[0]) || focusDist > (it.maxScale ?? win[1])) continue;
@@ -118,7 +121,8 @@ export class LabelLayer {
         this.v.set(dx, dy, dz).applyMatrix4(camera.matrixWorldInverse);
         if (this.v.z >= 0) continue;
         this.v.applyMatrix4(camera.projectionMatrix);
-        if (this.v.z > 1 || this.v.z < -1) continue;
+        // no NDC-depth test: the near plane is clamped to >= 1e-6 pc (three r186 log depth), so at
+        // Earth-Moon scales every label would sit "in front of" it; behind-camera is handled above
         const x = (this.v.x * 0.5 + 0.5) * width;
         const y = (-this.v.y * 0.5 + 0.5) * height;
         if (x < -20 || x > width + 20 || y < -10 || y > height + 10) continue;

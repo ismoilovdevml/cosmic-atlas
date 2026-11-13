@@ -185,6 +185,16 @@ export class SolarSystem {
         this.drawnMs = NaN; // re-render
       });
     }
+    let nightNode: any;
+    if (def.nightTexture) {
+      const blk = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+      blk.needsUpdate = true;
+      nightNode = texture(blk, uv());
+      this.loadTex(def.nightTexture, (tex) => {
+        nightNode.value = tex;
+        this.drawnMs = NaN;
+      });
+    }
     const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthTest: true, depthWrite: true, blending: THREE.NormalBlending });
     mat.colorNode = Fn(() => {
       // unit sphere: the local position is the surface normal
@@ -203,8 +213,17 @@ export class SolarSystem {
       }
       const nW = normalize(modelWorldMatrix.mul(vec4(positionLocal, 0.0)).xyz);
       const L = normalize(uSun.sub(positionWorld));
-      const lambert = max(dot(nW, L), 0.0);
-      const lit = albedo.mul(lambert.mul(1.15).add(0.003));
+      const ndl = dot(nW, L);
+      const lambert = max(ndl, 0.0);
+      let lit = albedo.mul(lambert.mul(1.15).add(0.003));
+      if (nightNode) {
+        // city lights only where the Sun is down; civil-twilight-wide fade across the terminator
+        const night = smoothstep(0.06, -0.10, ndl);
+        // the Black Marble map also paints dark-blue land and sea: keep only the bright city lights
+        const lum = dot(nightNode.rgb, vec3(0.2126, 0.7152, 0.0722));
+        const lights = nightNode.rgb.mul(smoothstep(0.22, 0.65, lum));
+        lit = lit.add(lights.mul(night).mul(1.1));
+      }
       return mix(lit, albedo.mul(0.75), uDot);
     })();
     mat.opacityNode = uAlpha;
@@ -652,8 +671,10 @@ export class SolarSystem {
       nav.distFloor = 0;
       return;
     }
-    // do not let the camera dive into the followed body
-    nav.distFloor = off < b.rpc ? b.rpc * 1.08 : 0;
+    // do not let the camera dive into the followed body. With the focus near the centre the camera
+    // must stay outside the whole sphere; with the focus on the surface (a place on Earth, looked at
+    // from above) it only has to stay a little above the ground.
+    nav.distFloor = off < 0.5 * b.rpc ? b.rpc * 1.08 : off < b.rpc * 1.02 ? b.rpc * 1.02 - off + b.rpc * 0.002 : 0;
   }
 
   // ------------------------------------------------------------------ picking

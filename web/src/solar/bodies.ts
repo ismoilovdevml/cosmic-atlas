@@ -50,6 +50,8 @@ export interface BodyDef {
   ae?: Body;
   /** texture file under public/solar/, or procedural colours */
   texture?: string;
+  /** emission map shown on the night side (Earth: NASA Black Marble 2016 city lights) */
+  nightTexture?: string;
   /** base colour (sRGB hex): procedural surface and the far-away dot */
   color: string;
   /** second colour for procedural mottling */
@@ -67,7 +69,7 @@ export const BODIES: BodyDef[] = [
   { id: 'venus', kind: 'planet', names: { en: 'Venus', uz: 'Venera', ru: 'Венера' }, docs: 'venus', parent: null,
     radiusKm: 6051.8, massKg: 4.8673e24, periodDays: 224.701, ae: Body.Venus, texture: 'venus.jpg', color: '#e8d7a8' },
   { id: 'earth', kind: 'planet', names: { en: 'Earth', uz: 'Yer', ru: 'Земля' }, docs: 'earth', parent: null,
-    radiusKm: 6371.0084, massKg: 5.9722e24, periodDays: 365.256, ae: Body.Earth, texture: 'earth_2048.jpg', color: '#6f93c8' },
+    radiusKm: 6371.0084, massKg: 5.9722e24, periodDays: 365.256, ae: Body.Earth, texture: 'earth_2048.jpg', nightTexture: 'earth_night_2048.jpg', color: '#6f93c8' },
   { id: 'moon', kind: 'moon', names: { en: 'Moon', uz: 'Oy', ru: 'Луна' }, docs: 'moon', parent: 'earth',
     radiusKm: 1737.4, massKg: 7.346e22, periodDays: 27.3217, ae: Body.Moon, texture: 'moon.jpg', color: '#b8b5ae' },
   { id: 'mars', kind: 'planet', names: { en: 'Mars', uz: 'Mars', ru: 'Марс' }, docs: 'mars', parent: null,
