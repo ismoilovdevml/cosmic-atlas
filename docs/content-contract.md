@@ -45,7 +45,7 @@ Same shape as data-contract §4, plus:
 
 ```json
 {"name": "Gaia BH3", "alt": ["Gaia DR3 4318465066420528000"], "kind": "black_hole",
- "ra": 294.8278, "dec": 14.9306, "dist_pc": 590.6, "dist_lo_pc": 589.0, "dist_hi_pc": 592.2,
+ "ra": 294.8278, "dec": 14.9306, "dist_pc": 590.6, "dist_lo_pc": 584.8, "dist_hi_pc": 596.4,
  "xyz": [...], "docs": "black-hole",
  "facts": {"mass_msun": [32.70, 0.82], "type": "stellar, dormant", "discovered": 2024},
  "ref": "Gaia Collaboration, Panuzzo et al. 2024, A&A 686, L2", "doi": "10.1051/0004-6361/202449763"}
@@ -54,9 +54,18 @@ Same shape as data-contract §4, plus:
 - `docs`: slug of the article the info card links to (defaults to the kind's slug). A specific article
   (`sgr-a-star`, `m87-black-hole`, `crab-nebula`, `proxima-b`, `trappist-1`, `voyager-1`,
   `arecibo-message`, `wow-signal`) wins when it exists.
-- `facts`: numbers as `value` or `[value, error]`; keys end in their unit (`_msun`, `_mjup`, `_rearth`,
-  `_days`, `_ms`, `_k`, `_kpc`). The info card renders them with translated labels (`facts.<key>`).
+- `facts`: numbers as `value`, `[value, error]` or `[value, err_minus, err_plus]` (both >= 0), or text
+  for limits and ranges (`"≥4.4"`, `"6.9–8.2"`); keys end in their unit (`_msun`, `_mjup`, `_rearth`,
+  `_days`, `_s`, `_ms`, `_k`, `_kpc`, `_pc_cm3`, `_ly`, `_mhz`, `_jy`, `_arcmin`). The info card renders
+  them with translated labels (`facts.<key>`, falling back to the key; `web/src/objects/facts.ts`).
 - Every fact has a citation through `ref`/`doi` (entry-level) or `facts_ref` (per key).
+- `exoplanets.json` has one entry per host star with a `planets` array (NASA Exoplanet Archive column
+  names; numbers follow the archive's `[value, err1, err2]` with `err2 <= 0`); the viewer adds the planet
+  names to the search aliases. Kinds `exoplanet`, `pulsar`, `black_hole`, `message`, `seti_signal` are
+  de-duplicated only against their own kind (a planet system shares its name with its star).
+- Each catalogue is built by `scripts/build_<name>.py` (black_holes, exoplanets, pulsars, nebulae_snr,
+  seti); its provenance block (sources, queries, counts, citations) is written next to it,
+  `data/tiles/catalogs/provenance/<name>.json`; downloads are cached in `data/cache/` (gitignored).
 
 ## 4. Docs articles (`web/public/docs/<lang>/<slug>.md`)
 

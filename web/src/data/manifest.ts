@@ -1,6 +1,7 @@
 /** web/public/layers.json: which layers and catalogues the viewer knows about. */
 
 import type { Vec3 } from '../math/frames';
+import type { FactValue, Planet } from '../objects/facts';
 import { fetchJson } from './tilebase';
 
 export type ColorMode = 'star' | 'galaxy';
@@ -60,9 +61,25 @@ export interface CatalogEntry {
   /** null when there is no distance: only the direction (ra, dec) is known */
   xyz: Vec3 | null;
   ref?: string;
+  doi?: string;
+  /** docs article slug (content contract section 3); defaults to the kind's article */
+  docs?: string;
+  /** numbers as value, [value, err] or [value, err_minus, err_plus]; keys end in their unit */
+  facts?: Record<string, FactValue>;
+  /** per-fact citation when it differs from the entry's ref */
+  facts_ref?: Record<string, string>;
+  /** exoplanets.json: the planets of this host star */
+  planets?: Planet[];
   /** set by the loader: which file it came from */
   source?: string;
 }
+
+/**
+ * Kinds drawn AT another object (a planet system at its star, a pulsar in its nebula, a black hole in
+ * a galaxy nucleus): they share names with that object but are separate entries, so duplicate
+ * detection only compares them with entries of the same kind.
+ */
+export const OWN_NAMESPACE_KINDS = new Set(['exoplanet', 'pulsar', 'black_hole', 'message', 'seti_signal']);
 
 /**
  * Optional listing of what is built under tiles/ ({layers: [...], catalogs: [...]}). The dev
@@ -121,9 +138,14 @@ export async function loadCatalogs(urls: string[]): Promise<{ entries: CatalogEn
       const hasDir = Number.isFinite(e.ra) && Number.isFinite(e.dec);
       if (!hasXyz && !hasDir) continue;
       if (!hasXyz) e.xyz = null;
+      // planet names are search aliases of their host system (exoplanets.json leaves alt empty)
+      if (Array.isArray(e.planets) && e.planets.length) {
+        e.alt = [...(e.alt ?? []), ...e.planets.map((p) => p.pl_name).filter((n) => typeof n === 'string')];
+      }
       // the same object can appear in several catalogues under different primary names
       // (e.g. 'Andromeda (M31)' and 'MESSIER031'): any shared name or alias makes it a duplicate
-      const keys = [e.name, ...(e.alt ?? [])].map(catalogKey).filter(Boolean);
+      const ns = OWN_NAMESPACE_KINDS.has(e.kind) ? `${e.kind}:` : '';
+      const keys = [e.name, ...(e.alt ?? [])].map(catalogKey).filter(Boolean).map((k) => ns + k);
       if (keys.some((k) => seen.has(k))) continue;
       keys.forEach((k) => seen.add(k));
       entries.push({ ...e, source: u.split('/').pop() });

@@ -1,0 +1,76 @@
+{
+  "catalog": "data/tiles/catalogs/pulsars.json",
+  "bytes": 1470287,
+  "started_utc": "2026-11-13T18:33:01Z",
+  "finished_utc": "2026-11-13T18:33:10Z",
+  "service": "https://www.atnf.csiro.au/research/pulsar/psrcat/proc_form.php",
+  "facts_keys": "period_s [s], period_derivative [s/s], dm_pc_cm3 [pc cm^-3], orbital_period_days, dist_method, assoc",
+  "atnf_version": "2.9.0",
+  "params": [
+    "JName",
+    "Bname",
+    "RaJD",
+    "DecJD",
+    "P0",
+    "P1",
+    "DM",
+    "Dist",
+    "Dist_DM",
+    "Dist_A",
+    "PX",
+    "Type",
+    "Binary",
+    "PB",
+    "Assoc"
+  ],
+  "style": "Long csv with errors",
+  "counts": {
+    "atnf_pulsars": 4503,
+    "with_dist": 4429,
+    "dropped_no_dist": 74,
+    "dist_independent": 458,
+    "type_tags": {
+      "isolated": 3205,
+      "millisecond": 856,
+      "binary": 617,
+      "in globular cluster": 272,
+      "RRAT": 221,
+      "radio-quiet": 47,
+      "magnetar": 14,
+      "isolated NS (XINS)": 3
+    }
+  },
+  "dropped_examples": [
+    "J0359+5414",
+    "J0418+5732",
+    "J0420-5022",
+    "J0525-6607",
+    "J0622+3749",
+    "J0635+0533",
+    "J0734-1559",
+    "J0744-2525",
+    "J0802-5613",
+    "J0806-4123",
+    "J0910+77",
+    "J1057-5851",
+    "J1105-6037",
+    "J1111-6039",
+    "J1135-6055",
+    "J1139-6247",
+    "J1203-6242",
+    "J1208-6238",
+    "J1231-5113",
+    "J1231-6511"
+  ],
+  "citations": [
+    {
+      "ref": "ATNF Pulsar Catalogue (Manchester et al. 2005, AJ 129, 1993)",
+      "doi": "10.1086/428488",
+      "url": "https://www.atnf.csiro.au/research/pulsar/psrcat/"
+    },
+    {
+      "ref": "Yao, Manchester & Wang 2017, ApJ 835, 29 (YMW16 DM distances)",
+      "doi": "10.3847/1538-4357/835/1/29"
+    }
+  ]
+}

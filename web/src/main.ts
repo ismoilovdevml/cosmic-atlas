@@ -25,6 +25,7 @@ import { GalaxyShapes, type GalaxyShapesDoc } from './render/galaxyShapes';
 import { GpuPicker } from './render/pick';
 import { PostPass } from './render/post';
 import { formatHash, parseHash, type SelRef } from './state/hash';
+import { factRows, planetRows } from './objects/facts';
 import { findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
 import { SCALE_TOUR, resolveBeat, type Tour, type TourContext } from './tour/tours';
@@ -768,6 +769,8 @@ class App {
       }
     } else rows.push(['Distance', 'unknown (direction only)']);
     if (e.mag !== null && e.mag !== undefined) rows.push(['Apparent mag', e.mag.toFixed(2)]);
+    // catalogue facts (labels: i18n keys facts.<key>, falling back to the key) and exoplanets
+    rows.push(...factRows(e.facts), ...planetRows(e.planets));
     if (e.ra !== undefined && e.dec !== undefined) {
       const lb = galToLB(radecDistToGal(e.ra, e.dec, 1));
       rows.push(['Galactic l, b', `${lb.l.toFixed(3)}°, ${lb.b.toFixed(3)}°`]);
@@ -802,7 +805,7 @@ class App {
       italic: e.kind.includes('galaxy'),
       rows,
       note,
-      links: e.name === 'Sun' ? [] : [['SIMBAD', `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]],
+      links: catalogLinks(e),
       fly,
     });
     this.dirty = true;
@@ -1275,8 +1278,22 @@ function smoothstep(a: number, b: number, x: number) {
 
 function kindLabel(kind: string): string {
   return (
-    { star: 'Star', wd: 'White dwarf', cluster: 'Star cluster', bh: 'Supermassive black hole', lg_galaxy: 'Local Group galaxy', galaxy: 'Galaxy', qso: 'Quasar' } as Record<string, string>
+    {
+      star: 'Star', wd: 'White dwarf', cluster: 'Star cluster', bh: 'Supermassive black hole', lg_galaxy: 'Local Group galaxy',
+      galaxy: 'Galaxy', qso: 'Quasar', black_hole: 'Black hole', exoplanet: 'Planetary system', pulsar: 'Pulsar',
+      nebula: 'Nebula', snr: 'Supernova remnant', message: 'Message sent to the stars', seti_signal: 'SETI candidate signal',
+    } as Record<string, string>
   )[kind] ?? kind;
+}
+
+/** outbound links of a catalogue entry's info card */
+function catalogLinks(e: CatalogEntry): [string, string][] {
+  const out: [string, string][] = [];
+  if (e.kind === 'exoplanet') out.push(['NASA Exoplanet Archive', `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(e.name)}`]);
+  else if (e.name !== 'Sun' && e.kind !== 'message' && e.kind !== 'seti_signal')
+    out.push(['SIMBAD', `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]);
+  if (e.doi) out.push(['Paper (DOI)', `https://doi.org/${e.doi}`]);
+  return out;
 }
 
 void new App().start();

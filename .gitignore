@@ -9,3 +9,4 @@ web/dist/
 .DS_Store
 data/cache/
 .claude/
+data/cache/

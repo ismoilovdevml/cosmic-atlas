@@ -1,0 +1,102 @@
+{
+  "catalog": "data/tiles/catalogs/black-holes.json",
+  "bytes": 29798,
+  "started_utc": "2026-11-13T18:25:55Z",
+  "finished_utc": "2026-11-13T18:25:55Z",
+  "counts": {
+    "total": 40,
+    "curated": 8,
+    "smbh_vdb16": 12,
+    "blackcat_dynamical": 20,
+    "with_distance": 39
+  },
+  "service": {
+    "blackcat": "https://www.astro.puc.cl/BlackCAT/",
+    "vizier": "https://vizier.cfa.harvard.edu (CfA mirror)",
+    "simbad_tap": "https://simbad.harvard.edu/simbad/sim-tap/sync"
+  },
+  "blackcat": {
+    "blackcat_rows": 73,
+    "dynamically_confirmed": 20,
+    "blackcat_last_modified": "22 September 2025",
+    "without_distance": [
+      "1H 1659-487"
+    ]
+  },
+  "smbh": {
+    "vdb16_url": "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=J%2FApJ%2F831%2F134%2Ftable2&-out.max=unlimited&-oc.form=dec&-out.add=_RAJ&-out.add=_DEJ&-out=Name&-out=f_Name&-out=Dist&-out=e_Dist&-out=logBHMass&-out=E_logBHMass&-out=e_logBHMass&-out=Meth&-out=Refs&-out=SimbadName",
+    "selected": [
+      "NGC0224",
+      "NGC0221",
+      "NGC4258",
+      "NGC5128",
+      "NGC3031",
+      "NGC4594",
+      "NGC4649",
+      "NGC3115",
+      "NGC1068",
+      "Circinus",
+      "NGC1277",
+      "NGC4889"
+    ]
+  },
+  "rules": "dist_pc = best published distance; lo/hi = 1-sigma (asymmetric where published). facts.mass_msun = value, [value, err] or [value, err_minus, err_plus]; limits and ranges are kept as text.",
+  "citations": [
+    {
+      "ref": "GRAVITY Collaboration, Abuter et al. 2019, A&A 625, L10",
+      "doi": "10.1051/0004-6361/201935656"
+    },
+    {
+      "ref": "GRAVITY Collaboration, Abuter et al. 2022, A&A 657, L12",
+      "doi": "10.1051/0004-6361/202142465"
+    },
+    {
+      "ref": "Event Horizon Telescope Collaboration 2019, ApJL 875, L1 (Paper I)",
+      "doi": "10.3847/2041-8213/ab0ec7"
+    },
+    {
+      "ref": "Event Horizon Telescope Collaboration 2019, ApJL 875, L6 (Paper VI)",
+      "doi": "10.3847/2041-8213/ab1141"
+    },
+    {
+      "ref": "El-Badry et al. 2023, MNRAS 518, 1057 (Gaia BH1)",
+      "doi": "10.1093/mnras/stac3140"
+    },
+    {
+      "ref": "El-Badry et al. 2023, MNRAS 521, 4323 (Gaia BH2)",
+      "doi": "10.1093/mnras/stad799"
+    },
+    {
+      "ref": "Gaia Collaboration, Panuzzo et al. 2024, A&A 686, L2 (Gaia BH3)",
+      "doi": "10.1051/0004-6361/202449763"
+    },
+    {
+      "ref": "Miller-Jones et al. 2021, Science 371, 1046 (Cyg X-1)",
+      "doi": "10.1126/science.abb3363"
+    },
+    {
+      "ref": "Orosz et al. 2009, ApJ 697, 573 (LMC X-1)",
+      "doi": "10.1088/0004-637X/697/1/573"
+    },
+    {
+      "ref": "Orosz et al. 2014, ApJ 794, 154 (LMC X-3)",
+      "doi": "10.1088/0004-637X/794/2/154"
+    },
+    {
+      "ref": "Pietrzynski et al. 2019, Nature 567, 200 (LMC distance 49.59 kpc)",
+      "doi": "10.1038/s41586-019-0999-4"
+    },
+    {
+      "ref": "Corral-Santana et al. 2016, A&A 587, A61 (BlackCAT; online version, last modified 2025-09-22)",
+      "doi": "10.1051/0004-6361/201527130"
+    },
+    {
+      "ref": "van den Bosch 2016, ApJ 831, 134 (BH mass compilation; VizieR J/ApJ/831/134)",
+      "doi": "10.3847/0004-637X/831/2/134"
+    },
+    {
+      "ref": "Gaia Collaboration, Vallenari et al. 2023, A&A 674, A1 (Gaia DR3 positions)",
+      "doi": "10.1051/0004-6361/202243940"
+    }
+  ]
+}

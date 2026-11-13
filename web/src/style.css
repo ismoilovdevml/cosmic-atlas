@@ -175,7 +175,10 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border-radius
   background: none; border: 0; color: rgba(220, 225, 234, 0.86); white-space: nowrap; cursor: pointer; pointer-events: auto;
   font: 400 13.5px/18px var(--serif); text-shadow: 0 0 3px #000, 0 0 8px #000;
 }
-.label::before { content: ''; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 50%; border: 1px solid rgba(201, 166, 107, 0.8); }
+.label::before { content: ''; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--kc, rgba(201, 166, 107, 0.8)); }
+/* catalogue kinds tint their text toward the kind colour (kinds.ts) */
+.label.kc { color: color-mix(in srgb, var(--kc) 55%, rgba(220, 225, 234, 0.9)); }
+.label.kc:hover { color: var(--brass-bright); }
 .label[data-kind='galaxy'] { font-style: italic; }
 .label[data-kind='model'] { color: var(--model); font-style: italic; font-size: 13px; }
 .label[data-kind='model']::before { border: 1px dashed var(--model); border-radius: 0; transform: rotate(45deg); }

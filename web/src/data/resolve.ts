@@ -164,6 +164,17 @@ export function viewDistanceFor(kind: string, distPc: number): number {
     case 'galaxy':
     case 'qso':
       return 150_000;
+    case 'exoplanet':
+    case 'message':
+      return Math.max(0.05, Math.min(1.5, distPc * 0.05 || 1));
+    case 'pulsar':
+    case 'nebula':
+    case 'snr':
+    case 'seti_signal':
+      return Math.max(1, Math.min(60, distPc * 0.02 || 20));
+    case 'black_hole':
+      // stellar BHs like stars nearby; SMBHs in other galaxies framed at galaxy scale
+      return distPc > 1e5 ? 150_000 : Math.max(1, Math.min(60, distPc * 0.02 || 20));
     default:
       return 1000;
   }
