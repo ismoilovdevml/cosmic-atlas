@@ -238,6 +238,27 @@ body.has-info .stats { top: auto; bottom: 168px; }
 .help .fine { line-height: 1.55; }
 .help a { color: var(--brass-bright); }
 
+/* ---------- Solar System: time control (src/solar/timebar.ts) ---------- */
+.swatch.solar { background: radial-gradient(circle at 35% 35%, #fff2c9 0 25%, #f2b94f 55%, #8a5a1a 80%); }
+.timectl {
+  position: fixed; right: 16px; bottom: 96px; z-index: 11;
+  display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 22px;
+  max-width: calc(100vw - 32px);
+}
+.timectl[hidden] { display: none; }
+.timectl .t-date { font-size: 12.5px; color: var(--ink); white-space: nowrap; min-width: 15.5ch; }
+.timectl .icon-btn { width: 32px; height: 32px; }
+.timectl .t-play svg { stroke-width: 2.2; }
+.timectl .t-speeds { display: inline-flex; border: 1px solid var(--hairline-strong); border-radius: var(--r-ctl); overflow: hidden; }
+.timectl .t-speeds button, .timectl .t-now {
+  min-height: 30px; padding: 0 8px; border: 0; background: none; color: var(--ink-dim); cursor: pointer; font-size: 12.5px;
+}
+.timectl .t-speeds button + button { border-left: 1px solid var(--hairline-strong); }
+.timectl .t-speeds button[aria-checked='true'] { background: rgba(201, 166, 107, 0.22); color: var(--brass-bright); }
+.timectl .t-now { border: 1px solid var(--brass-dim); border-radius: var(--r-ctl); color: var(--brass-bright); background: rgba(201, 166, 107, 0.12); }
+.timectl .t-now[aria-pressed='true'] { background: rgba(201, 166, 107, 0.3); }
+.timectl button:hover { color: var(--ink); }
+
 /* ---------- small screens ---------- */
 @media (max-width: 900px) {
   .instrument { grid-template-columns: 1fr auto; grid-template-areas: 'rail rail' 'bar actions'; gap: 6px 12px; }
@@ -255,6 +276,8 @@ body.has-info .stats { top: auto; bottom: 168px; }
   .stats { display: none; }
   .tour-label { display: none; }
   .tick-label { font-size: 11px; }
+  .timectl { right: 8px; left: 8px; bottom: 112px; justify-content: space-between; padding-left: 10px; }
+  .timectl .t-date { min-width: 0; font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

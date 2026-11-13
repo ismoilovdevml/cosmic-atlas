@@ -113,9 +113,13 @@ export async function resolveSesame(query: string, signal?: AbortSignal): Promis
   throw new Error(`Sesame unreachable (${(lastErr as Error)?.message ?? 'network error'})`);
 }
 
-/** normalise for matching: lower case, no spaces/punctuation */
+/**
+ * normalise for matching: lower case, no spaces/punctuation/diacritics. Letters of any script are
+ * kept (Cyrillic "Марс", Greek "ξ1 Cet"); modifier letters such as the Uzbek ʻ/ʼ are dropped so
+ * "Oʻrta" and "O'rta" match.
+ */
 export function normName(s: string): string {
-  return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9*+]/g, '');
+  return s.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').replace(/\p{Lm}|[^\p{L}\p{N}*+]/gu, '');
 }
 
 export interface Suggestion {

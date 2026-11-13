@@ -16,7 +16,8 @@ function tiles(): Plugin {
     if (url === '/tiles/_index.json') {
       // what is actually built, so the viewer does not probe (and log 404s for) missing layers
       const dirs = existsSync(root) ? readdirSync(root, { withFileTypes: true }) : [];
-      const layers = dirs.filter((d) => d.isDirectory() && existsSync(resolve(root, d.name, 'meta.json'))).map((d) => d.name);
+      // symlinked layer folders count too (worktrees link the main checkout's tiles); existsSync follows links
+      const layers = dirs.filter((d) => (d.isDirectory() || d.isSymbolicLink()) && existsSync(resolve(root, d.name, 'meta.json'))).map((d) => d.name);
       const catDir = resolve(root, 'catalogs');
       const catalogs = existsSync(catDir) ? readdirSync(catDir).filter((f) => f.endsWith('.json')) : [];
       res.setHeader('Content-Type', 'application/json');

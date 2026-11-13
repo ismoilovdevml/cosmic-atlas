@@ -28,6 +28,8 @@ import { findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
 import { SCALE_TOUR, resolveBeat, type Tour, type TourContext } from './tour/tours';
 import { ScaleRail } from './ui/rail';
+// --- Solar System hook (web/src/solar): live planets, time control, probes
+import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, solarInfo, tr as solarTr, type SolarEntry } from './solar';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -99,6 +101,11 @@ class App {
   private inFlight = 0;
   private pendingSel: SelRef | null = null;
   private layersReady: Promise<void> = Promise.resolve();
+  // --- Solar System hook
+  solar = new SolarSystem();
+  private timebar!: TimeBar;
+  private solarSel: SolarEntry | null = null;
+  private solarInfoT = 0;
 
   async start() {
     const canvas = $<HTMLCanvasElement>('view');
@@ -130,6 +137,16 @@ class App {
     this.labels = new LabelLayer($('labels'));
     this.rail = new ScaleRail($('rail'), $('rail-ticks'), $('rail-mark'));
     this.scene.add(this.mw.points);
+    // --- Solar System hook: the layer, its time bar, and clicks on its labels
+    this.scene.add(this.solar.root);
+    this.timebar = new TimeBar(this.solar.clock);
+    document.body.appendChild(this.timebar.el);
+    const onClock = this.solar.clock.onChange;
+    this.solar.clock.onChange = () => {
+      onClock();
+      this.dirty = true;
+    };
+    this.solar.onSelect = (e) => this.showSolar(e);
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
@@ -187,6 +204,7 @@ class App {
         this.loadSky(cfg.image ?? 'sky/gaia_dr3_sky_l9.jpg');
       }
     }
+    if (hashLayers?.solar !== undefined) this.solar.visible = hashLayers.solar; // --- Solar System hook
     const known = this.tilesIndex ? new Set(this.tilesIndex.layers) : undefined;
     await Promise.all(this.layers.map((L) => L.init(known)));
     // dev layers step aside when the real layer they stand in for exists
@@ -222,6 +240,7 @@ class App {
     for (const L of this.layers) if (L.status === 'ready' && !L.superseded) out[L.cfg.id] = L.visible;
     if (this.mwCfg) out[this.mwCfg.id] = this.mw.visible;
     if (this.skyCfg) out[this.skyCfg.id] = this.sky.visible;
+    out.solar = this.solar.visible; // --- Solar System hook
     return out;
   }
 
@@ -232,6 +251,7 @@ class App {
       if (!on) this.streamer.releaseLayer(L);
     } else if (this.mwCfg?.id === id) this.mw.visible = on;
     else if (this.skyCfg?.id === id) this.sky.visible = on;
+    else if (id === 'solar') this.solar.visible = on; // --- Solar System hook
     const cb = document.getElementById(`lyr-${id}`) as HTMLInputElement | null;
     if (cb && cb.checked !== on) {
       cb.checked = on;
@@ -320,12 +340,18 @@ class App {
         onOpacity: (v) => (this.sky.opacity = v),
       });
     }
+    // --- Solar System hook: its row in the layers panel
+    row({
+      id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
+      checked: this.solar.visible, opacity: this.solar.opacity, onOpacity: (v) => (this.solar.opacity = v),
+    });
     $('layer-missing').textContent = missing.length ? `Not built yet: ${missing.join(', ')}.` : '';
     $('credits').innerHTML = '';
     const credits = [
       ...this.layers.filter((L) => L.status === 'ready' && !L.superseded).map((L) => `${L.cfg.title}: ${L.cfg.credit ?? (L.cfg.dev ? 'synthetic development data, not observations' : L.meta?.title ?? '')}`),
       this.mwCfg ? `${this.mwCfg.title}: ${this.mwCfg.credit}` : '',
       this.skyCfg ? `${this.skyCfg.title}: ${this.skyCfg.credit}` : '',
+      solarTr('solar.credit'), // --- Solar System hook
       'Name resolution: CDS Sesame (via the VizieR mirror at CfA). Distances for redshifts use Planck18 comoving distance.',
       'Rendering techniques (subtree blobs, solid-angle photometry, GPU picking, label declutter) adapted from skymap by Alexander Rulkens (MIT).',
     ].filter(Boolean);
@@ -345,8 +371,12 @@ class App {
       urls = urls.filter((u) => have.has(u.split('/').pop()!));
     }
     const { entries } = await loadCatalogs(urls);
-    this.catalog = entries;
+    // --- Solar System hook: probe tracks, then bodies + probes join search (live xyz) and labels
+    if (!this.tilesIndex || this.tilesIndex.catalogs.includes('spacecraft.json')) await this.solar.loadSpacecraft(`${this.tileBase}catalogs/spacecraft.json`);
+    const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
+    this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     const items: LabelItem[] = [];
+    items.push(...this.solar.labelItems); // --- Solar System hook
     for (const e of entries) {
       if (!e.xyz) continue;
       const d = e.dist_pc;
@@ -360,8 +390,8 @@ class App {
         xyz: e.xyz,
         kind: e.kind,
         absMag: e.name === 'Sun' ? 4.83 : absMag,
-        // the Sun is labelled up to Milky Way scale; whole-galaxy entries only beyond it
-        ...(e.name === 'Sun' ? { maxScale: 2e5 } : /^milky way/i.test(e.name) ? { minScale: 2e5, maxScale: Infinity } : {}),
+        // the Sun is labelled up to Milky Way scale (the Solar System layer labels it closer in); whole-galaxy entries only beyond it
+        ...(e.name === 'Sun' ? { minScale: SOLAR_LABEL_MAX, maxScale: 2e5 } : /^milky way/i.test(e.name) ? { minScale: 2e5, maxScale: Infinity } : {}),
         onClick: () => this.showCatalogEntry(e),
       });
     }
@@ -403,9 +433,12 @@ class App {
       this.fpsT0 = t;
     }
     const moved = this.nav.update(dt);
+    this.solar.follow(this.nav); // --- Solar System hook: keep the focus on a moving body
     this.nav.applyToCamera();
     const cam = this.nav.camPos();
     const D = this.nav.view.dist;
+    // --- Solar System hook: positions at the simulation time; re-render when something moved on screen
+    if (this.solar.update({ cam, camera: this.camera, pxPerRad: this.pxPerRad(), focusDist: D, dpr: this.dpr, width: window.innerWidth, height: window.innerHeight })) this.dirty = true;
 
     // render on demand: only when something changed, a fade is running, or benchmarking
     const settling = this.densityK > 0 && Math.abs(Math.log(this.densityK / (this.densityTarget || this.densityK))) > 0.01;
@@ -423,6 +456,7 @@ class App {
     if (t - this.lastUi > 120) {
       this.lastUi = t;
       this.updateReadouts(D, this.streamer.stats);
+      this.solarUiTick(t); // --- Solar System hook
     }
   };
 
@@ -575,7 +609,7 @@ class App {
   /** screen rectangles covered by UI (labels avoid them) */
   private occluders(): DOMRect[] {
     const out: DOMRect[] = [];
-    for (const sel of ['.top .search', '#layers', '#info', '#stats', '.instrument', '#caption']) {
+    for (const sel of ['.top .search', '#layers', '#info', '#stats', '.instrument', '#caption', '#timectl']) {
       const el = document.querySelector<HTMLElement>(sel);
       if (!el || el.hidden) continue;
       const r = el.getBoundingClientRect();
@@ -642,6 +676,13 @@ class App {
   // ------------------------------------------------------------------ picking (GPU)
 
   private async pick(cx: number, cy: number, fly: boolean) {
+    // --- Solar System hook: bodies and probes are picked on the CPU, before the GPU point pick
+    const se = this.solar.pickAt(cx, cy);
+    if (se) {
+      this.showSolar(se);
+      if (fly) this.flySolar(se);
+      return;
+    }
     const hit = await this.picker.pick(cx, cy);
     const L = hit ? this.layers.find((l) => l.code === hit.layerCode) : undefined;
     const n = hit && L ? this.streamer.nodeForSlot(hit.slot) : null;
@@ -717,6 +758,7 @@ class App {
   }
 
   private showCatalogEntry(e: CatalogEntry) {
+    if ((e as unknown as SolarEntry).solar) return this.showSolar(e as unknown as SolarEntry); // --- Solar System hook
     const rows: [string, string][] = [];
     if (e.alt?.length) rows.push(['Also', e.alt.slice(0, 3).join(', ')]);
     const has = !!e.xyz && e.dist_pc > 0;
@@ -751,13 +793,15 @@ class App {
 
   /** flight target for a catalogue entry; direction-only entries turn the view from the Sun */
   private viewFor(e: CatalogEntry): Partial<View> {
+    if ((e as unknown as SolarEntry).solar) return this.solar.viewFor(e as unknown as SolarEntry); // --- Solar System hook
     if (e.xyz) return { focus: e.xyz.slice() as Vec3, dist: viewDistanceFor(e.kind, e.dist_pc) };
     const d = radecDistToGal(e.ra ?? 0, e.dec ?? 0, 1);
     return { focus: [0, 0, 0], dist: 1e-3, yaw: Math.atan2(-d[1], -d[0]), pitch: Math.asin(-d[2]) };
   }
 
-  private openInfo(o: { kind: string; title: string; italic: boolean; rows: [string, string][]; note: string; links: [string, string][]; fly: Partial<View> }) {
+  private openInfo(o: { kind: string; title: string; italic: boolean; rows: [string, string][]; note: string; links: [string, string][]; fly: Partial<View>; docs?: string }) {
     $('info-kind').textContent = o.kind;
+    $('info').dataset.docs = o.docs ?? ''; // docs slug (content contract section 4) for the docs panel
     const t = $('info-title');
     t.textContent = o.title;
     t.classList.toggle('galaxy', o.italic);
@@ -789,6 +833,7 @@ class App {
   }
 
   private closeInfo() {
+    this.solarSel = null; // --- Solar System hook
     $('info').hidden = true;
     document.body.classList.remove('has-info');
     this.selection = null;
@@ -834,6 +879,44 @@ class App {
       return;
     }
     this.status(`The linked object ${L.meta.idPrefix}${ref.id} was not found near the linked position.`, 'warn');
+  }
+
+  // ------------------------------------------------------------------ Solar System hook
+
+  /** info card for a Solar System body or probe (rows live: refreshed while time runs) */
+  private showSolar(e: SolarEntry) {
+    const info = solarInfo(this.solar, e);
+    const fly = this.solar.viewFor(e);
+    this.solarSel = e;
+    this.selection = { xyz: e.xyz, title: e.name, fly, ref: { type: 'cat', name: e.name } };
+    this.openInfo({ kind: info.kind, title: info.title, italic: false, rows: info.rows, note: info.note, links: [], fly, docs: info.docs });
+    $('info-fly').onclick = () => this.flySolar(e);
+    this.dirty = true;
+  }
+
+  /** fly to a body, then keep the focus on it while it moves */
+  private flySolar(e: SolarEntry, view?: Partial<View>) {
+    this.solar.attach(null);
+    const id = this.solar.bodyIdOf(e);
+    void this.nav.flyTo(view ?? this.solar.viewFor(e)).then((ok) => {
+      if (ok && id) {
+        this.nav.view.focus = [...this.solar.positionOf(id)] as Vec3;
+        this.solar.attach(id);
+      }
+    });
+  }
+
+  private solarUiTick(t: number) {
+    const camSun = Math.hypot(...this.nav.camPos());
+    const show = this.solar.visible && this.solar.fade > 0.05 && camSun < 0.3;
+    if (this.timebar.el.hidden === show) this.timebar.el.hidden = !show;
+    if (show) this.timebar.tick();
+    if (this.solarSel && !$('info').hidden && this.solar.clock.rate !== 0 && t - this.solarInfoT > 1000) {
+      this.solarInfoT = t;
+      const info = solarInfo(this.solar, this.solarSel);
+      const dds = $('info-rows').querySelectorAll('dd');
+      if (dds.length === info.rows.length) info.rows.forEach(([, v], i) => (dds[i].textContent = v));
+    }
   }
 
   // ------------------------------------------------------------------ search & UI
@@ -987,6 +1070,11 @@ class App {
 
   private goToEntry(e: CatalogEntry) {
     this.stopTour(false);
+    if ((e as unknown as SolarEntry).solar) { // --- Solar System hook
+      this.showSolar(e as unknown as SolarEntry);
+      this.flySolar(e as unknown as SolarEntry);
+      return;
+    }
     this.showCatalogEntry(e);
     if (e.xyz) this.status(`${e.name}: ${e.dist_pc > 0 ? formatDistance(e.dist_pc) + ' from the Sun' : 'the origin of the map'}.`);
     else this.status(`${e.name}: no distance in the catalogue; looking toward it from the Sun.`);
@@ -1060,6 +1148,8 @@ class App {
         return halves.length ? Math.min(Math.max(...halves), 3e9) : 2.5e9;
       },
       lookbackText: (d) => describeLookback(d).text.replace('light left ', ''),
+      // --- Solar System hook: live body positions for tour beats
+      body: (id) => (this.solar.bodies.some((b) => b.def.id === id) ? ([...this.solar.positionOf(id as 'earth')] as Vec3) : null),
     };
   }
 
@@ -1160,6 +1250,35 @@ class App {
       },
       setLayer: (id: string, on: boolean) => this.setLayerVisible(id, on),
       setSky: (on: boolean) => this.setLayerVisible(this.skyCfg?.id ?? 'gaia-sky', on),
+      // --- Solar System hook (captures / tests)
+      solar: {
+        entries: () => this.solar.entries.map((e) => ({ name: e.name, alt: e.alt, kind: e.kind, distAU: e.dist_pc / 4.84813681109536e-6 })),
+        go: (name: string, opts: { dist?: number; yawDeg?: number; pitchDeg?: number; instant?: boolean } = {}) => {
+          const e = this.solar.entries.find((x) => x.name === name || x.alt.includes(name));
+          if (!e) return false;
+          const v = { ...this.solar.viewFor(e), ...(opts.dist ? { dist: opts.dist } : {}) };
+          if (opts.yawDeg !== undefined) v.yaw += (opts.yawDeg * Math.PI) / 180;
+          if (opts.pitchDeg !== undefined) v.pitch = (opts.pitchDeg * Math.PI) / 180;
+          this.showSolar(e);
+          if (opts.instant) {
+            this.nav.setView(v);
+            this.solar.attach(this.solar.bodyIdOf(e));
+          } else this.flySolar(e, v);
+          return true;
+        },
+        setTime: (iso: string) => this.solar.clock.set(Date.parse(iso)),
+        setSpeed: (s: number) => this.solar.clock.setSpeed(s),
+        pause: (p: boolean) => this.solar.clock.setPaused(p),
+        now: () => new Date(this.solar.clock.now()).toISOString(),
+        pickAt: (x: number, y: number) => this.solar.pickAt(x, y)?.name ?? null,
+        screen: () => Object.fromEntries(this.solar.bodies.map((b) => [b.def.id, b.screen])),
+        search: (q: string) => searchCatalog(this.catalog, q).map((r) => `${r.entry.name} <- ${r.matched}`),
+        layer: this.solar,
+        lookDown: (lat: number, lon: number, altKm = 3000) => {
+          this.nav.setView(flyTargetForLatLon(lat, lon, this.solar.clock.now(), altKm));
+          this.solar.attach('earth');
+        },
+      },
       setUncertainty: (on: boolean) => {
         this.streamer.uncertainty = on;
         ($('unc-on') as HTMLInputElement).checked = on;

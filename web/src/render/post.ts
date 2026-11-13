@@ -48,6 +48,8 @@ export class PostPass {
   constructor(renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     const scenePass = pass(scene, camera);
     const hdrTex = scenePass.getTextureNode('output');
+    // only opaque Solar System bodies write depth; the sky must not show through them
+    const sceneDepth = scenePass.getTextureNode('depth');
     const placeholder = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
     placeholder.needsUpdate = true;
     this.skyNode = texture(placeholder);
@@ -76,7 +78,8 @@ export class PostPass {
       const lod = log2(max(ang.mul(this.uSkySize.x).mul(0.25), 1.0));
       const skyRaw = this.skyNode.sample(uvSky).level(lod).rgb;
       // (linear) the image's floor is a faint grey haze; pull it toward black so the sky stays calm
-      const sky = max(skyRaw.sub(0.003), 0.0).mul(this.uSkyGain).mul(this.uSkyOn);
+      const clearDepth = select(sceneDepth.x.greaterThanEqual(0.9999999), float(1.0), float(0.0));
+      const sky = max(skyRaw.sub(0.003), 0.0).mul(this.uSkyGain).mul(this.uSkyOn).mul(clearDepth);
 
       const voidLin = vec3(...VOID_SRGB.map((v) => srgbToLinear(v / 255)) as [number, number, number]);
       const lin = voidLin.add(sky).add(c.mul(float(1.0).sub(sky.mul(0.5))));
