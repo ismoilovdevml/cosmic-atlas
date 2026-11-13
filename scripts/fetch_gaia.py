@@ -58,7 +58,7 @@ USER_AGENT = "cosmic-atlas-fetch/1.0 (python-requests)"
 ROW_LIMIT = 50_000      # anonymous async default MAXREC (survey jobs stay far below it)
 MAXREC = 2_000_000      # explicit MAXREC for fetch jobs (ESA returned 105,743 rows with it, 2026-11-13)
 CHUNK_MAX = 45_000      # planned rows per chunk, margin below ROW_LIMIT
-CONCURRENCY = 5         # ESA anonymous async; 5 parallel jobs measured stable 2026-11-13
+CONCURRENCY = 5         # raised from 3 to cut wall time (~20 s per chunk); lower it if ESA starts refusing jobs
 MAX_DIST_PC = 1000.0
 SID_L12 = 2 ** 35       # source_id // SID_L12 = HEALPix level-12 nested index
 
