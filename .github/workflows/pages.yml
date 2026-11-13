@@ -1,0 +1,97 @@
+# Build the viewer (web/) and publish it to GitHub Pages.
+#
+# Tiles are NOT built here (the raw data is ~7 GB and the fetches take hours). Two ways to give
+# the published site its tiles, see README.md "Deploy":
+#   - repo variable TILE_BASE      = absolute URL of an external tile origin (Hugging Face dataset
+#                                    resolve URL, R2 custom domain, ...), baked in as VITE_TILE_BASE
+#   - repo variable LITE_TILES_URL = URL of a .tar.gz of a lite tile set made by
+#                                    scripts/make_lite_tiles.py (e.g. a release asset); it is
+#                                    unpacked into the site as tiles/ (site must stay under 1 GB)
+# Neither set: the app is published alone and looks for tiles/ next to it.
+#
+# One-time setup (not done by this workflow): Settings -> Pages -> Source: GitHub Actions, and
+# repo variable PAGES_ENABLED=true so pushes deploy. Manual runs (workflow_dispatch) always run.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: vars.PAGES_ENABLED == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build (tile origin from vars.TILE_BASE, default tiles/)
+        env:
+          VITE_TILE_BASE: ${{ vars.TILE_BASE }}
+        run: |
+          echo "VITE_TILE_BASE='${VITE_TILE_BASE:-tiles/ (default)}'"
+          npm run build
+
+      - name: Add lite tiles (vars.LITE_TILES_URL)
+        if: vars.LITE_TILES_URL != ''
+        env:
+          LITE_TILES_URL: ${{ vars.LITE_TILES_URL }}
+          TILE_BASE: ${{ vars.TILE_BASE }}
+        run: |
+          if [ -n "$TILE_BASE" ]; then
+            echo "::warning::TILE_BASE is set, so the app will not read the bundled tiles/"
+          fi
+          mkdir -p dist/tiles
+          curl -fsSL --retry 3 "$LITE_TILES_URL" -o "$RUNNER_TEMP/lite.tar.gz"
+          tar -xzf "$RUNNER_TEMP/lite.tar.gz" -C dist/tiles --no-same-owner
+          test -f dist/tiles/_index.json || { echo "::error::archive has no _index.json at its root"; exit 1; }
+
+      - name: Check GitHub Pages limits (1 GB site, no file over 95 MB, no links)
+        run: |
+          bytes=$(du -sb dist | cut -f1)
+          echo "site: $bytes bytes, $(find dist -type f | wc -l) files"
+          [ "$bytes" -le 1000000000 ] || { echo "::error::site is $bytes bytes, Pages allows 1 GB"; exit 1; }
+          big=$(find dist -type f -size +95M)
+          [ -z "$big" ] || { echo "::error::files over 95 MB: $big"; exit 1; }
+          links=$(find dist -type l)
+          [ -z "$links" ] || { echo "::error::Pages artifacts may not contain links: $links"; exit 1; }
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

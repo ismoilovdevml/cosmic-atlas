@@ -34,8 +34,12 @@ The Vite plugin in `vite.config.ts` serves `../data/tiles` at `/tiles` in `dev` 
 Tiles are not copied into `dist/`, because real tile sets are gigabytes. Missing files return a
 real 404, not the SPA fallback. The plugin also answers `/tiles/_index.json` with the layers and
 catalogues that are actually built, so the viewer never probes missing ones and the console
-stays clean. On a static host, either serve the same `_index.json` next to the tiles, or accept
-one 404 per layer that isn't built.
+stays clean. On a static host, `../scripts/write_tiles_index.py <tiles>` writes the same file
+(`make_lite_tiles.py` does it for you); without it you get one 404 per layer that isn't built.
+
+The tile origin is configurable (`src/data/tilebase.ts`): `?tiles=<url>` > `VITE_TILE_BASE` >
+`layers.json` `tilesBase` > `tiles/`. Paths in `layers.json` stay `tiles/...` and are re-rooted at
+load. See the repo README, "Deploy".
 
 ### Layers manifest: `public/layers.json`
 
