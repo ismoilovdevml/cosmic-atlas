@@ -59,7 +59,7 @@ updated: 2026-11-13
 
 - [Sgr A*](doc:sgr-a-star), the black hole at the centre of the Milky Way.
 - [M87*](doc:m87-black-hole), the first black hole ever imaged.
-- [Gaia BH3](doc:gaia-bh3), the heaviest stellar black hole known in our Galaxy.
+- [Gaia BH3](doc:gaia-bh3), the heaviest stellar black hole known in our Galaxy when found (2024).
 - [Crab Nebula](doc:crab-nebula), the remnant of the supernova of 1054.
 - [Proxima b](doc:proxima-b), the planet of our nearest neighbour star.
 - [TRAPPIST-1](doc:trappist-1), a star with seven Earth-sized planets.

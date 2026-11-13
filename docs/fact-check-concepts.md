@@ -5,9 +5,37 @@ it was taken from. The three languages state the same facts. "Atlas" sources are
 own data (catalogues in `data/tiles/catalogs/`, `data/raw/*/PROVENANCE.json`) or code. "Computed"
 means arithmetic on the cited values (shown in the claim column). Sources were opened on 2026-11-13.
 
-## Re-check log
+## Re-check log (2026-11-14, after all articles were written)
 
-See the end of this file for the sources re-opened after writing.
+Eleven sources were opened again and the values used in the articles compared with what the page says
+now. All eleven matched.
+
+| source | value checked | result |
+|---|---|---|
+| ESA Gaia DR3 page | 1,811,709,771 sources; 1,467,744,818 with parallax+PM; 33,812,183 RVs; 13 Jun 2022; 25 Jul 2014–28 May 2017 | match |
+| NASA Science, Voyager 1 | one light-day on 18 Nov 2026 (5:16 a.m. EST); 164.7 au and 17.0 km/s on 21 Aug 2024 | match |
+| NASA Exoplanet Archive | 6,470 confirmed planets on 12 Nov 2026 | match |
+| MRAO Green SNR catalogue | 2024 October version, 310 SNRs | match |
+| NRAO Laniakea news | 500 million ly; 10^17 M☉; 100,000 galaxies | match |
+| LCO apparent magnitude | Sun −26.7, full Moon −12.6, +3 city, +6 dark sky, Hubble +30 | match |
+| NASA Science, Star clusters | ≈150 globular clusters; stars 8–13 Gyr old | match |
+| IFAE DESI news | > 47 M galaxies+QSOs; target 34 M; continues through 2028 | match |
+| NASA Imagine, Neutron stars | ≈20 km; sugar cube ≈1 trillion kg; core 1–3 M☉ | match |
+| ESA/Hubble heic0516 | Sirius B 98 % M☉, ≈12,000 km, first seen 1862 | match |
+| Reid & Menten 2020 (PDF text) | Bessel 1838, 61 Cygni; Henderson α Cen; von Struve Vega | match |
+
+## Could not verify / caveats
+
+- `#focus=` links to Gaia BH3, Voyager 1, Voyager 2, Pioneer 10, Pioneer 11 and New Horizons point to
+  catalogue entries the content contract plans (`black_hole`, `spacecraft` kinds) but that are not in
+  `data/tiles/catalogs/` yet. All other focus names resolve to an existing name or alias.
+- The IAU web pages (iau.org) were unreachable on 2026-11-13; the au and parsec definitions are taken
+  from the IAU 2015 B2 arXiv text (Mamajek et al. 2015) and the astropy constant references.
+- Pogson's ratio is cited from the Las Cumbres Observatory page, which gives no year; the articles
+  therefore do not give one.
+- 51 Pegasi b: NASA's own page lists both 0.46 and 0.61 Jupiter masses; the articles say so.
+- The info card does not yet show the white-dwarf flag or a separate "quasar" kind (tiles carry no
+  kind byte); the articles describe how to recognise them instead.
 
 ## Table
 

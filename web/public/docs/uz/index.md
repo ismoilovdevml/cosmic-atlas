@@ -59,7 +59,7 @@ updated: 2026-11-13
 
 - [Sgr A*](doc:sgr-a-star), Somon Yoʻli markazidagi qora tuynuk.
 - [M87*](doc:m87-black-hole), surati birinchi boʻlib olingan qora tuynuk.
-- [Gaia BH3](doc:gaia-bh3), Galaktikamizda maʼlum boʻlgan eng ogʻir yulduz qora tuynugi.
+- [Gaia BH3](doc:gaia-bh3), Galaktikamizda maʼlum boʻlgan eng ogʻir yulduz qora tuynugi (topilgan paytda, 2024).
 - [Qisqichbaqa tumanligi](doc:crab-nebula), 1054-yilgi oʻta yangi yulduz qoldigʻi.
 - [Proxima b](doc:proxima-b), eng yaqin qoʻshni yulduzimizning sayyorasi.
 - [TRAPPIST-1](doc:trappist-1), Yer kattaligidagi yettita sayyorasi bor yulduz.
