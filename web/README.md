@@ -20,6 +20,7 @@ npm test             # vitest: tile parser (16/24 B ext), blob light conservatio
                      # tours, ICRS->Galactic, Planck18, fly-to path, Sesame parsing
 npm run build        # tsc --noEmit + vite build -> dist/
 npm run capture      # with the dev server up: screenshots at 1 pc / 300 pc / 30 kpc / 1 Gpc -> ../figures
+node scripts/capture_galaxies.mjs  # M31, M33, M81, NGC 253 (EARTH=1: from the Sun; CAPTURE_EXTRA=1: LOD ladder)
 ```
 
 `npm run synth` uses the repo's `.venv` (numpy, astropy, pyarrow). It writes contract §2 Parquet
@@ -72,6 +73,10 @@ main.ts ── App: renderer init (WebGPU → WebGL2), on-demand frame loop with
  ├─ render/post.ts       TSL RenderPipeline: linear HDR → asinh → explicit sRGB encode; Gaia sky sphere
  ├─ render/milkyway.ts   procedural MW model (Reid et al. 2019 arms), TSL sprites
  ├─ render/labels.ts     DOM labels: scale windows, padded measured-box declutter, 300 ms fades
+ ├─ render/galaxyShapes.ts  resolved nearby galaxies: dot → oriented disk → DSS thumbnail (TSL, ≤16 slots)
+ ├─ render/galaxyGeom.ts    LOD weights, disk axes from PA + inclination, profiles (pure, unit-tested)
+ ├─ render/galaxyMask.ts    shared dot-weight mask applied to galaxy tile points (TSL Loop)
+ ├─ data/hipsCutout.ts      hips2fits request + in-browser HEALPix reprojection from CORS HiPS mirrors
  ├─ state/hash.ts        deep-link format (view, layers, selection by stable id)
  ├─ tour/tours.ts        tours as data; targets resolved at playback
  ├─ nav/controller.ts    float64 orbit camera, cursor-anchored log zoom, WASD/QE, touch, flyTo
@@ -169,6 +174,52 @@ Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copi
   1.5 and 2.5 kpc from the Sun. Credit: Gaia DR3 integrated flux (ESA/Gaia/DPAC).
 - **Milky Way model.** Reid et al. 2019 Table 2 arms with R0 = 8.275 kpc (GRAVITY 2021), plus an
   exponential disc and a long bar. It is labelled as a model wherever it appears.
+- **Resolved nearby galaxies** (`render/galaxyShapes.ts`, data from `../scripts/build_galaxy_shapes.py`,
+  format in `../docs/data-contract.md` §4b). Galaxies of the local-group, local-volume and
+  messier-ngc catalogues that have a D25 size become more than a dot when they are large on
+  screen. The ladder follows skymap's (MIT, re-implemented):
+  - **LOD** by projected D25 diameter: 8→14 CSS px dot → procedural disk, 24→40 px disk → thumbnail
+    once its image has arrived (plus a 0.35 s fade-in). The weights are smoothsteps with
+    dot + disk + thumbnail = 1 exactly (`test/galaxyGeom.test.ts`). The "dot" is the galaxy's own
+    tile point(s) in every galaxy layer: a shared mask (`galaxyMask.ts`) dims points within
+    max(1′, 5 % of the D25 radius) of the galaxy's direction from the Sun and within ±40 % of its
+    distance, so satellites such as M32 keep their dots. At most 16 galaxies are resolved at once
+    (largest first); the rest stay dots.
+  - **Geometry.** A disk is a thin plane through the catalogue position, sized from D25 at the
+    catalogue distance, its major axis along the PA on the sky and tilted by the inclination about
+    it (`diskAxes`). The tilt is the catalogue inclination, but never beyond cos = 0.85 b/a, so a
+    thin sheet still covers the isophote of edge-on disks (NGC 253: 90° → 81.6°). Which side of a
+    disk is near is not known; one is picked. Disks get a small camera-facing bulge (fraction by
+    T type). E/dE/dSph systems (`shape: spheroid`) are a camera-facing ellipse with the catalogue
+    axis ratio, its major axis along the projected sky major axis.
+  - **Thumbnails are images seen from Earth.** They are shown as billboards on that same plane (or
+    ellipse), oriented by PA and inclination: each plane point samples the cutout at its sky offset
+    as seen from the Sun. From the Sun this is the real sky at the right size and orientation
+    (`../figures/galaxy-*-vs-dss.png`). Seen from elsewhere it is the Earth view tilted with the
+    disk, so it is approximate, and more so the farther the camera is from the Sun–galaxy line:
+    satellites and foreground stars in the image are painted onto the disk
+    (`../figures/galaxy-m31-oblique.png`) and the bulge is flat.
+  - **Image source.** A 512² north-up TAN cutout of the DSS2 colour HiPS (CDS/P/DSS2/color), field
+    1.5 × the major axis, from CDS hips2fits (ACAO `*`). If hips2fits fails (HTTP error or CORS
+    block), the viewer skips it for 10 minutes and reprojects the same HiPS in the browser from the
+    tiles of CORS-enabled mirrors (IRSA, then ESA Sky): HEALPix NESTED, cell (ix, iy) of order k+9
+    at tile column `iy & 511`, row-from-top `ix & 511`, checked against Legacy Surveys cutouts in the
+    north cap, the equatorial zone and the south cap. If that fails too, the procedural disk stays
+    (`?thumbs=off` forces this). At most 2 fetches at a time, only for the 6 largest galaxies above
+    20 px, an LRU of 12 textures, and ready/failed sets so nothing is retried in a loop. On
+    2026-11-13 hips2fits answered 404 ("page unavailable") from the build host, so the captures
+    used the IRSA path.
+  - **Light.** At the dot→disk crossfade the disk carries the dot's flux (same photometry as the
+    points). Beyond that, the point auto-exposure would make every resolved galaxy invisible (its
+    surface brightness is fixed, the exposure is not), so between 14 and 80 px the mean intensity
+    over D25 ramps in log space to a display level set by the galaxy's mean surface brightness
+    (0.12 at μ = 22 mag/arcsec², the Exposure slider applies). The thumbnail is normalised to the
+    same mean over D25 after subtracting the median of its border, and masked softly outside
+    1.0–1.45 × the D25 ellipse.
+  - **Info card.** D25 size in kpc and arcmin, morphology (type and T), inclination and PA with
+    their sources, and the image credit (DSS: STScI/NASA; colour HiPS: CDS), saying whether the
+    image came from hips2fits or a mirror. A click on a drawn disk opens it (CPU test against the
+    projected D25 ellipse, because the GPU pick cannot see the dimmed points).
 
 ### WebGPU landmines (skymap-lessons §2) and what applies here
 
@@ -221,9 +272,11 @@ for 4×. Arrow keys orbit; + and − zoom. Click shows the brightest visible poi
 
 ## Known limits and next steps
 
-- **Next:** galaxy thumbnails (dot → ellipse → image ladder) through CDS hips2fits, which is
-  CORS-safe for DSS. We'd use a 128² atlas with LRU and idempotent ready/failed sets (lessons §3
-  #11). Not started.
+- Galaxy thumbnails are DSS2 only (all-sky, photographic, saturated cores). A deeper colour HiPS
+  (Legacy Surveys DR10, Pan-STARRS) where it covers the galaxy is not wired up. Galaxies without
+  a D25 size in galaxy-shapes.json (10 of 1016) and all 2MRS/CF4/DESI-only galaxies stay dots.
+- Above 14 px the resolved-galaxy brightness is a display choice, not photometry. The dot→disk
+  handover is photometric, but the catalogue magnitude (V or B) can differ from the tile's band.
 - Galaxy layers are ordered by a seeded shuffle (contract §3), so the root is a random sample. At
   1 Gpc, most light comes from subtree blobs (soft glows) until the camera gets close enough to
   refine.

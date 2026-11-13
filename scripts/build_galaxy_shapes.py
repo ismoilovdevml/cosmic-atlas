@@ -27,7 +27,8 @@ galaxy type.
 
 Services: HyperLEDA at atlas.obs-hp.fr (leda.univ-lyon1.fr redirects there), VizieR at
 vizier.cfa.harvard.edu (cdsarc.cds.unistra.fr times out from the build host), SIMBAD TAP at
-simbad.harvard.edu. Downloads are cached in data/cache/galaxy-shapes/ (gitignored).
+simbad.harvard.edu. Downloads are cached in data/cache/galaxy-shapes/ (gitignored). The provenance
+block (services, priorities, counts, citations) goes to data/tiles/catalogs/provenance/galaxy-shapes.json.
 
 Usage:
   .venv/bin/python scripts/build_galaxy_shapes.py [--refresh]
@@ -56,6 +57,7 @@ from catio import ROOT, SIMBAD_TAP, download, fetch_vizier, http, num, tap_sync,
 CATS = ROOT / "data" / "tiles" / "catalogs"
 CACHE = ROOT / "data" / "cache" / "galaxy-shapes"
 OUT = CATS / "galaxy-shapes.json"
+PROV = CATS / "provenance" / "galaxy-shapes.json"
 INPUTS = ["local-volume.json", "local-group.json", "messier-ngc.json"]
 LEDA = "http://atlas.obs-hp.fr/hyperleda/fG.cgi"
 OPENNGC_TAG = "v20260501"
@@ -538,15 +540,29 @@ def main() -> None:
             "*_src": "key into sources",
         },
         "sources": SOURCES,
-        "service_urls": {"hyperleda": leda_urls[:1] + ([f"... {len(leda_urls)} requests"] if len(leda_urls) > 1 else []),
-                         "vizier_vii237": l03_urls[:1], "vizier_ungc": ungc_url, "openngc": OPENNGC + "NGC.csv",
-                         "mcconnachie": MCC_URL, "simbad_tap": SIMBAD_TAP},
-        "stats": stats,
+        "provenance": "data/tiles/catalogs/provenance/galaxy-shapes.json",
         "galaxies": recs,
     }
     OUT.write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")))
+    # content contract section 3: provenance block next to the catalogue
+    prov = {
+        "catalog": str(OUT.relative_to(ROOT)), "bytes": OUT.stat().st_size, "started_utc": started, "finished_utc": utcnow(),
+        "script": "scripts/build_galaxy_shapes.py",
+        "inputs": [f"data/tiles/catalogs/{f}" for f in INPUTS],
+        "service": {"hyperleda": leda_urls, "vizier_vii237": l03_urls, "vizier_ungc": ungc_url, "openngc": OPENNGC + "NGC.csv",
+                    "mcconnachie": MCC_URL, "simbad_tap": SIMBAD_TAP},
+        "pgc_matching": "alias 'PGC n' > SIMBAD identifier lookup of every name > SIMBAD 1.5 arcmin cone (galaxy otypes)",
+        "priority": {"axes": "hyperleda > openngc > leda2003 > ungc > mcc", "pa": "hyperleda > openngc > leda2003 > mcc",
+                     "inclination": "hyperleda > ungc > derived (q0 = 0.2), disks only", "morphology": "hyperleda > openngc > ungc"},
+        "facts_keys": "major_kpc, minor_kpc (D25 at the primary entry's catalogue distance), inclination_deg, position_angle_deg, type",
+        "cache": "data/cache/galaxy-shapes/ (gitignored)",
+        "stats": stats,
+        "citations": list(SOURCES.values()),
+    }
+    PROV.parent.mkdir(parents=True, exist_ok=True)
+    PROV.write_text(json.dumps(prov, indent=2, ensure_ascii=False))
     print(json.dumps(stats, indent=1))
-    print(f"wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size / 1024:.0f} KiB)")
+    print(f"wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size / 1024:.0f} KiB) and {PROV.relative_to(ROOT)}")
 
 
 # ----------------------------------------------------------------------------- spot check
