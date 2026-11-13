@@ -153,6 +153,14 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| interstellar-message | Arecibo message | 16 Nov 1974; 1,679 bits = 23 × 73; ≈3 min at 10 bit/s; 1 MW transmitter; to M13; arrives in ≈25,000 yr; DNA, human figure, Solar System, telescope; sent during upgrade ceremony | National Geographic Arecibo article |
+| interstellar-message | Arecibo dish size | 300 m | Zaitsev 2006 (arXiv:physics/0610031) |
+| interstellar-message | Cosmic Call 1 (1999, 4 stars, 370,967 bits); Teen Age Message (2001, 6 stars); Cosmic Call 2 (2003, 5 stars); Evpatoria 70 m radar, 150 kW | — | Zaitsev 2006 text |
+| interstellar-message | Golden Record | 12-inch gold-plated copper; 115 images; 55 languages; ≈90 min music; 16⅔ rpm; cover instructions; committee chaired by Carl Sagan | NASA Science, Golden Record contents; NASA Voyager 1 page |
+| interstellar-message | Pioneer 10 plaque | man, woman, Solar System, 14 pulsars | NASA Science, Pioneer 10 |
+| interstellar-message | METI risk debate; transmissions faint, unlikely detected | — | Billingham & Benford 2011 abstract |
+| interstellar-message | Voyager 1 to Proxima's distance at 17 km/s | ≈75,000 yr (268,550 au / 3.59 au/yr) | computed |
+| interstellar-message | M13 in atlas | 7.42 kpc ≈ 24,200 ly | atlas messier-ngc.json (Baumgardt & Vasiliev 2021) |
 | spacecraft | Pioneer 10 | launched 2 Mar 1972; Jupiter 4 Dec 1973; last signal 23 Jan 2003 from 12.23 billion km (11 h 20 min); towards Aldebaran, ≈2 million yr; plaque with 14 pulsars | NASA Science, Pioneer 10 |
 | spacecraft | Pioneer 11 | launched 6 Apr 1973; Jupiter 3 Dec 1974; Saturn 1 Sep 1979; last contact 30 Sep 1995 | NASA Science, Pioneer 11 |
 | spacecraft | Voyager 2 | launched 20 Aug 1977; Jupiter 1979, Saturn 1981, Uranus 24 Jan 1986, Neptune 25 Aug 1989; only spacecraft at Uranus and Neptune; interstellar 2018 | NASA Science, Voyager 2 |
