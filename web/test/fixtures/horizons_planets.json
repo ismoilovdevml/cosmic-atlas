@@ -1,0 +1,127 @@
+{
+ "source": "JPL Horizons API (https://ssd.jpl.nasa.gov/api/horizons.api), fetched 2026-11-13 with curl",
+ "request": "format=json&COMMAND='<id>'&EPHEM_TYPE='VECTORS'&CENTER='<center>'&TLIST='2451545.0' '2461357.5'&TLIST_TYPE='JD'&REF_PLANE='FRAME'&REF_SYSTEM='ICRF'&VEC_TABLE='1'&VEC_CORR='NONE'&OUT_UNITS='AU-D'&CSV_FORMAT='YES'&OBJ_DATA='NO'",
+ "frame": "ICRF equatorial, geometric (no light-time), AU, times JD TDB",
+ "bodies": [
+  {
+   "name": "Earth",
+   "id": 399,
+   "center": "500@10",
+   "horizons_target": "Target body name: Earth (399)                     {source: DE441}",
+   "vectors": [
+    {
+     "jd_tdb": 2451545.0,
+     "xyz_au": [
+      -0.1771350992727098,
+      0.887428522325519,
+      0.384742899088207
+     ]
+    },
+    {
+     "jd_tdb": 2461357.5,
+     "xyz_au": [
+      0.6329733738111039,
+      0.698148040446442,
+      0.3026312983468806
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Mars",
+   "id": 499,
+   "center": "500@10",
+   "horizons_target": "Target body name: Mars (499)                      {source: mar099}",
+   "vectors": [
+    {
+     "jd_tdb": 2451545.0,
+     "xyz_au": [
+      1.390715921746351,
+      0.001401217628018087,
+      -0.03696016719545011
+     ]
+    },
+    {
+     "jd_tdb": 2461357.5,
+     "xyz_au": [
+      -0.4453107612448527,
+      1.398734811433652,
+      0.6535773178312165
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Jupiter",
+   "id": 599,
+   "center": "500@10",
+   "horizons_target": "Target body name: Jupiter (599)                   {source: jup365_merged}",
+   "vectors": [
+    {
+     "jd_tdb": 2451545.0,
+     "xyz_au": [
+      4.001177435589426,
+      2.736578429014779,
+      1.075512145491845
+     ]
+    },
+    {
+     "jd_tdb": 2461357.5,
+     "xyz_au": [
+      -3.732311794401549,
+      3.451631799912291,
+      1.570315303321934
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Moon",
+   "id": 301,
+   "center": "500@10",
+   "horizons_target": "Target body name: Moon (301)                      {source: DE441}",
+   "vectors": [
+    {
+     "jd_tdb": 2451545.0,
+     "xyz_au": [
+      -0.1790843809223965,
+      0.885645630412646,
+      0.3842341853815847
+     ]
+    },
+    {
+     "jd_tdb": 2461357.5,
+     "xyz_au": [
+      0.6330378013965993,
+      0.6957448444108348,
+      0.30138148697295
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Io",
+   "id": 501,
+   "center": "500@599",
+   "horizons_target": "Target body name: Io (501)                        {source: jup365_merged}",
+   "vectors": [
+    {
+     "jd_tdb": 2451545.0,
+     "xyz_au": [
+      0.00267192463675603,
+      0.0007644375769412312,
+      0.0004091145592814445
+     ]
+    },
+    {
+     "jd_tdb": 2461357.5,
+     "xyz_au": [
+      -0.002752697679490766,
+      -0.0005755322912342171,
+      -0.0003184062405052038
+     ]
+    }
+   ]
+  }
+ ]
+}
