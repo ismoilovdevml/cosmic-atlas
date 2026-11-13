@@ -153,6 +153,12 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| supernova-remnant | core collapse ≥ ≈8 M☉; WD accretes to ≈1.4 M☉ (type Ia); X/γ-rays; heavy elements, heating, cosmic rays | — | NASA Imagine, Supernovae |
+| supernova-remnant | Green catalogue | 310 SNRs (2024 Oct version); +21 since 2019, 5 removed as HII regions | MRAO page; Green 2025 (arXiv:2411.03367) abstract |
+| supernova-remnant | SN 1054 / Crab | 4 Jul 1054, visible in daylight for weeks; ≈6,500 ly; pulsar 30/s; progenitor ≈10 M☉; filaments > 3 million mph (= 1,341 km/s computed) | NASA Hubble Crab page |
+| supernova-remnant | Kepler SN | 1604; ≈13,000 ly; type Ia | NASA Chandra Kepler page |
+| supernova-remnant | Crab in atlas | 2.0 kpc (≈6,520 ly) | atlas messier-ngc.json |
+| supernova-remnant | Veil NGC 6960 no distance | — | atlas messier-ngc.json |
 | star-cluster | open clusters: tens–thousands of stars, typically < 1 Gyr, disperse; globulars: tens of thousands–millions, halo, stars 8–13 Gyr old, ≈150 known in Milky Way | — | NASA Science, Star clusters page |
 | star-cluster | Hunt & Reffert 2023 | 729 M Gaia DR3 sources; 7,167 clusters; 2,387 new; 134 globulars; 4,105 highly reliable; tidal tails; some old clusters may not be real | Hunt & Reffert 2023 abstract |
 | star-cluster | Baumgardt & Vasiliev 2021 | 162 globular-cluster distances, ≈20 to ≤ 1 % | Baumgardt & Vasiliev 2021 abstract |
