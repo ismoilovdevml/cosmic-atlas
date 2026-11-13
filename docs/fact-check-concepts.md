@@ -153,6 +153,14 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| local-group | > 100 galaxies within 3 Mpc | — | McConnachie 2012 abstract |
+| local-group | next most massive members M33 and LMC; merger "in around five billion years" commonly believed; ≈50 % chance of no merger in 10 Gyr | — | Sawala et al. 2024 (arXiv:2408.00064) abstract |
+| local-group | LMC distance (20 eclipsing binaries) | 49.59 ± 0.09 (stat) ± 0.54 (sys) kpc | Pietrzyński et al. 2019 abstract |
+| local-group | LMC/SMC in atlas | 50.6 kpc (48.5–52.7), V = 0.4; 64.0 kpc, V = 2.2 | atlas local-group.json (McConnachie Jan 2021) |
+| local-group | LMC light travel | ≈160,000 yr (computed 49.59 kpc × 3.2616) | computed |
+| local-group | M31, M33, Sgr dSph distances | 783, 809, 26.3 kpc | atlas local-group.json |
+| local-group | layer sizes | 146 (local-group), 868 (UNGC) | PROVENANCE.json of both layers |
+| local-group | Hubble's Cepheid in M31, 1923 | — | NASA Hubble V1 page |
 | quasar | 3C 273: 1962 lunar occultations at Parkes; 13th-mag counterpart photographed by 1887; Schmidt's 200-inch spectrum; z = 0.158 (1963); acceptance not universal for decades | — | Kellermann 2013 abstract |
 | quasar | J0313−1806 | z = 7.642; L_bol = 3.6 × 10^13 L☉ (36 trillion); BH 1.6 × 10^9 M☉; ≈670 Myr after Big Bang; challenges BH growth models | Wang et al. 2021 abstract |
 | quasar | M87* 6.5 × 10^9 M☉; SMBHs as central engines of AGN | — | EHT 2019 Paper I abstract |
