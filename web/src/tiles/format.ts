@@ -21,6 +21,11 @@ export interface NodeMeta {
   count: number;
   children: number;
   agg?: NodeAgg;
+  /**
+   * Lite tile sets only (scripts/make_lite_tiles.py): merged `agg` of this node's children that were
+   * dropped from the set. agg.L = own + Σ kept children agg.L + dropped.L.
+   */
+  dropped?: NodeAgg;
 }
 
 export interface LayerMeta {
@@ -36,6 +41,10 @@ export interface LayerMeta {
   extBytesPerPoint: number;
   idPrefix: string;
   synthetic?: boolean;
+  /** a pruned copy made by scripts/make_lite_tiles.py: `count` points kept of `fullCount` */
+  lite?: boolean;
+  fullCount?: number;
+  fullNodes?: number;
   nodes: NodeMeta[];
 }
 

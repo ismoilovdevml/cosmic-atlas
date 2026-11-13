@@ -58,7 +58,7 @@ USER_AGENT = "cosmic-atlas-fetch/1.0 (python-requests)"
 ROW_LIMIT = 50_000      # anonymous async default MAXREC (survey jobs stay far below it)
 MAXREC = 2_000_000      # explicit MAXREC for fetch jobs (ESA returned 105,743 rows with it, 2026-11-13)
 CHUNK_MAX = 45_000      # planned rows per chunk, margin below ROW_LIMIT
-CONCURRENCY = 5         # ESA anonymous async; 5 parallel jobs measured stable 2026-11-13
+CONCURRENCY = 2         # 5 parallel jobs drew 145 HTTP 429 responses from ESA in 50 min (2026-11-13)
 MAX_DIST_PC = 1000.0
 SID_L12 = 2 ** 35       # source_id // SID_L12 = HEALPix level-12 nested index
 
@@ -151,14 +151,25 @@ def tap_async(query: str, fmt: str = "csv", poll: float = 2.0, session: requests
 
 
 def with_retries(fn, what: str, tries: int = 5):
-    for k in range(tries):
+    k, throttled = 0, 0
+    while k < tries:
         try:
             return fn()
         except TapTimeout:
             raise
-        except Exception as e:  # network / server hiccups
-            wait = 10 * 2 ** k
-            log(f"  retry {k + 1}/{tries} {what}: {type(e).__name__}: {str(e)[:200]} (sleep {wait}s)")
+        except Exception as e:
+            msg = str(e)
+            # ESA answered 429 (145x) and 401 (5x) on 2026-11-13 when an anonymous client sent too many jobs.
+            # Back off hard and do not spend the normal retry budget on it.
+            if ("HTTP 429" in msg or "HTTP 401" in msg) and throttled < 30:
+                throttled += 1
+                wait = min(60 * throttled, 300)
+                log(f"  throttled ({'429' if 'HTTP 429' in msg else '401'}) {what}: sleep {wait}s [{throttled}]")
+                time.sleep(wait)
+                continue
+            k += 1
+            wait = 10 * 2 ** (k - 1)
+            log(f"  retry {k}/{tries} {what}: {type(e).__name__}: {msg[:200]} (sleep {wait}s)")
             time.sleep(wait)
     raise RuntimeError(f"giving up on {what}")
 

@@ -431,9 +431,7 @@ radiation (`web/src/math/cosmology.ts`). A WebGL2 fallback (`main.ts:77`).
 
 **Accuracy problems in their maths**
 
-I checked these against astropy 7 in our `.venv`. The scripts are
-`/private/tmp/claude-501/-Users-macbook-Documents-reverse/b3ec65f3-8c67-4419-9fcb-c21bfb6bd424/scratchpad/checks/skymap_cosmo_check.py`
-and `.../checks/horizon.py`. Their implementation agrees with
+I checked these against astropy 7 in our `.venv` with two throwaway scripts (not committed). Their implementation agrees with
 `FlatLambdaCDM(H0=70, Om0=0.315)` to 0.01 Mpc, so the differences below come from model choices, not
 from the integrator.
 

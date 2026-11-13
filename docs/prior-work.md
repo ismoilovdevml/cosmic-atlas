@@ -173,7 +173,7 @@ No surveyed browser app shows distance uncertainty. OpenSpace's 0.20.1 changelog
   range query per order-1 HEALPix pixel gives 48 queries. The slowest took 22.3 s (pixel 28, 385 M
   rows). They sum to **exactly 1,811,709,771**, the published DR3 total. The same chunking extends
   to `GROUP BY GAIA_HEALPIX_INDEX(k, source_id)` inside each range, for density tiles without
-  downloading rows. (Script used: scratchpad `hpx_count.py`; not committed.)
+  downloading rows. (Checked with a throwaway script; not committed.)
 - For bulk extraction, which is needed for the 1.47 B tiles, use the async endpoint with a login or
   the bulk files at https://cdn.gea.esac.esa.int/Gaia/ (bulk files *not* checked this session).
 - **Licence:** the Gaia archive says the data are "open and free to use, provided credit is given to

@@ -11,6 +11,7 @@ import * as THREE from 'three/webgpu';
 import {
   catalogKey, isPointLayer, loadCatalogs, loadManifest, loadTilesIndex, type CatalogEntry, type LayerConfig, type Manifest, type TilesIndex,
 } from './data/manifest';
+import { DEFAULT_TILE_BASE, applyTileBase, resolveTileBase } from './data/tilebase';
 import { normName, resolveSesame, searchCatalog, viewDistanceFor, type Resolved } from './data/resolve';
 import { galToLB, galToRadec, radecDistToGal, type Vec3 } from './math/frames';
 import { describeLookback, fmtNum, formatDistance, formatLightTime, formatLy, niceScaleBar } from './math/units';
@@ -70,6 +71,7 @@ class App {
   catalog: CatalogEntry[] = [];
   manifest!: Manifest;
   tilesIndex: TilesIndex | null = null;
+  tileBase = DEFAULT_TILE_BASE;
   exposure = 0;
   frame = 0;
   fps = 0;
@@ -158,7 +160,10 @@ class App {
       this.status(`Could not load layers.json: ${(e as Error).message}`, 'warn');
       return;
     }
-    this.tilesIndex = await loadTilesIndex();
+    // tile origin: ?tiles= > VITE_TILE_BASE > layers.json tilesBase > tiles/ (src/data/tilebase.ts)
+    this.tileBase = resolveTileBase(location.search, import.meta.env.VITE_TILE_BASE, this.manifest.tilesBase, location.href);
+    this.manifest = applyTileBase(this.manifest, this.tileBase);
+    this.tilesIndex = await loadTilesIndex(this.tileBase);
     this.layersReady = this.initLayers(h.layers);
     await this.layersReady;
     await this.initCatalogs();
@@ -290,13 +295,17 @@ class App {
       }
       if (L.status !== 'ready' || L.superseded) continue;
       const m = L.meta!;
-      const n = m.count >= 1e5 ? `${fmtNum(m.count / 1e6, 3)} million` : m.count.toLocaleString('en-US');
+      const fmtCount = (c: number) => (c >= 1e5 ? `${fmtNum(c / 1e6, 3)} million` : c.toLocaleString('en-US'));
+      // lite tile sets (scripts/make_lite_tiles.py) say how much of the full layer they carry
+      const what = m.lite && m.fullCount
+        ? `lite: ${fmtCount(m.count)} of ${fmtCount(m.fullCount)} points`
+        : `${fmtCount(m.count)} ${L.kind === 'star' ? 'stars' : 'galaxies'}`;
       row({
         id: L.cfg.id,
         title: L.cfg.title,
         swatch: L.kind,
-        tag: L.cfg.dev ? ['synthetic', 'synthetic'] : undefined,
-        meta: `${n} ${L.kind === 'star' ? 'stars' : 'galaxies'}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
+        tag: L.cfg.dev ? ['synthetic', 'synthetic'] : m.lite ? ['lite', 'lite'] : undefined,
+        meta: `${what}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
         checked: L.visible,
         opacity: L.opacity,
         onOpacity: (v) => (L.opacity = v),
@@ -575,7 +584,10 @@ class App {
       // pending light per layer (resolvable at this view, not loaded within the point budget)
       const pend = Object.entries(st.pending).filter(([, v]) => Number.isFinite(v) && v > 0.0005).sort((a, b) => b[1] - a[1]);
       const short = (id: string) => (this.layers.find((l) => l.cfg.id === id)?.cfg.title ?? id).replace(/ galaxies$/i, '');
-      const pending = pend.length ? pend.slice(0, 2).map(([id, v]) => `${short(id)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %`).join(', ') : 'none';
+      const pct = ([id, v]: [string, number]) => `${short(id)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %`;
+      const pending = pend.length ? pend.slice(0, 2).map(pct).join(', ') : 'none';
+      // lite tile sets: resolvable light whose points were dropped from the set
+      const drop = Object.entries(st.dropped).filter(([, v]) => Number.isFinite(v) && v > 0.0005).sort((a, b) => b[1] - a[1]);
       stats.innerHTML =
         `<span>Renderer</span><b>${this.backend}</b>` +
         `<span>FPS</span><b>${this.fps < 0.5 ? 'idle' : this.fps.toFixed(0)}</b>` +
@@ -585,6 +597,7 @@ class App {
         `<span>Subtree blobs</span><b>${st.blobs}</b>` +
         `<span>Light kept (unresolved)</span><b>${light}</b>` +
         `<span>Light pending</span><b>${pending}</b>` +
+        (drop.length ? `<span>Not in lite tiles</span><b>${drop.slice(0, 2).map(pct).join(', ')}</b>` : '') +
         (this.slabMpc > 0 ? `<span>Slab</span><b>±${this.slabMpc} Mpc</b>` : '') +
         `<span>Loading</span><b>${st.inFlight + st.queued}</b>` +
         `<span>Point memory</span><b>${gpuMB.toFixed(0)} MB</b>` +
