@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "catalogs": [
+    "tiles/catalogs/named-stars.json",
+    "tiles/catalogs/local-group.json",
+    "tiles/catalogs/local-volume.json",
+    "tiles/catalogs/messier-ngc.json",
+    "tiles/catalogs/dev-placeholder.json"
+  ],
+  "layers": [
+    { "id": "stars-gaia", "title": "Gaia DR3 stars", "path": "tiles/stars-gaia", "visible": true, "colorMode": "star",
+      "credit": "ESA/Gaia/DPAC, Gaia DR3" },
+    { "id": "galaxies-desi", "title": "DESI galaxies", "path": "tiles/galaxies-desi", "visible": true, "colorMode": "galaxy",
+      "credit": "DESI Collaboration" },
+    { "id": "galaxies-2mrs", "title": "2MASS Redshift Survey", "path": "tiles/galaxies-2mrs", "visible": true, "colorMode": "galaxy",
+      "credit": "Huchra et al. 2012" },
+    { "id": "local-group", "title": "Local Group galaxies", "path": "tiles/local-group", "visible": true, "colorMode": "galaxy" },
+    { "id": "synthetic-stars", "title": "Synthetic stars", "path": "tiles/synthetic-stars", "visible": true, "colorMode": "star",
+      "dev": true, "fallbackFor": "stars-gaia" },
+    { "id": "synthetic-galaxies", "title": "Synthetic galaxies", "path": "tiles/synthetic-galaxies", "visible": true, "colorMode": "galaxy",
+      "dev": true, "fallbackFor": "galaxies-desi" },
+    { "id": "milky-way-model", "type": "milky-way-model", "title": "Milky Way model", "visible": true,
+      "credit": "Arms: Reid et al. 2019, ApJ 885, 131; R0 = 8.275 kpc, GRAVITY 2021. A model, not data." },
+    { "id": "gaia-sky", "type": "sky", "title": "Gaia all-sky image", "visible": true, "image": "sky/gaia_dr3_sky_l9.jpg",
+      "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)" }
+  ]
+}

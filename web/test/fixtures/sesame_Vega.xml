@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Sesame xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="https://vizier.cds.unistra.fr/xml/sesame_4x.xsd">
+<Target option="SNV">
+  <name>Vega</name>
+  <!-- Q193632 #1 -->
+  <Resolver name="Sc=Simbad (CDS, via client/server)"><!--delay: 0ms [0] -->
+    <INFO>from cache</INFO>
+    <oid>2900336</oid>
+    <otype>dS*</otype>
+    <jpos>18:36:56.33 +38:47:01.2</jpos>
+    <jradeg>279.23473479</jradeg>
+    <jdedeg>38.78368896</jdedeg>
+    <refPos>2007A&amp;A...474..653V</refPos>
+    <errRAmas>3.51</errRAmas><errDEmas>2.81</errDEmas>
+    <pm>
+      <v>349.72</v><e>0.51</e><q>A</q><r>2007A&amp;A...474..653V</r>
+      <pa>35.1</pa>
+      <pmRA>200.94</pmRA><epmRA>0.40</epmRA>
+      <pmDE>286.23</pmDE><epmDE>0.32</epmDE>
+    </pm>
+    <Vel><v>-13.5</v><e>0.4</e><q>C</q><r>2004A&amp;A...420..183A</r></Vel>
+    <plx><v>130.23</v><e>0.36</e><q>A</q><r>2007A&amp;A...474..653V</r></plx>
+    <spType>A0V</spType><spNum>0.0000C800.0030.0000000000000000</spNum>
+    <oname>* alf Lyr</oname>
+    <nrefs>2817</nrefs>
+  </Resolver>
+</Target>
+</Sesame>
+<!--- ====Done (2026-Nov-13,06:59:51z)==== -->

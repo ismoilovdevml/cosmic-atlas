@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Sesame xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="https://vizier.cds.unistra.fr/xml/sesame_4x.xsd">
+<Target option="SNV">
+  <name>M31</name>
+  <!-- Q193631 #1 -->
+  <Resolver name="Sc=Simbad (CDS, via client/server)"><!--delay: 0ms [0] -->
+    <INFO>from cache</INFO>
+    <oid>1575544</oid>
+    <otype>AGN</otype>
+    <jpos>00:42:44.32 +41:16:07.5</jpos>
+    <jradeg>10.68470833</jradeg>
+    <jdedeg>41.26875</jdedeg>
+    <refPos>2006AJ....131.1163S</refPos>
+    <Vel><v>-300.0</v><e>4.0</e><q>C</q><r>2012AJ....144....4M</r></Vel>
+    <MType>SA(s)b</MType>
+    <oname>M  31</oname>
+    <nrefs>13836</nrefs>
+  </Resolver>
+</Target>
+</Sesame>
+<!--- ====Done (2026-Nov-13,06:59:51z)==== -->

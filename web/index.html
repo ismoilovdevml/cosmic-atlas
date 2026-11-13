@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#04060b" />
+    <meta name="description" content="A navigable 3D map of the universe, from the Sun's neighbourhood to the cosmic web." />
+    <title>Cosmic Atlas</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23c9a66b' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23dce1ea'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <a class="skip" href="#search">Skip to search</a>
+    <canvas id="view" tabindex="0" aria-label="3D map of the universe. Drag to orbit, scroll or pinch to zoom, W A S D to fly, click a point for details."></canvas>
+    <div id="labels" class="labels"></div>
+    <div id="reticle" class="reticle" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="search" role="search">
+        <span class="wordmark" aria-hidden="true">Cosmic Atlas</span>
+        <label class="sr-only" for="search">Search stars, galaxies and other objects</label>
+        <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search Sirius, M31, 3C 273…"
+          role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" />
+        <ul id="suggest" class="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
+      </div>
+      <p id="search-status" class="status" role="status" aria-live="polite"></p>
+    </header>
+
+    <aside id="layers" class="panel layers" aria-labelledby="layers-title">
+      <button id="layers-toggle" class="panel-head" type="button" aria-expanded="true" aria-controls="layers-body">
+        <h2 id="layers-title">Layers</h2>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      <div id="layers-body" class="panel-body">
+        <ul id="layer-list" class="layer-list"></ul>
+        <p id="layer-missing" class="fine"></p>
+        <details class="settings">
+          <summary>Display</summary>
+          <label class="field">
+            <span>Exposure <output id="exposure-out"></output></span>
+            <input id="exposure" type="range" min="-4" max="6" step="0.25" value="0" />
+          </label>
+          <label class="field">
+            <span>Point budget <output id="budget-out"></output></span>
+            <input id="budget" type="range" min="0.5" max="12" step="0.5" value="4" />
+          </label>
+          <label class="field">
+            <span>Detail <output id="detail-out"></output></span>
+            <input id="detail" type="range" min="60" max="400" step="10" value="140" />
+          </label>
+          <label class="check"><input id="labels-on" type="checkbox" checked /> Labels</label>
+          <label class="check"><input id="stats-on" type="checkbox" checked /> Performance overlay</label>
+        </details>
+      </div>
+    </aside>
+
+    <aside id="info" class="panel info" aria-live="polite" hidden>
+      <div class="info-head">
+        <div>
+          <p id="info-kind" class="kind"></p>
+          <h2 id="info-title"></h2>
+        </div>
+        <button id="info-close" class="icon-btn" type="button" aria-label="Close details">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <dl id="info-rows" class="rows"></dl>
+      <p id="info-note" class="fine"></p>
+      <div id="info-links" class="links"></div>
+      <div class="info-actions">
+        <button id="info-fly" class="btn" type="button">Fly here</button>
+      </div>
+    </aside>
+
+    <div id="stats" class="stats" aria-hidden="true"></div>
+    <p id="caption" class="caption" role="status" aria-live="polite" hidden></p>
+
+    <footer class="instrument">
+      <div class="scalebar" aria-label="Scale">
+        <div id="bar" class="bar"><span></span></div>
+        <p id="bar-label" class="bar-label"></p>
+        <p id="bar-light" class="fine"></p>
+      </div>
+      <div class="rail-wrap">
+        <div id="rail" class="rail" role="slider" tabindex="0" aria-label="Scale, as camera distance"
+          aria-valuemin="-6.7" aria-valuemax="10.5" aria-valuenow="0">
+          <div id="rail-ticks" class="rail-ticks"></div>
+          <div id="rail-mark" class="rail-mark"></div>
+        </div>
+      </div>
+      <div class="readout">
+        <p id="focus-where"></p>
+        <p id="focus-lookback" class="fine"></p>
+      </div>
+      <div class="actions">
+        <button id="tour" class="btn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 4 12 8-12 8z" /></svg>
+          <span>Scale tour</span>
+        </button>
+        <button id="copy-link" class="icon-btn" type="button" aria-label="Copy link to this view" title="Copy link to this view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></svg>
+        </button>
+        <button id="home" class="icon-btn" type="button" aria-label="Return to the Sun" title="Return to the Sun">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+        </button>
+        <button id="help-btn" class="icon-btn" type="button" aria-label="Controls and credits" title="Controls and credits">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" /></svg>
+        </button>
+      </div>
+    </footer>
+
+    <dialog id="help" class="panel help" aria-labelledby="help-title">
+      <h2 id="help-title">Controls</h2>
+      <dl class="keys">
+        <dt>Drag</dt><dd>Orbit around the focus</dd>
+        <dt>Right-drag, Shift-drag</dt><dd>Pan</dd>
+        <dt>Scroll, pinch</dt><dd>Zoom toward the cursor, one decade every few notches</dd>
+        <dt>W A S D, Q E</dt><dd>Fly; Shift is faster. Speed follows the current scale</dd>
+        <dt>Arrows, + −</dt><dd>Orbit and zoom from the keyboard</dd>
+        <dt>Click</dt><dd>Details of the brightest point under the cursor</dd>
+        <dt>Double-click</dt><dd>Fly to that point</dd>
+        <dt>/</dt><dd>Search</dd>
+      </dl>
+      <h2>About the data</h2>
+      <p id="credits" class="fine"></p>
+      <form method="dialog"><button class="btn" type="submit">Close</button></form>
+    </dialog>
+
+    <noscript>Cosmic Atlas needs JavaScript and WebGL 2.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

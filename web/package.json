@@ -1,0 +1,28 @@
+{
+  "name": "cosmic-atlas-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "synth": "../.venv/bin/python scripts/make_synthetic_tiles.py",
+    "capture": "node scripts/capture_views.mjs"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-sans": "5.2.8",
+    "@fontsource/spectral": "5.2.8",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/three": "0.186.0",
+    "playwright-core": "1.64.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

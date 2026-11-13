@@ -1,0 +1,17 @@
+{
+ "s_bp": 2.134497202041697,
+ "s_rp": 1.3191573639449434,
+ "g_lo": 371047.2694879506,
+ "g_hi": 366801947.12350327,
+ "n_nocolour_pixels": 0,
+ "stretch": {
+  "p_lo": 25.0,
+  "p_hi": 99.97,
+  "gamma": 1.15,
+  "saturation": 1.7
+ },
+ "nside": 512,
+ "n_sources": 1811709771,
+ "n_pixels_with_sources": 3145727,
+ "pixel_arcmin": 6.870972823634812
+}

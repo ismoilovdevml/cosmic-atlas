@@ -139,7 +139,10 @@ _DIGITS = re.compile(r"(\d+)\s*$")
 def numeric_ids(table_cols: dict) -> np.ndarray:
     for col in ("source_id", "targetid", "numeric_id"):
         if col in table_cols:
-            return np.asarray(table_cols[col]).astype(np.uint64)
+            v = np.asarray(table_cols[col], dtype=np.float64 if np.asarray(table_cols[col]).dtype == object else None)
+            if v.dtype.kind in "iu":
+                return v.astype(np.uint64)
+            raise SystemExit(f"column {col} has nulls/non-integers: build mixed-id inputs as separate layers")
     out = np.empty(len(table_cols["id"]), dtype=np.uint64)
     for i, s in enumerate(table_cols["id"]):
         m = _DIGITS.search(str(s))
@@ -208,11 +211,13 @@ def main(argv=None):
     ap.add_argument("--id-prefix", default="")
     ap.add_argument("--max-dist-pc", type=float, default=None)
     ap.add_argument("--seed", type=int, default=20261113)
+    ap.add_argument("--glob", default="*.parquet", help="input file pattern inside --src")
+    ap.add_argument("--exclude", action="append", default=[], help="glob(s) to skip, repeatable")
     a = ap.parse_args(argv)
 
     src = Path(a.src) if a.src else ROOT / "data/raw" / a.layer
     out = Path(a.out) if a.out else ROOT / "data/tiles" / a.layer
-    files = sorted(src.glob("*.parquet"))
+    files = sorted(f for f in src.glob(a.glob) if not any(f.match(x) for x in a.exclude))
     if not files:
         sys.exit(f"no parquet in {src}")
     t0 = time.time()
