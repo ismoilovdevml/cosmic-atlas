@@ -119,3 +119,9 @@ See the end of this file for the sources re-opened after writing.
 | magnitude | Gaia range | G ≈ 3 to 21 | ESA Gaia DR3 page |
 | magnitude | brightness code M ignores extinction | — | docs/data-contract.md §3 (lum code) |
 | magnitude | Exposure slider | −4 to +6 mag | web/index.html (`#exposure`) |
+| lookback-time | light travel: Sun, Proxima, M31 | ≈8.3 min (499 s), 4.2 yr (4.25), ≈2.6 Myr (783 kpc) | computed from NASA Sun Fact Sheet/au, Gaia DR3 parallax, atlas M31 distance |
+| lookback-time | age of the universe (Planck18) | 13.79 Gyr (astropy 13.787) | Planck 2018 VI; astropy Planck18 |
+| lookback-time | z=0.1 / 1 / 3 / 6.8: lookback, age then, comoving | 1.3/12.4 Gyr/0.43 Gpc; 7.9/5.9/3.40; 11.6/2.1/6.50; 13.0/0.79/8.74 (=28.5 Gly) | computed with astropy Planck18 |
+| lookback-time | CMB released | ≈380,000 yr after Big Bang | NASA Science, Universe overview |
+| lookback-time | J0313−1806 | z = 7.642, ≈670 Myr after Big Bang, BH 1.6 × 10^9 M☉ (2021) | Wang et al. 2021 abstract |
+| lookback-time | readout: d/c below 10 Mpc, Planck18 beyond | — | web/src/math/units.ts describeLookback |
