@@ -56,3 +56,11 @@ See the end of this file for the sources re-opened after writing.
 | black-hole | M87*/Sgr A* mass ratio | ≈1,500 (computed 6.5e9 / 4.297e6) | computed |
 | black-hole | Gaia BH3 distance in ly | ≈1,900 ly (computed 590 × 3.2616) | computed |
 | black-hole | M87 distance in atlas | 16.9 Mpc | atlas messier-ngc.json (Cosmicflows-4) |
+| exoplanet | confirmed exoplanets | 6,470 (as of 12 Nov 2026) | NASA Exoplanet Archive home page |
+| exoplanet | billions believed to exist; 4 families; microlensing, transits | — | NASA Science, Exoplanets |
+| exoplanet | 51 Peg b | announced Oct 1995; P = 4.2 d; a ≈ 0.052 au; mass 0.46 and 0.61 M_Jup both listed; radial velocity | NASA Science, 51 Pegasi b |
+| exoplanet | 2019 Nobel Prize, Mayor & Queloz | "discovery of an exoplanet orbiting a solar-type star" | nobelprize.org 2019 summary |
+| exoplanet | PSR B1257+12 planets | c, d in 1992 (Wolszczan et al.), b in 1994; pulsar timing | NASA Exoplanet Archive system overview |
+| exoplanet | Proxima b | min. 1.3 M⊕, P ≈ 11.2 d, a ≈ 0.05 au, liquid-water temperature range (2016) | Anglada-Escudé et al. 2016 abstract |
+| exoplanet | TRAPPIST-1 | ≥7 Earth-sized planets, 12 pc, 0.08 M☉, inner six P = 1.51–12.35 d | Gillon et al. 2017 abstract |
+| exoplanet | 51 Peg (Helvetios) distance | 15.5 pc | atlas named-stars.json (Gaia DR3) |
