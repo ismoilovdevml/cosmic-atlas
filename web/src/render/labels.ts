@@ -113,7 +113,11 @@ export class LabelLayer {
         // an extended object smaller than a pixel is not "at scale": its label would sit on unrelated points
         if (it.sizePc !== undefined && ((2 * it.sizePc) / r) * pxPerRadCss < 1) continue;
         if (it.kind !== 'model' && r > focusDist * (it.kind.includes('galaxy') ? 100 : 300)) continue;
-        this.v.set(dx, dy, dz).project(camera);
+        // behind-the-camera test in view space: with a tiny near plane the NDC z of a point behind
+        // the camera rounds to exactly 1 and would pass an NDC test
+        this.v.set(dx, dy, dz).applyMatrix4(camera.matrixWorldInverse);
+        if (this.v.z >= 0) continue;
+        this.v.applyMatrix4(camera.projectionMatrix);
         if (this.v.z > 1 || this.v.z < -1) continue;
         const x = (this.v.x * 0.5 + 0.5) * width;
         const y = (-this.v.y * 0.5 + 0.5) * height;

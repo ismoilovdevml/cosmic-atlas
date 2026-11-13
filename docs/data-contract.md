@@ -111,6 +111,30 @@ M = [[-0.05487565771259165, -0.8734370519556157 , -0.48383507361671546],
      [-0.8676661375596576 , -0.19807633727300059,  0.4559838136873016 ]]
 ```
 
+### 4b. `galaxy-shapes.json` (`scripts/build_galaxy_shapes.py`)
+
+Shapes, not positions, for the galaxies of `local-volume`, `local-group` and `messier-ngc`, merged
+by shared name/alias. The viewer looks a shape up by any of `keys` (same `catalogKey`
+normalisation as the catalogues) and uses the position and distance of the catalogue entry it
+labels. Top level: `version`, `generated_utc`, `conventions`, `sources` (citation per source key),
+`provenance` (path of `provenance/galaxy-shapes.json`: services, priorities, counts), `galaxies[]`:
+
+| field | meaning |
+|---|---|
+| `name`, `keys`, `ra`, `dec`, `pgc` | primary name, every alias, ICRS position, PGC number (if found) |
+| `major_arcmin`, `minor_arcmin`, `axes_src`, `axes_def` | apparent diameters; `axes_def` = `D25`, `a26 (Holmberg)` or `2 r_h` |
+| `pa_deg`, `pa_src` | major-axis position angle, N through E, J2000, 0–180 |
+| `incl_deg`, `incl_src` | disk inclination (0 = face-on), disks only |
+| `morph`, `t`, `morph_src` | type string and de Vaucouleurs T |
+| `shape` | `disk` or `spheroid` (E, dE, dSph, dS0) |
+| `mag`, `mag_band`, `mag_src` | magnitude of the first merged entry that has one |
+| `kind`, `docs`, `facts`, `facts_ref` | content contract §3: `facts.major_kpc`/`minor_kpc` (at the primary entry's distance), `inclination_deg`, `position_angle_deg`, `type`, each cited in `facts_ref` |
+| `flags` | what is missing or inconsistent |
+
+Source priority, per field: HyperLEDA (live) > OpenNGC > HyperLEDA 2003 (VizieR VII/237, PA
+precessed from B1950) > UNGC > McConnachie 2012; inclination HyperLEDA > UNGC > derived from b/a
+with q0 = 0.2.
+
 ## 5. Renderer rules (web/)
 
 - Node world position = `center` (float64 in JS) minus camera position (float64), uploaded as a

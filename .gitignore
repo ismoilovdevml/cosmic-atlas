@@ -7,5 +7,6 @@ node_modules/
 web/dist/
 *.parquet
 .DS_Store
+data/cache/
 .claude/
 data/cache/
