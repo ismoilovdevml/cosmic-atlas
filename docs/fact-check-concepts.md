@@ -133,3 +133,15 @@ See the end of this file for the sources re-opened after writing.
 | distance-uncertainty | 10 % distance error → ≈20 % luminosity error | L ∝ d² | computed |
 | distance-uncertainty | G=20 star at 1 kpc: 1 mas parallax, 0.5 mas error (50 %); bright star 0.02–0.03 mas (2–3 %) | — | ESA Gaia DR3 page precision; computed |
 | distance-uncertainty | uncertainty streaks limited to 32 nodes; dashed bar when no upper bound | — | web/README.md (Distance uncertainty) |
+| gaia-mission | launch | 19 Dec 2013 | ESA Gaia overview; ESA fact sheet (09:12 UTC) |
+| gaia-mission | orbit | Sun–Earth L2, ≈1.5 million km from Earth | ESA Gaia fact sheet |
+| gaia-mission | focal plane | 106 CCDs, ≈1 billion pixels, two telescopes | ESA fact sheet (106 CCDs); ESA overview ("1 billion pixel camera") |
+| gaia-mission | DR3 | 13 Jun 2022; 34 months (25 Jul 2014–28 May 2017); 1,811,709,771 sources; 1,467,744,818 with parallax+PM; 33,812,183 RVs | ESA Gaia DR3 page |
+| gaia-mission | 0.025 mas ≈ 4.7 cm at the Moon's distance | 384,400 km × 0.025e-3/206265 | computed |
+| gaia-mission | end of science observations | 15 Jan 2025 | ESA Gaia overview |
+| gaia-mission | switched off, retirement orbit | 27 Mar 2025 | ESA "Farewell Gaia!" |
+| gaia-mission | > 3 trillion observations; ≈1,500 names in memory; asteroids, galaxies, quasars | — | ESA "Farewell Gaia!" |
+| gaia-mission | DR4 | 66 months, expected December 2026 | ESA Gaia overview |
+| gaia-mission | final release | not before end of 2030 | ESA Gaia overview |
+| gaia-mission | Gaia BH3 found in DR4 validation | 32.7 M☉, 590 pc (2024) | Panuzzo et al. 2024 abstract |
+| gaia-mission | 1 kpc in ly | 3,262 ly | computed |
