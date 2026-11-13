@@ -44,13 +44,21 @@ WORK = OUT / "_work"
 SURVEY_DIR = WORK / "survey"
 PLAN_FILE = WORK / "chunks.json"
 
-TAP = "https://gea.esac.esa.int/tap-server/tap"
+# TAP services carrying Gaia DR3 + Bailer-Jones 2021 distances: url, distance table.
+SERVICES = {
+    "esa": ("https://gea.esac.esa.int/tap-server/tap", "external.gaiaedr3_distance"),
+    # ARI Heidelberg: no 60 s anonymous execution cap (14400 s, 10 M rows). Dense Galactic-plane
+    # chunks that always abort on ESA complete here. Counts identical to ESA (mirror_test.json).
+    "ari": ("https://gaia.ari.uni-heidelberg.de/tap", "gaiaedr3_complements.distances"),
+}
+TAP, DIST_TABLE = SERVICES["esa"]
 VIZIER_SERVER = "vizier.cfa.harvard.edu"  # CfA VizieR mirror; cdsarc.cds.unistra.fr times out from this host
 USER_AGENT = "cosmic-atlas-fetch/1.0 (python-requests)"
 
-ROW_LIMIT = 50_000      # anonymous async hard limit (measured)
+ROW_LIMIT = 50_000      # anonymous async default MAXREC (survey jobs stay far below it)
+MAXREC = 2_000_000      # explicit MAXREC for fetch jobs (ESA returned 105,743 rows with it, 2026-11-13)
 CHUNK_MAX = 45_000      # planned rows per chunk, margin below ROW_LIMIT
-CONCURRENCY = 3         # polite to ESA
+CONCURRENCY = 5         # ESA anonymous async; 5 parallel jobs measured stable 2026-11-13
 MAX_DIST_PC = 1000.0
 SID_L12 = 2 ** 35       # source_id // SID_L12 = HEALPix level-12 nested index
 
@@ -113,7 +121,7 @@ def tap_async(query: str, fmt: str = "csv", poll: float = 2.0, session: requests
     s = session or requests.Session()
     s.headers["User-Agent"] = USER_AGENT
     r = s.post(f"{TAP}/async", data=dict(REQUEST="doQuery", LANG="ADQL", FORMAT=fmt,
-                                         QUERY=query, PHASE="RUN"),
+                                         QUERY=query, PHASE="RUN", MAXREC=str(MAXREC)),
                allow_redirects=False, timeout=60)
     loc = r.headers.get("Location")
     if not loc:
@@ -129,7 +137,7 @@ def tap_async(query: str, fmt: str = "csv", poll: float = 2.0, session: requests
             time.sleep(poll)
         if phase != "COMPLETED":
             err = s.get(f"{loc}/error", timeout=60).text
-            if "Maximum execution time" in err:
+            if "Maximum execution time" in err or phase == "ABORTED":
                 raise TapTimeout(err[-300:])
             raise RuntimeError(f"{phase}: {err[-600:]}")
         res = s.get(f"{loc}/results/result", timeout=900)
@@ -292,10 +300,18 @@ def fetch_query(lo: int, hi: int) -> str:
     return f"""SELECT g.source_id, g.ra, g.dec, g.parallax, g.parallax_error, g.parallax_over_error,
  d.r_med_geo, d.r_lo_geo, d.r_hi_geo, g.phot_g_mean_mag, g.bp_rp, g.ruwe,
  g.pmra, g.pmdec, g.radial_velocity
-FROM external.gaiaedr3_distance AS d
+FROM {DIST_TABLE} AS d
 JOIN gaiadr3.gaia_source AS g ON g.source_id = d.source_id
 WHERE d.source_id >= {lo} AND d.source_id < {hi} AND g.source_id >= {lo} AND g.source_id < {hi}
-  AND d.r_med_geo < {MAX_DIST_PC:.0f} AND {CHOSEN_WHERE}"""
+  AND d.r_med_geo < {MAX_DIST_PC:.0f}"""
+# The quality cut (CHOSEN_WHERE) is applied CLIENT-side in apply_cut(): with it in the WHERE clause
+# the archive's planner abandons the source_id range scan and every dense chunk hits the 60 s cap
+# (measured 2026-11-13 on chunk 0: with cut -> aborted at 60 s; without -> 18.2 s, 105,743 rows,
+# 44,766 after the local cut = the survey count exactly).
+
+
+def apply_cut(df: pd.DataFrame) -> pd.DataFrame:
+    return df[(df["parallax_over_error"] > 10) & (df["ruwe"] < 1.4)].reset_index(drop=True)
 
 
 def wd_flag(g_mag, bp_rp, dist_pc) -> np.ndarray:
@@ -337,12 +353,12 @@ def fetch_chunk(c: dict) -> int:
         return 0
     s = requests.Session()
     t0 = time.time()
-    q = fetch_query(c["sid_lo"], c["sid_hi"])
-    text = with_retries(lambda: tap_async(q, session=s), f"chunk {c['chunk']}")
-    raw = pd.read_csv(io.StringIO(text), dtype={"source_id": "int64"}, float_precision="round_trip")
+    parts: list[pd.DataFrame] = []
+    n_jobs = fetch_range(c["sid_lo"], c["sid_hi"], f"chunk {c['chunk']}", s, parts)
+    raw = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=GAIA_COLUMNS)
     n = len(raw)
-    if n >= ROW_LIMIT:
-        raise RuntimeError(f"chunk {c['chunk']}: {n} rows hit the {ROW_LIMIT} row cap (truncated)")
+    if raw["source_id"].duplicated().any():
+        raise RuntimeError(f"chunk {c['chunk']}: duplicate source_ids after splitting")
     if n != c["expected_rows"]:
         raise RuntimeError(f"chunk {c['chunk']}: got {n} rows, survey expected {c['expected_rows']}")
     df = to_contract(raw)
@@ -351,9 +367,32 @@ def fetch_chunk(c: dict) -> int:
     tmp.rename(out)
     with _print_lock, open(WORK / "chunk_checks.jsonl", "a") as fh:
         fh.write(json.dumps({"chunk": c["chunk"], "service": TAP, "expected_rows_esa_survey": c["expected_rows"],
-                             "rows_received": n, "match": n == c["expected_rows"],
+                             "rows_received": n, "match": n == c["expected_rows"], "tap_jobs": n_jobs,
                              "seconds": round(time.time() - t0, 1), "utc": utcnow()}) + "\n")
     return n
+
+
+MAX_SPLIT_DEPTH = 12  # 2**12 sub-ranges per chunk at most
+
+
+def fetch_range(lo: int, hi: int, what: str, s: requests.Session, parts: list, depth: int = 0) -> int:
+    """Fetch [lo, hi). If the ESA job hits the 60 s execution limit (dense sky, e.g. the Galactic
+    plane), bisect the source_id range and fetch both halves. Returns the number of TAP jobs run."""
+    try:
+        text = with_retries(lambda: tap_async(fetch_query(lo, hi), session=s), what)
+    except TapTimeout:
+        if depth >= MAX_SPLIT_DEPTH or hi - lo < 2:
+            raise
+        mid = lo + (hi - lo) // 2
+        if depth < 3:
+            log(f"  timeout {what} depth {depth} -> split")
+        return (fetch_range(lo, mid, what, s, parts, depth + 1)
+                + fetch_range(mid, hi, what, s, parts, depth + 1))
+    df = pd.read_csv(io.StringIO(text), dtype={"source_id": "int64"})
+    if len(df) >= MAXREC:
+        raise RuntimeError(f"{what}: {len(df)} rows hit MAXREC={MAXREC} (truncated)")
+    parts.append(apply_cut(df))
+    return 1
 
 
 def cmd_fetch(args):
@@ -361,6 +400,8 @@ def cmd_fetch(args):
     assert plan["cut"] == CHOSEN_CUT, "plan was made for another cut; rerun `plan`"
     chunks = [c for c in plan["chunks"] if c["expected_rows"] > 0]
     todo = [c for c in chunks if not (OUT / f"gaia_chunk_{c['chunk']:04d}.parquet").exists()]
+    if args.only:
+        todo = [c for c in todo if c["chunk"] in set(args.only)]
     if args.limit:
         todo = todo[: args.limit]
     log(f"fetch: {len(todo)} of {len(chunks)} chunks to download")
@@ -775,7 +816,12 @@ def main():
     ap.add_argument("stage", choices=["survey", "plan", "fetch", "bright", "validate", "provenance", "all"])
     ap.add_argument("--limit", type=int, default=0, help="fetch: only this many chunks (testing)")
     ap.add_argument("--rationale", default=None, help="provenance: override the cut rationale text")
+    ap.add_argument("--service", choices=sorted(SERVICES), default="esa",
+                    help="TAP service for `fetch` (survey/plan counts always come from ESA)")
+    ap.add_argument("--only", type=int, nargs="*", default=None, help="fetch: only these chunk numbers")
     args = ap.parse_args()
+    global TAP, DIST_TABLE
+    TAP, DIST_TABLE = SERVICES[args.service]
     {"survey": cmd_survey, "plan": cmd_plan, "fetch": cmd_fetch, "bright": cmd_bright,
      "validate": cmd_validate, "provenance": cmd_provenance, "all": cmd_all}[args.stage](args)
 
