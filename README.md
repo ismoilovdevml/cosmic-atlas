@@ -47,10 +47,12 @@ automatically on browsers without WebGPU.
 
 ## Live
 
-- Cloudflare Pages: https://cosmic-atlas-axd.pages.dev (galaxy layers; Gaia stars added when the download finishes)
-- GitHub Pages mirror: https://ismoilovdevml.github.io/cosmic-atlas/
+- **https://ismoilovdevml.github.io/cosmic-atlas/** (GitHub Pages, primary): galaxy layers; Gaia stars are
+  added when the download finishes.
+- https://cosmic-atlas-axd.pages.dev (Cloudflare Pages mirror). Measured 2026-11-13 from Uzbekistan it was served
+  from the Warsaw edge at 10–65 KB/s, against 0.3–2.7 MB/s from GitHub Pages, so it is not the primary.
 
-Redeploy with `deploy/cloudflare_pages.sh`.
+GitHub Pages is rebuilt by `.github/workflows/pages.yml`; the Cloudflare mirror by `deploy/cloudflare_pages.sh`.
 
 ## Reproduce
 
