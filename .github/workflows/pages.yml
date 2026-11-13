@@ -16,7 +16,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ['web/**', '.github/workflows/pages.yml']
+    paths: ['web/**', 'data/tiles/catalogs/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -69,6 +69,17 @@ jobs:
           curl -fsSL --retry 3 "$LITE_TILES_URL" -o "$RUNNER_TEMP/lite.tar.gz"
           tar -xzf "$RUNNER_TEMP/lite.tar.gz" -C dist/tiles --no-same-owner
           test -f dist/tiles/_index.json || { echo "::error::archive has no _index.json at its root"; exit 1; }
+
+      - name: Overlay the catalogues committed in this repo
+        # the small named-object catalogues live in git (data/tiles/catalogs), so a catalogue change
+        # does not need a new tile archive; the big point layers still come from LITE_TILES_URL
+        if: vars.LITE_TILES_URL != ''
+        run: |
+          mkdir -p dist/tiles/catalogs
+          cp -R ../data/tiles/catalogs/. dist/tiles/catalogs/
+          rm -f dist/tiles/catalogs/dev-placeholder.json
+          python3 ../scripts/write_tiles_index.py dist/tiles
+          cat dist/tiles/_index.json
 
       - name: Check GitHub Pages limits (1 GB site, no file over 95 MB, no links)
         run: |
