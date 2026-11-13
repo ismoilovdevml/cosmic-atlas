@@ -64,5 +64,5 @@ updated: 2026-11-13
 - [Proxima b](doc:proxima-b), eng yaqin qoʻshni yulduzimizning sayyorasi.
 - [TRAPPIST-1](doc:trappist-1), Yer kattaligidagi yettita sayyorasi bor yulduz.
 - [Voyager 1](doc:voyager-1), yulduzlararo fazoga chiqqan birinchi kosmik apparat.
-- [Arecibo xabari](doc:arecibo-message), 1974-yilda M13 ga yuborilgan radio-otkritka.
+- [Aresibo xabari](doc:arecibo-message), 1974-yilda M13 ga yuborilgan radio-otkritka.
 - [Wow! signali](doc:wow-signal), 1977-yildan qolgan 72 soniyalik sir.

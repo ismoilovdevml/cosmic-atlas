@@ -64,3 +64,15 @@ See the end of this file for the sources re-opened after writing.
 | exoplanet | Proxima b | min. 1.3 M⊕, P ≈ 11.2 d, a ≈ 0.05 au, liquid-water temperature range (2016) | Anglada-Escudé et al. 2016 abstract |
 | exoplanet | TRAPPIST-1 | ≥7 Earth-sized planets, 12 pc, 0.08 M☉, inner six P = 1.51–12.35 d | Gillon et al. 2017 abstract |
 | exoplanet | 51 Peg (Helvetios) distance | 15.5 pc | atlas named-stars.json (Gaia DR3) |
+| pulsar | neutron star size | ≈20 km | NASA Imagine, Neutron stars |
+| pulsar | pulse intervals | milliseconds to seconds | NASA Imagine, Neutron stars |
+| pulsar | Bell Burnell's first signal; confirmed | 6 Aug 1967; November 1967; "a bit more than a second" | National Geographic article |
+| pulsar | first pulsar period | 1.337302 s (PSR J1921+2153 = B1919+21) | ATNF Pulsar Catalogue v2.9.0 query |
+| pulsar | LGM-1 nickname by Hewish | — | National Geographic article |
+| pulsar | 1974 Nobel Prize | Ryle and Hewish, "decisive role in the discovery of pulsars" | nobelprize.org 1974 summary |
+| pulsar | pulsars in ATNF catalogue | 4,503 (v2.9.0, queried 2026-11-13) | ATNF psrcat query (count of rows) |
+| pulsar | fastest pulsar | 716 Hz, PSR J1748−2446ad, Terzan 5, radius < 16 km | Hessels et al. 2006 abstract |
+| pulsar | equator speed | ≤ 0.24 c (computed 2π × 16 km × 716 /s = 72,000 km/s) | computed |
+| pulsar | Crab pulsar spin | 30 times/s (P0 = 0.033392 s) | NASA Hubble Crab page; ATNF J0534+2200 |
+| pulsar | Pioneer 10 plaque, 14 pulsars | — | NASA Science, Pioneer 10 |
+| pulsar | Crab distance in atlas | 2.0 kpc | atlas messier-ngc.json (SIMBAD) ; ATNF DIST 2.000 kpc |
