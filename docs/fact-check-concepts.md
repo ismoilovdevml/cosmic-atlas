@@ -102,3 +102,11 @@ See the end of this file for the sources re-opened after writing.
 | parallax | atlas Gaia cut | parallax/error > 10, RUWE < 1.4, d < 1 kpc | scripts/fetch_gaia.py (CHOSEN_WHERE, MAX_DIST_PC) |
 | parallax | Barnard's Star, Deneb | 1.83 pc (Gaia DR3), 433 pc (Hipparcos 2007) | atlas named-stars.json |
 | parallax | Gaia bright limit | G ≈ 3 | ESA Gaia DR3 page; README (stars-bright layer) |
+| redshift | Hubble velocity–distance relation | 1929, PNAS 15, 168 | PMC522427 record |
+| redshift | z → comoving distance, lookback (Planck18) | z=0.01: 44 Mpc, 0.14 Gyr; 0.1: 433 Mpc, 1.3 Gyr; 0.5: 1.95 Gpc, 5.2 Gyr; 1: 3.40 Gpc, 7.9 Gyr; 2: 5.31 Gpc, 10.5 Gyr | computed with astropy 7 Planck18 (Planck 2018 VI) |
+| redshift | 3C 273 | z = 0.158, Schmidt 1963, 200-inch Palomar; occultations at Parkes 1962 | Kellermann 2013 abstract (z ≈ 0.16); Schmidt 1963 value 0.158 |
+| redshift | DESI simultaneous spectra | 5,000 | Fermilab DR1 press release |
+| redshift | DESI layer z distribution | 75 % z < 1; 6,120 objects z ≥ 4; max z = 6.80 | computed from data/raw/galaxies-desi parquet and PROVENANCE.json z histogram |
+| redshift | galaxy colour ramp | ivory z=0 → rose → violet z≥1.5; QSO pale cyan | pipeline/build_tiles.py galaxy_rgb |
+| redshift | redshift distances not used below | z = 0.003 (≈13.3 Mpc) | docs/data-contract.md §1; astropy Planck18 |
+| redshift | readout switches to Planck18 beyond | 10 Mpc | web/src/math/units.ts describeLookback |
