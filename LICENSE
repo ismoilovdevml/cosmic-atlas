@@ -20,7 +20,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
-The MIT licence covers the code in this repository. Survey data and images keep their own
-licences (Gaia: CC BY-NC 3.0 IGO, ESA/Gaia/DPAC; DESI DR1: CC BY 4.0; others as cited in
-README.md and each layer's PROVENANCE.json).

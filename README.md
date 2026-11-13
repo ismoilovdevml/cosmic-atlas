@@ -213,6 +213,8 @@ figures/                viewer captures
 
 ## Credits and licences
 
+The code is MIT-licensed (see [LICENSE](LICENSE)). Survey data and images keep their own licences, listed below.
+
 - Gaia: ESA/Gaia/DPAC, data under **CC BY-NC 3.0 IGO**, so this project is non-commercial.
   Distances: Bailer-Jones et al. 2021, AJ 161, 147.
 - DESI DR1: DESI Collaboration 2025 (arXiv:2503.14745), **CC BY 4.0**.
