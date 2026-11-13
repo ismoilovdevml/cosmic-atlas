@@ -120,9 +120,11 @@ def clean(v):
     return v
 
 
-def write_catalog_json(path: Path, entries: list[dict]) -> int:
+def write_catalog_json(path: Path, entries: list[dict], drop_none: bool = False) -> int:
     """Write a top-level JSON array of entries (contract section 4; provenance lives in the
-    layer's data/raw/<layer>/PROVENANCE.json). Contract keys first, extras after. Returns bytes."""
+    layer's data/raw/<layer>/PROVENANCE.json). Contract keys first, extras after. Returns bytes.
+    drop_none: leave out keys whose value is None (for large catalogues; readers treat a missing
+    key like null)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     order = ["name", "alt", "kind", "ra", "dec", "dist_pc", "mag", "xyz", "ref"]
     out = []
@@ -131,6 +133,34 @@ def write_catalog_json(path: Path, entries: list[dict]) -> int:
         for k, v in e.items():
             if k not in d:
                 d[k] = clean(v) if not isinstance(v, (list, dict)) else v
+        if drop_none:
+            d = {k: v for k, v in d.items() if v is not None}
         out.append(d)
     path.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
     return path.stat().st_size
+
+
+# --- object catalogues (black holes, exoplanets, pulsars, nebulae/SNRs, SETI) -------------
+# Downloads are cached under data/cache/<name>/ (gitignored); each build writes its provenance
+# block next to the catalogue, data/tiles/catalogs/provenance/<name>.json (committed).
+CACHE = ROOT / "data" / "cache"
+CATS = ROOT / "data" / "tiles" / "catalogs"
+
+
+def write_provenance(name: str, prov: dict) -> Path:
+    path = CATS / "provenance" / f"{name}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(prov, indent=2, ensure_ascii=False, default=clean) + "\n")
+    return path
+
+
+def sig(x, n: int = 4):
+    """Round to n significant digits (None for None/NaN)."""
+    if x is None:
+        return None
+    x = float(x)
+    if not math.isfinite(x):
+        return None
+    if x == 0:
+        return 0.0
+    return float(f"{x:.{n}g}")
