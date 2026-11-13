@@ -17,11 +17,46 @@ npm ci
 npm run synth        # optional: synthetic raw tables -> pipeline/build_tiles.py -> ../data/tiles/synthetic-*
 npm run dev          # http://localhost:5173
 npm test             # vitest: tile parser (16/24 B ext), blob light conservation, photometry, deep links,
-                     # tours, ICRS->Galactic, Planck18, fly-to path, Sesame parsing
+                     # tours, ICRS->Galactic, Planck18, fly-to path, Sesame parsing, Solar System
+                     # ephemerides vs JPL Horizons, probe interpolation, Tashkent vs astropy, uz/ru search
 npm run build        # tsc --noEmit + vite build -> dist/
 npm run capture      # with the dev server up: screenshots at 1 pc / 300 pc / 30 kpc / 1 Gpc -> ../figures
 node scripts/capture_galaxies.mjs  # M31, M33, M81, NGC 253 (EARTH=1: from the Sun; CAPTURE_EXTRA=1: LOD ladder)
+node scripts/capture_solar.mjs ../figures http://localhost:5173/   # Solar System views -> figures/solar-*.png
 ```
+
+### Solar System (`src/solar/`)
+
+- **Positions** come from astronomy-engine 2.1.19 (MIT) for the Sun, the 8 planets, Pluto, the
+  Moon and the Galilean moons, at the simulation time (time bar: Now / pause / ×1, ×10⁴, ×10⁶;
+  default = real time). Its J2000 equatorial vectors go through the ICRS→Galactic matrix of
+  `math/frames.ts`. `test/ephemeris.test.ts` compares Earth, Mars, Jupiter and the Moon with JPL
+  Horizons at J2000.0 and 2026-11-13 (worst 3.8e-5 of the Sun distance; Moon–Earth 12 km), and Io
+  about Jupiter (130 km). Phobos and Deimos are not shown: astronomy-engine has no ephemeris for them.
+- **Rendering.** True IAU mean radii, lit from the Sun's direction per fragment, with a minimum
+  drawn radius (2.2 device px for planets, 1.6 for moons) so far bodies stay visible as dots.
+  Bodies and their labels fade when they come within a few px of their parent. Planets are
+  oriented with the IAU WGCCRE 2015 rotation model; the Earth by Greenwich sidereal time plus
+  precession/nutation, so a latitude/longitude sits where it really is. Saturn's rings are lit
+  with a Lommel–Seeliger law and carry the planet's shadow. Orbits are one period sampled from
+  the ephemeris (2048 vertices for planets, 512 for moons), centred on the body; a line fades where
+  its chords could show and when you zoom in on a single body.
+- **Depth at sub-AU scale.** three.js clamps the log-depth near plane to ≥ 1e-6 scene units
+  (0.2 AU in parsecs). The Solar System group is therefore scaled by 1e9 around the eye (a
+  perspective projection ignores a uniform scale about the eye), which puts depth back into range
+  down to metres; nothing else in the scene depth-tests. The post pass adds the Gaia sky only
+  where the depth buffer is clear, so it does not show through planets. `figures/solar-moon-earth.png`
+  (Earth 400,000 km behind the Moon, partly hidden by its limb) and `solar-saturn-rings-edge.png`
+  (far half of the rings behind the disc, near half in front) are the checks.
+- **Probes** (Voyager 1/2, Pioneer 10/11, New Horizons): `data/tiles/catalogs/spacecraft.json`
+  (`scripts/build_spacecraft.py`), 30-day Horizons samples for 2000–2040, cubic Hermite in between
+  (1–2 km off-grid in cruise; ~1.4 million km a day after New Horizons' 2007 Jupiter flyby, which
+  30-day sampling cannot resolve). Drawn as markers with a faint trail since 2000.
+- **Navigation.** The minimum camera distance is now 1e-11 pc (~300 km). Flying to a body locks
+  the focus to it (it follows the body while time runs) and keeps the camera out of the planet.
+- **For "Show me":** `observerGalacticXyz(lat, lon, h, date)` and `flyTargetForLatLon(lat, lon,
+  date?, altitudeKm?)` in `src/solar/ephemeris.ts`. Tashkent matches astropy
+  `EarthLocation→GCRS→Galactic` to 20 m.
 
 `npm run synth` uses the repo's `.venv` (numpy, astropy, pyarrow). It writes contract §2 Parquet
 (`data/raw/synthetic-{stars,galaxies}/synthetic.parquet` + `PROVENANCE.json`, including
@@ -83,7 +118,9 @@ main.ts ── App: renderer init (WebGPU → WebGL2), on-demand frame loop with
  ├─ math/*               frames (ICRS→Galactic, Hammer-Aitoff), Planck18, van Wijk–Nuij path, units
  ├─ data/manifest.ts     layers.json, tiles/_index.json, catalogues (dedup by name/alias, xyz may be null)
  ├─ data/resolve.ts      local search, CDS Sesame (CORS-checked mirrors)
- └─ ui/rail.ts           "powers of ten" rail
+ ├─ ui/rail.ts           "powers of ten" rail
+ └─ solar/*              Solar System: ephemeris (astronomy-engine → contract frame), layer (bodies,
+                         rings, orbits, probes), clock + time bar, info card rows, strings (tr)
 ```
 
 ### Rendering rules (contract section 5, plus what we took from skymap)

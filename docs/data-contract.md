@@ -103,6 +103,18 @@ Named objects for labels and instant search: `named-stars.json`, `local-group.js
  "xyz": [-1.769, -1.913, -0.408], "ref": "SIMBAD / IAU WGSN"}
 ```
 
+`spacecraft.json` (`scripts/build_spacecraft.py`, JPL Horizons) has the same entry shape plus
+`provenance` (request URL, fetch time, Horizons source, any clipped span) and a `track`, read by
+`web/src/solar/spacecraft.ts` and interpolated (cubic Hermite) at the simulation time:
+
+```json
+{"name": "Voyager 1", "kind": "spacecraft", "docs": "voyager-1", "xyz": [...], "dist_pc": 0.000835,
+ "track": {"t0_jd_tdb": 2451544.5, "step_days": 30, "n": 488,
+           "xyz_pc": [x0, y0, z0, x1, ...], "vel_pc_per_day": [vx0, vy0, vz0, ...]}}
+```
+
+`xyz`/`dist_pc` are the position at build time; the track is heliocentric, contract frame (§1).
+
 ICRS → Galactic rotation (astropy 7, derived by transforming the ICRS unit vectors; `xyz_gal = M @ xyz_icrs`):
 
 ```

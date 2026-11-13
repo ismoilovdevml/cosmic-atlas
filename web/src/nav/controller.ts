@@ -14,7 +14,7 @@ import * as THREE from 'three/webgpu';
 import type { Vec3 } from '../math/frames';
 import { easeInOut, makeZoomPath, pathDuration, type ZoomPath } from '../math/flyto';
 
-export const MIN_DIST = 2e-7; // ~0.04 AU
+export const MIN_DIST = 1e-11; // ~300 km: close enough to stand over a planet (Solar System layer)
 export const MAX_DIST = 3e10;
 
 export interface View {
@@ -57,6 +57,8 @@ export class NavController {
   private flight: Flight | null = null;
   private downAt: { x: number; y: number; t: number } | null = null;
   onClick: (x: number, y: number) => void = () => {};
+  /** extra lower bound on the distance (pc), e.g. a followed planet's radius; 0 = none */
+  distFloor = 0;
   onDoubleClick: (x: number, y: number) => void = () => {};
 
   constructor(private el: HTMLElement, private camera: THREE.PerspectiveCamera) {
@@ -116,6 +118,7 @@ export class NavController {
 
   setView(v: Partial<View>) {
     this.cancelFlight();
+    this.distFloor = 0; // an explicit view wins; a followed body sets its floor again next frame
     Object.assign(this.view, v);
     this.view.dist = Math.min(MAX_DIST, Math.max(MIN_DIST, this.view.dist));
     this.view.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.view.pitch));
@@ -193,6 +196,11 @@ export class NavController {
       this.view.dist = Math.exp(next);
       changed = true;
     } else this.zoomAnchor = null;
+    if (this.distFloor > 0 && this.view.dist < this.distFloor && !this.flight) {
+      this.view.dist = this.distFloor;
+      this.targetLogDist = Math.max(this.targetLogDist, Math.log(this.distFloor));
+      changed = true;
+    }
 
     // keyboard
     if (this.keys.size && !this.flight) {
@@ -229,7 +237,7 @@ export class NavController {
 
   /** multiply the target distance (smoothly applied) */
   zoomBy(factor: number, anchor: Vec3 | null = null) {
-    this.targetLogDist = Math.min(Math.log(MAX_DIST), Math.max(Math.log(MIN_DIST), this.targetLogDist + Math.log(factor)));
+    this.targetLogDist = Math.min(Math.log(MAX_DIST), Math.max(Math.log(Math.max(MIN_DIST, this.distFloor)), this.targetLogDist + Math.log(factor)));
     this.zoomAnchor = anchor;
   }
 
@@ -292,7 +300,7 @@ export class NavController {
       const now = this.pinchState();
       if (now.span > 0 && this.pinch.span > 0) {
         const k = this.pinch.span / now.span;
-        this.view.dist = Math.min(MAX_DIST, Math.max(MIN_DIST, this.view.dist * k));
+        this.view.dist = Math.min(MAX_DIST, Math.max(MIN_DIST, this.distFloor, this.view.dist * k));
         this.targetLogDist = Math.log(this.view.dist);
       }
       this.pan(now.mid.x - this.pinch.mid.x, now.mid.y - this.pinch.mid.y);
