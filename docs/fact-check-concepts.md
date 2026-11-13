@@ -125,3 +125,11 @@ See the end of this file for the sources re-opened after writing.
 | lookback-time | CMB released | ≈380,000 yr after Big Bang | NASA Science, Universe overview |
 | lookback-time | J0313−1806 | z = 7.642, ≈670 Myr after Big Bang, BH 1.6 × 10^9 M☉ (2021) | Wang et al. 2021 abstract |
 | lookback-time | readout: d/c below 10 Mpc, Planck18 beyond | — | web/src/math/units.ts describeLookback |
+| distance-uncertainty | 16th–84th percentile ≈ ±1σ (68 %) | — | docs/data-contract.md §2; Bailer-Jones et al. 2021 (quantiles) |
+| distance-uncertainty | Bailer-Jones geometric distances, asymmetric uncertainties, Galaxy-model prior | 1.47 billion stars | Bailer-Jones et al. 2021 abstract |
+| distance-uncertainty | DESI distance range = comoving distance of z ∓ zerr | — | data/raw/galaxies-desi/PROVENANCE.json (columns) |
+| distance-uncertainty | no Hubble-flow distance below | z = 0.003 ≈ 13.3 Mpc | docs/data-contract.md §1; astropy Planck18 |
+| distance-uncertainty | peculiar velocity = departure from cosmic expansion | — | Tully et al. 2014 abstract |
+| distance-uncertainty | 10 % distance error → ≈20 % luminosity error | L ∝ d² | computed |
+| distance-uncertainty | G=20 star at 1 kpc: 1 mas parallax, 0.5 mas error (50 %); bright star 0.02–0.03 mas (2–3 %) | — | ESA Gaia DR3 page precision; computed |
+| distance-uncertainty | uncertainty streaks limited to 32 nodes; dashed bar when no upper bound | — | web/README.md (Distance uncertainty) |
