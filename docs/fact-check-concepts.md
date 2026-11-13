@@ -85,3 +85,11 @@ See the end of this file for the sources re-opened after writing.
 | nebula | Merope reflection nebula destroyed by radiation | — | NASA Hubble Messier 45 page |
 | nebula | M8, M16, NGC 7293 distances | 1.27, 1.69 kpc, 200 pc | atlas messier-ngc.json |
 | nebula | M78, M43 without distance | — | data/raw/messier-ngc/PROVENANCE.json (no_distance list) |
+| units | astronomical unit | 149,597,870,700 m exactly | IAU 2012 Resolution B2 (via astropy.constants.au reference) |
+| units | parsec | 648,000/π au exactly ≈ 206,265 au ≈ 3.0857 × 10^16 m ≈ 3.2616 ly | Mamajek et al. 2015 (arXiv:1510.06262) abstract; astropy.constants.pc |
+| units | light-year | c × Julian year = 9,460,730,472,580,800 m ≈ 63,241 au | SI c = 299,792,458 m/s; astropy units (computed) |
+| units | sunlight travel time | 499.005 s (computed 1 au / c) | computed |
+| units | Proxima parallax / distance | 768.0665 ± 0.0499 mas → 1.302 pc = 4.25 ly | Gaia DR3 via VizieR I/355/gaiadr3 |
+| units | 1 arcsec = coin (≈2 cm) at ≈4 km | 4,000 m × 4.848e-6 rad = 1.9 cm | computed |
+| units | rail range | ≈0.04 au to 30 Gpc (> 20 decades) | web/src/ui/rail.ts |
+| units | Sirius, Pleiades, M31 | 2.64 pc, 134.8 pc, 0.783 Mpc | atlas named-stars.json (Hipparcos 2007), messier-ngc.json |
