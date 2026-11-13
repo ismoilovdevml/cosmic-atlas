@@ -383,7 +383,7 @@ class App {
     const file = 'galaxy-shapes.json';
     if (this.tilesIndex && !this.tilesIndex.catalogs.includes(file)) return;
     try {
-      const r = await fetch(`tiles/catalogs/${file}`);
+      const r = await fetch(`${this.tileBase}catalogs/${file}`); // same origin as the other catalogues (tilebase.ts)
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const doc = (await r.json()) as GalaxyShapesDoc;
       this.shapes.setData(doc, this.catalog);
