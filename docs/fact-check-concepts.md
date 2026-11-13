@@ -46,3 +46,13 @@ See the end of this file for the sources re-opened after writing.
 | galaxy | 2MRS / CF4 / LV counts | 43,463 / 55,877 / 868 | README.md layer table, PROVENANCE.json |
 | galaxy | M51, M104, M87 distances | 8.34, 9.3, 16.86 Mpc | atlas messier-ngc.json (refs per entry; M87 from CF4) |
 | galaxy | M87 giant elliptical | — | EHT 2019 Paper I abstract (arXiv:1906.11238) |
+| black-hole | core > ≈3 M☉ collapses to a black hole | 1–3 M☉ → neutron star | NASA Imagine, Neutron stars |
+| black-hole | Sgr A* mass (S2 orbit) | 4.297 ± 0.013 million M☉ | GRAVITY 2021 (arXiv:2101.12098) Table 2 |
+| black-hole | Gaia BH1 | 9.62 ± 0.18 M☉, 480 pc, P = 185.6 d, nearest known by factor 3 (2022) | El-Badry et al. 2023 (arXiv:2209.06833) abstract |
+| black-hole | Gaia BH3 | 32.70 ± 0.82 M☉, 590 pc, most massive Galactic stellar-origin BH (2024) | Panuzzo et al. 2024 (arXiv:2404.10486) abstract |
+| black-hole | GW150914 | 14 Sep 2015; 36 + 29 → 62 M☉; 3.0 M☉c² radiated; 410 Mpc luminosity distance | LIGO/Virgo 2016 (arXiv:1602.03837) abstract |
+| black-hole | M87* mass, ring | 6.5 ± 0.7 × 10^9 M☉; 42 ± 3 µas | EHT 2019 Paper I abstract |
+| black-hole | Sgr A* EHT | ring 51.8 ± 2.3 µas; ~4 × 10^6 M☉; 2017 data, published 2022 | EHT 2022 Paper I (arXiv:2311.08680) abstract |
+| black-hole | M87*/Sgr A* mass ratio | ≈1,500 (computed 6.5e9 / 4.297e6) | computed |
+| black-hole | Gaia BH3 distance in ly | ≈1,900 ly (computed 590 × 3.2616) | computed |
+| black-hole | M87 distance in atlas | 16.9 Mpc | atlas messier-ngc.json (Cosmicflows-4) |
