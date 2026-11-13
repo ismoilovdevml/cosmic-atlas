@@ -51,6 +51,13 @@ export class PostPass {
     // only opaque Solar System bodies write depth; the sky must not show through them
     const sceneDepth = scenePass.getTextureNode('depth');
     const placeholder = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    // The placeholder must carry the sky's filtering: on the WebGPU backend the swapped-in texture
+    // kept the placeholder's sampler, so with DataTexture's default NearestFilter the sky was
+    // point-sampled on WebGPU only (WebGL2 takes the filters from the new texture). Measured with
+    // level(0) sampling: mean |WebGPU − WebGL2| 8.5/255 before, 0.03/255 after.
+    placeholder.minFilter = THREE.LinearMipmapLinearFilter;
+    placeholder.magFilter = THREE.LinearFilter;
+    placeholder.generateMipmaps = true;
     placeholder.needsUpdate = true;
     this.skyNode = texture(placeholder);
 

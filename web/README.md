@@ -23,6 +23,11 @@ npm run build        # tsc --noEmit + vite build -> dist/
 npm run capture      # with the dev server up: screenshots at 1 pc / 300 pc / 30 kpc / 1 Gpc -> ../figures
 node scripts/capture_galaxies.mjs  # M31, M33, M81, NGC 253 (EARTH=1: from the Sun; CAPTURE_EXTRA=1: LOD ladder)
 node scripts/capture_solar.mjs ../figures http://localhost:5173/   # Solar System views -> figures/solar-*.png
+# QA (dev server up; pass its URL as the last argument):
+node scripts/qa_engines.mjs chromium|firefox|webkit <outdir> <prefix> ['?backend=webgl'] <url>  # views, slab, blobs, uncertainty, pick grid
+node scripts/qa_compare.mjs a.png b.png ...    # pixel diff of screenshot pairs
+node scripts/qa_mobile.mjs <outdir> <prefix> <url>   # 390x844 + 360x740 touch: layout, 44 px targets, contrast, gestures
+node scripts/perf_budget.mjs 4,12 '' '#v=0,0,0,1e9,-150,28' <url> [--uncapped] [--detail=N]
 ```
 
 ### Solar System (`src/solar/`)
@@ -137,7 +142,12 @@ Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copi
   Near and far adapt to the nearest and farthest drawn node. Additive content does not depth-test.
 - **LOD and budget.** A node refines when its bounding sphere projects larger than `minNodePx` (the
   Detail slider). Nodes are taken in priority order until the point budget (default 4 M, slider
-  0.5–12 M) is used up.
+  0.5–12 M) is used up. Measured at 1 Gpc with DESI on an Apple M4 Pro (Chromium, WebGPU, 1440×900,
+  `scripts/perf_budget.mjs`): 4 M draws 4.02 M points at 60 FPS with vsync (65–68 FPS, 14.7–15.4 ms
+  uncapped); 12 M draws at most 6.05 M at this view (the cut runs out of nodes worth refining, also
+  at Detail 400) at 35–41 FPS mean, 24.6–28.6 ms per frame, worst 1 s sample 28.7 FPS. The main
+  thread is 75 % idle at 12 M, so it is GPU-bound. 4 M stays the default; above about 6 M at 1 Gpc
+  expect 30–40 FPS on this class of GPU.
 - **Subtree blobs, honest version.** A blob may only stand in for light that is unresolved at the
   current view. A subtree that is not drawn becomes a blob only when twice its light-weighted RMS
   radius projects to at most `blobMaxPx` = 6 device px. The sprite radius is 1.63 × RMS, so its 2D
@@ -263,7 +273,7 @@ Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copi
 | # | Landmine | Status |
 |---|---|---|
 | 1 | `writeBuffer` ordered against submit, not draws | Not hit: per-node data is in vertex buffers; the per-object uniforms (`onObjectUpdate`) get their own buffers from three.js; the blob buffer is written once per frame for one draw |
-| 2, 13 | Invalid WGSL silently drops frames | Partly: three.js reports pipeline errors to the console, and the capture scripts fail on any console error. No WebKit check |
+| 2, 13 | Invalid WGSL silently drops frames | Partly: three.js reports pipeline errors to the console, and the capture scripts fail on any console error. Checked on Chromium (WebGPU, WebGL2), WebKit 27.2 (WebGPU, WebGL2) and Firefox 157 (WebGL2: no WebGPU adapter headless, clean fallback): no errors, identical pick results |
 | 3 | Implicit-derivative sampling across seams | Avoided: the sky uses an explicit LOD |
 | 6, 11 | Reversed-Z far plane, clip-w band | Not used (standard log depth). Clip w spans ~1e-7…3e9, inside the band |
 | 15, 16 | Feature/limit requests, swap format | Handled by three.js |
@@ -307,6 +317,17 @@ Drag to orbit. Right-drag or Shift-drag to pan. Wheel or pinch zooms toward the 
 for 4×. Arrow keys orbit; + and − zoom. Click shows the brightest visible point under the cursor
 (its `.ext.bin` is loaded on demand); double-click flies there. `/` focuses search.
 
+### Cross-engine QA (2026-11-14)
+
+`scripts/qa_engines.mjs` on the same deep links, compared with `scripts/qa_compare.mjs` against
+Chromium/WebGPU. Chromium WebGL2 matches to ≤ 0.23/255 mean per channel at every view (slab,
+density exposure, blobs, uncertainty included). WebKit (both backends) and Firefox match to
+1.3–2.4/255 with mean luminance within 0.06/255; the residue is text and point-raster
+antialiasing. The 54-point GPU pick grid gives the same 46 ids on all five engine/backend
+combinations. Two bugs were found and fixed: the sky was point-sampled on WebGPU only (placeholder
+texture's sampler), and the distance-uncertainty streaks were back-face culled on every backend
+(mirrored quad basis, see `src/render/streak.ts`). Figures: `../figures/qa-*.png`.
+
 ## Known limits and next steps
 
 - Galaxy thumbnails are DSS2 only (all-sky, photographic, saturated cores). A deeper colour HiPS
@@ -317,6 +338,9 @@ for 4×. Arrow keys orbit; + and − zoom. Click shows the brightest visible poi
 - Galaxy layers are ordered by a seeded shuffle (contract §3), so the root is a random sample. At
   1 Gpc, most light comes from subtree blobs (soft glows) until the camera gets close enough to
   refine.
+- Uncertainty streaks are not yet exactly light-conserving: a near-zero-length streak is a square
+  quad with a Gaussian across and tapered ends, not the round sprite, and the 300 pc test view gets
+  about 7 % brighter (mean frame luminance 47.0 → 50.2/255) when the mode is switched on.
 - Uncertainty streaks only appear for the 32 most important drawn nodes (ext data must be loaded),
   as a cost cap.
 - Picking uses float encoding: point index < 2^24, node slots < 2^22. Leaf nodes above

@@ -138,6 +138,7 @@ class App {
     this.picker = new GpuPicker(this.renderer, this.camera);
     this.nav = new NavController(canvas, this.camera);
     this.labels = new LabelLayer($('labels'));
+    this.nav.addGestureSource($('labels'));
     this.rail = new ScaleRail($('rail'), $('rail-ticks'), $('rail-mark'));
     this.scene.add(this.mw.points);
     this.scene.add(this.shapes.group);
@@ -279,11 +280,11 @@ class App {
       li.className = 'layer';
       const cid = `lyr-${opts.id}`;
       li.innerHTML = `
-        <div class="layer-row">
+        <label class="layer-row" for="${cid}">
           <span class="swatch ${opts.swatch}" aria-hidden="true"></span>
-          <label class="layer-title" for="${cid}"><b></b></label>
+          <span class="layer-title"><b></b></span>
           <input id="${cid}" class="toggle" type="checkbox" role="switch" />
-        </div>
+        </label>
         <p class="fine meta"></p>
         <input type="range" min="0" max="1" step="0.05" aria-label="" />`;
       const b = li.querySelector('b')!;
@@ -1059,6 +1060,13 @@ class App {
       if (e.key === 'Escape' && document.activeElement !== input) this.closeInfo();
     });
 
+    // panels above the instrument strip are placed from its measured height (it wraps to two rows
+    // on narrow screens and grows with the safe-area inset), so they never cover the rail or buttons
+    const strip = document.querySelector<HTMLElement>('.instrument')!;
+    const setStripH = () => document.documentElement.style.setProperty('--instrument-h', `${Math.ceil(strip.getBoundingClientRect().height)}px`);
+    new ResizeObserver(setStripH).observe(strip);
+    setStripH();
+
     const tog = $('layers-toggle');
     tog.addEventListener('click', () => tog.setAttribute('aria-expanded', String(tog.getAttribute('aria-expanded') !== 'true')));
     if (window.innerWidth < 640) tog.setAttribute('aria-expanded', 'false');
@@ -1238,6 +1246,8 @@ class App {
     this.tourAbort = restore;
     btn.setAttribute('aria-pressed', 'true');
     btn.querySelector('span')!.textContent = 'Stop tour';
+    // on a phone the expanded layers panel would cover the caption and most of the view
+    if (window.innerWidth < 640) $('layers-toggle').setAttribute('aria-expanded', 'false');
     this.closeInfo();
     const ctx = this.tourContext();
     for (const beat of tour.beats) {
@@ -1297,7 +1307,7 @@ class App {
 
   private exposeDebugApi() {
     (window as unknown as { __atlas: unknown }).__atlas = {
-      stats: () => ({ backend: this.backend, fps: this.fps, ...this.streamer.stats, budget: this.streamer.pointBudget, view: this.nav.view,
+      stats: () => ({ backend: this.backend, fps: this.fps, ...this.streamer.stats, budget: this.streamer.pointBudget, view: this.nav.view, slab: this.slabMpc,
         selection: this.selection ? { title: this.selection.title, ref: this.selection.ref, lo: this.selection.lo, hi: this.selection.hi } : null,
         layers: this.layers.map((L) => ({ id: L.cfg.id, status: L.status, active: L.active, count: L.meta?.count ?? 0 })) }),
       setView: (v: Partial<View>) => this.nav.setView(v),

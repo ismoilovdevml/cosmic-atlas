@@ -213,7 +213,9 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   const seg = sHi.sub(sLo);
   const segLen = length(seg);
   const dir = select(segLen.greaterThan(1e-3), seg.div(segLen), vec2(1.0, 0.0));
-  const perp = vec2(dir.y.negate(), dir.x);
+  // dir rotated by −90°, so (x, y) → x·perp + y·dir keeps the quad's CCW winding (streak.ts is the
+  // tested CPU twin; the mirrored perp made FrontSide cull every streak)
+  const perp = vec2(dir.y, dir.x.negate());
   const w = ph.size; // device px
   const along = positionGeometry.y.add(0.5); // 0 at the lo end, 1 at hi
   const offPx = sLo.add(seg.mul(along)).add(dir.mul(positionGeometry.y.mul(w))).add(perp.mul(positionGeometry.x.mul(w)));

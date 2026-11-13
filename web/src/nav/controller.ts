@@ -56,16 +56,21 @@ export class NavController {
   private pinch: { span: number; mid: { x: number; y: number } } | null = null;
   private flight: Flight | null = null;
   private downAt: { x: number; y: number; t: number } | null = null;
+  /** the gesture's first pointer went down on a map label (its own click opens the label) */
+  private downOnLabel = false;
+  /** the last gesture that started on a label moved or pinched, so its click must not fire */
+  private swallowClick = false;
   onClick: (x: number, y: number) => void = () => {};
   /** extra lower bound on the distance (pc), e.g. a followed planet's radius; 0 = none */
   distFloor = 0;
   onDoubleClick: (x: number, y: number) => void = () => {};
 
   constructor(private el: HTMLElement, private camera: THREE.PerspectiveCamera) {
-    el.addEventListener('pointerdown', this.onPointerDown);
-    el.addEventListener('pointermove', this.onPointerMove);
-    el.addEventListener('pointerup', this.onPointerUp);
-    el.addEventListener('pointercancel', this.onPointerUp);
+    el.addEventListener('pointerdown', (e) => this.onPointerDown(e, false));
+    // move/up on window: a gesture may start on a map label (no capture there), see addGestureSource
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerUp);
     el.addEventListener('wheel', this.onWheel, { passive: false });
     el.addEventListener('dblclick', (e) => this.onDoubleClick(e.clientX, e.clientY));
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -262,15 +267,37 @@ export class NavController {
     this.zoomBy(k, this.pointOnFocusPlane(e.clientX, e.clientY));
   };
 
-  private onPointerDown = (e: PointerEvent) => {
-    this.el.setPointerCapture(e.pointerId);
+  /**
+   * Map labels sit over the canvas and cover much of it on a phone. A drag, or one finger of a
+   * pinch, that lands on a label must still move the map, while a plain tap keeps opening the
+   * label. Pointers that go down on `.label` elements inside `layer` join the gesture without
+   * pointer capture (so the label still gets its click), and a click that ends a drag or pinch
+   * is swallowed.
+   */
+  addGestureSource(layer: HTMLElement) {
+    layer.addEventListener('pointerdown', (e) => {
+      if ((e.target as Element | null)?.closest('.label')) this.onPointerDown(e, true);
+    });
+    layer.addEventListener('click', (e) => {
+      if (!this.swallowClick) return;
+      this.swallowClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, { capture: true });
+  }
+
+  private onPointerDown = (e: PointerEvent, onLabel: boolean) => {
+    if (!onLabel) this.el.setPointerCapture(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     this.cancelFlight();
     this.onUserInput();
     if (this.pointers.size === 1) {
       this.dragMode = e.button === 2 || e.shiftKey ? 'pan' : 'orbit';
       this.downAt = { x: e.clientX, y: e.clientY, t: performance.now() };
+      this.downOnLabel = onLabel;
+      this.swallowClick = false;
     } else if (this.pointers.size === 2) {
+      if (this.downOnLabel) this.swallowClick = true;
       this.dragMode = null;
       this.downAt = null;
       this.pinch = this.pinchState();
@@ -319,10 +346,13 @@ export class NavController {
   };
 
   private onPointerUp = (e: PointerEvent) => {
-    this.pointers.delete(e.pointerId);
+    if (!this.pointers.delete(e.pointerId)) return;
     if (this.downAt && this.pointers.size === 0) {
       const moved = Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y);
-      if (moved < 5 && performance.now() - this.downAt.t < 500 && e.type === 'pointerup') this.onClick(e.clientX, e.clientY);
+      const tap = moved < 5 && performance.now() - this.downAt.t < 500 && e.type === 'pointerup';
+      // a tap on a label is the label's own click; a drag that started on one must not open it
+      if (this.downOnLabel) this.swallowClick = !tap;
+      else if (tap) this.onClick(e.clientX, e.clientY);
     }
     if (this.pointers.size < 2) this.pinch = null;
     if (this.pointers.size === 0) {

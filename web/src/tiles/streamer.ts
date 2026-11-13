@@ -212,6 +212,8 @@ export interface StreamStats {
   /** lite tile sets: fraction of each layer's light that is resolvable here but not in the set */
   dropped: Record<string, number>;
   fading: boolean;
+  /** drawn nodes currently using the distance-uncertainty material */
+  uncNodes: number;
 }
 
 class MaxHeap<T extends { priority: number }> {
@@ -281,7 +283,7 @@ export class Streamer {
   private freeSlots: number[] = [];
   stats: StreamStats = {
     visibleNodes: 0, drawnNodes: 0, drawnPoints: 0, wantedPoints: 0, loadedNodes: 0, loadedPoints: 0, blobs: 0,
-    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, dropped: {}, fading: false,
+    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, dropped: {}, fading: false, uncNodes: 0,
   };
 
   /**
@@ -413,6 +415,7 @@ export class Streamer {
     const blobLists = new Map<PointLayer, TileNode[]>();
     let drawnPoints = 0;
     let drawnNodes = 0;
+    let uncNodes = 0;
     for (const n of this.loaded) {
       const on = n.ownAlpha > 0.001 && n.layer.active;
       if (n.points) {
@@ -426,6 +429,7 @@ export class Streamer {
           const unc = this.uncertainty && n.uncReady;
           const mat = unc ? n.layer.mats.uncMaterial : n.layer.mats.material;
           if (n.points.material !== mat) n.points.material = mat;
+          if (unc) uncNodes++;
           drawnPoints += n.meta.count;
           drawnNodes++;
         }
@@ -507,7 +511,7 @@ export class Streamer {
     this.stats = {
       visibleNodes: cut.size, drawnNodes, drawnPoints, wantedPoints: budgetUsed, loadedNodes: this.loaded.size, loadedPoints,
       blobs, inFlight: this.inFlight, queued: toLoad.length, failed: this.failed, nearestPc: nearest, farthestPc: farthest,
-      light, pending, dropped, fading,
+      light, pending, dropped, fading, uncNodes,
     };
     return this.stats;
   }
