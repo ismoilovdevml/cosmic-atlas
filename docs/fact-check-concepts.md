@@ -153,6 +153,14 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| white-dwarf | new WD temperature; typical mass; size; density; surface gravity; Chandrasekhar limit; Sun's fate | > 100,000 K; ≈0.5 M☉; slightly larger than Earth; 10^9 kg/m³ (≈200,000 × Earth); ≈100,000 g; 1.4 M☉ | NASA Imagine, White dwarf stars |
+| white-dwarf | teaspoon mass | 5 ml × 10^9 kg/m³ = 5 t | computed |
+| white-dwarf | Sirius B | seen 1862; 98 % M☉; ≈12,000 km; mass from gravitational redshift (Hubble 2005) | ESA/Hubble heic0516 |
+| white-dwarf | WD candidates in Gaia EDR3 | ≈359,000 high-confidence | Gentile Fusillo et al. 2021 abstract |
+| white-dwarf | crystallisation pile-up delays cooling | ≈1 Gyr | Tremblay et al. 2019 abstract |
+| white-dwarf | final stage of the vast majority of stars | — | Althaus et al. 2010 abstract |
+| white-dwarf | Kepler's SN 1604 was type Ia (white dwarf) | — | NASA Chandra Kepler page |
+| white-dwarf | atlas WD flag | M_G > 10 + 2.6 (BP−RP), BP−RP < 1.6, no extinction | scripts/fetch_gaia.py (WD_A, WD_B, WD_MAX_COLOR) |
 | cosmic-web | "large-scale backbone of the cosmos", primarily dark matter; filaments bound voids; gas filaments > 10 million ly; 37,000 SDSS galaxies, 350 quasars | — | NASA Science, slime mold simulations article |
 | cosmic-web | "A slice of the universe" | de Lapparent, Geller & Huchra 1986, ApJ 302, L1 | Crossref record for doi:10.1086/184625 |
 | cosmic-web | Laniakea defined by peculiar-velocity flows | 2014 | Tully et al. 2014 abstract |
