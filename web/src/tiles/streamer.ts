@@ -22,8 +22,9 @@ import * as THREE from 'three/webgpu';
 import type { Vec3 } from '../math/frames';
 import { parseMeta, parseRenderRecords, readExtRecord, type LayerMeta, type NodeMeta, type RenderRecords } from './format';
 import type { PointLayerConfig } from '../data/manifest';
+import { fetchJson } from '../data/tilebase';
 import { createBlobMaterial, createLayerMaterials, makeNodeGeometry, QUAD, type LayerMaterials, type PointUniforms } from '../render/pointMaterial';
-import { ownLight, subtreeRms } from './blobs';
+import { droppedNodeMeta, isDroppedNode, ownLight, subtreeRms } from './blobs';
 
 const SQRT3 = Math.sqrt(3);
 /** seconds for a full split/merge cross-fade */
@@ -128,14 +129,13 @@ export class PointLayer {
       return;
     }
     try {
-      const r = await fetch(this.url('meta.json'));
-      const type = r.headers.get('content-type') ?? '';
-      if (r.status === 404 || !type.includes('json')) {
+      const r = await fetchJson<unknown>(this.url('meta.json'));
+      if (r.status === 'missing') {
         this.status = 'missing';
         return;
       }
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      this.meta = parseMeta(await r.json());
+      if (r.status === 'error') throw new Error(r.message);
+      this.meta = parseMeta(r.data);
       for (const m of this.meta.nodes) {
         this.byName.set(m.name, {
           layer: this, meta: m, children: [], parent: null, state: NodeState.Unloaded, points: null, pick: null,
@@ -150,7 +150,17 @@ export class PointLayer {
           n.parent = p;
         }
       }
-      for (const n of this.byName.values()) n.ownL = ownLight(n);
+      // lite tile sets: one virtual, never-loaded child per node whose children were dropped
+      // (tiles/blobs.ts); it is not in byName, so lookups by name only see real nodes
+      for (const p of [...this.byName.values()]) {
+        const dm = droppedNodeMeta(p.meta);
+        if (!dm) continue;
+        p.children.push({
+          layer: this, meta: dm, children: [], parent: p, state: NodeState.Unloaded, points: null, pick: null, data: null,
+          lastUsed: -1, priority: 0, ext: null, extBuf: null, uncReady: false, ownAlpha: 0, blobAlpha: 0, slot: 0, ownL: 0,
+        });
+      }
+      for (const n of this.byName.values()) n.ownL = ownLight(n); // virtual children keep ownL = 0
       this.root = this.byName.get('r') ?? null;
       if (!this.root) throw new Error('no root node r');
       this.status = 'ready';
@@ -199,6 +209,8 @@ export interface StreamStats {
   light: Record<string, number>;
   /** fraction of each layer's light that is resolvable at this view but not loaded (not drawn) */
   pending: Record<string, number>;
+  /** lite tile sets: fraction of each layer's light that is resolvable here but not in the set */
+  dropped: Record<string, number>;
   fading: boolean;
 }
 
@@ -269,7 +281,7 @@ export class Streamer {
   private freeSlots: number[] = [];
   stats: StreamStats = {
     visibleNodes: 0, drawnNodes: 0, drawnPoints: 0, wantedPoints: 0, loadedNodes: 0, loadedPoints: 0, blobs: 0,
-    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, fading: false,
+    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, dropped: {}, fading: false,
   };
 
   /**
@@ -349,7 +361,7 @@ export class Streamer {
       if (n.state === NodeState.Unloaded) toLoad.push(n);
       if (n.state !== NodeState.Loaded) continue;
       for (const ch of n.children) {
-        if (!this.inFrustum(ch, v)) continue;
+        if (isDroppedNode(ch.meta) || !this.inFrustum(ch, v)) continue;
         const p = this.projected(ch, v.camPos, v.pxPerRad).px;
         // refine big nodes (detail) and every subtree whose light would be resolved (honest blobs)
         if (p < this.minNodePx && this.blobOk(ch, v)) continue;
@@ -367,14 +379,17 @@ export class Streamer {
     const ownTarget = new Set<TileNode>();
     const blobTarget = new Set<TileNode>();
     const pendingL: Record<string, number> = {};
+    const droppedL: Record<string, number> = {};
     for (const L of this.layers) {
       if (!L.active || !L.root) continue;
       pendingL[L.cfg.id] = 0;
+      droppedL[L.cfg.id] = 0;
       const walk = (n: TileNode) => {
         if (cut.has(n) && n.state === NodeState.Loaded) {
           ownTarget.add(n);
           for (const c of n.children) walk(c);
         } else if (this.blobOk(n, v)) blobTarget.add(n);
+        else if (isDroppedNode(n.meta)) droppedL[L.cfg.id] += n.meta.agg?.L ?? 0;
         else pendingL[L.cfg.id] += n.meta.agg?.L ?? 0;
       };
       walk(L.root);
@@ -433,11 +448,15 @@ export class Streamer {
     }
     let blobs = 0;
     const pending: Record<string, number> = {};
+    const dropped: Record<string, number> = {};
     for (const [L, list] of blobLists) {
       const rootL = L.root!.meta.agg?.L;
       const pend = pendingL[L.cfg.id] ?? 0;
+      const drop = droppedL[L.cfg.id] ?? 0;
       pending[L.cfg.id] = rootL ? pend / rootL : NaN;
-      light[L.cfg.id] = rootL && rootL - pend > rootL * 1e-9 ? light[L.cfg.id] / (rootL - pend) : NaN;
+      dropped[L.cfg.id] = rootL ? drop / rootL : NaN;
+      const shown = rootL ? rootL - pend - drop : 0;
+      light[L.cfg.id] = rootL && shown > rootL * 1e-9 ? light[L.cfg.id] / shown : NaN;
       L.ensureBlobCapacity(list.length);
       const g = L.blobMesh.geometry as THREE.InstancedBufferGeometry;
       const pos = g.getAttribute('binst') as THREE.InstancedBufferAttribute;
@@ -488,7 +507,7 @@ export class Streamer {
     this.stats = {
       visibleNodes: cut.size, drawnNodes, drawnPoints, wantedPoints: budgetUsed, loadedNodes: this.loaded.size, loadedPoints,
       blobs, inFlight: this.inFlight, queued: toLoad.length, failed: this.failed, nearestPc: nearest, farthestPc: farthest,
-      light, pending, fading,
+      light, pending, dropped, fading,
     };
     return this.stats;
   }

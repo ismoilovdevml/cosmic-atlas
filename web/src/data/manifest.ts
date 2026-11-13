@@ -1,6 +1,7 @@
 /** web/public/layers.json: which layers and catalogues the viewer knows about. */
 
 import type { Vec3 } from '../math/frames';
+import { fetchJson } from './tilebase';
 
 export type ColorMode = 'star' | 'galaxy';
 
@@ -34,6 +35,7 @@ export type LayerConfig = PointLayerConfig | ModelLayerConfig;
 
 export interface Manifest {
   version: number;
+  /** default tile origin when neither ?tiles= nor VITE_TILE_BASE is set (see tilebase.ts) */
   tilesBase?: string;
   catalogs: string[];
   layers: LayerConfig[];
@@ -64,23 +66,20 @@ export interface CatalogEntry {
 
 /**
  * Optional listing of what is built under tiles/ ({layers: [...], catalogs: [...]}). The dev
- * server generates it; on a static host it may be absent, in which case every configured layer
- * and catalogue is probed (and missing ones show up as 404s in the console).
+ * server generates it; for a static host, scripts/write_tiles_index.py writes the same file. When
+ * it is absent, every configured layer and catalogue is probed (missing ones show up as 404s).
  */
 export interface TilesIndex {
   layers: string[];
   catalogs: string[];
 }
 
-export async function loadTilesIndex(base = 'tiles'): Promise<TilesIndex | null> {
-  try {
-    const r = await fetch(`${base}/_index.json`);
-    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return null;
-    const j = (await r.json()) as TilesIndex;
-    return Array.isArray(j.layers) && Array.isArray(j.catalogs) ? j : null;
-  } catch {
-    return null;
-  }
+/** `base` is the tile base ending in '/' (tilebase.ts) */
+export async function loadTilesIndex(base = 'tiles/'): Promise<TilesIndex | null> {
+  const r = await fetchJson<TilesIndex>(`${base}_index.json`);
+  if (r.status !== 'ok') return null;
+  const j = r.data;
+  return j && Array.isArray(j.layers) && Array.isArray(j.catalogs) ? j : null;
 }
 
 export async function loadManifest(url = 'layers.json'): Promise<Manifest> {
@@ -105,13 +104,8 @@ export async function loadCatalogs(urls: string[]): Promise<{ entries: CatalogEn
   const seen = new Set<string>();
   const results = await Promise.all(
     urls.map(async (u) => {
-      try {
-        const r = await fetch(u);
-        if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return { u, data: null };
-        return { u, data: (await r.json()) as CatalogEntry[] };
-      } catch {
-        return { u, data: null };
-      }
+      const r = await fetchJson<CatalogEntry[]>(u);
+      return { u, data: r.status === 'ok' ? r.data : null };
     }),
   );
   // real catalogues first so they win over dev placeholders with the same name
