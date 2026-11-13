@@ -38,6 +38,34 @@ export interface PointUniforms {
   opacity: { value: number };
   /** view-space position of the Sun (for line-of-sight elongation) */
   sunView: { value: THREE.Vector3 };
+  /** 0 = flux photometry, 1 = galaxy density mode (fixed sprite, exposure from screen density) */
+  densityMix: { value: number };
+  /** density mode: peak intensity of one galaxy sprite (linear, set from the 98th-percentile density) */
+  densityK: { value: number };
+  /** density mode: sprite diameter, CSS px */
+  fixedPx: { value: number };
+  /** thin slab: view-space z of the plane through the focus, and its half-thickness (pc; huge = off) */
+  slabZ: { value: number };
+  slabHalf: { value: number };
+}
+
+/** density-mode sprite diameter, CSS px */
+export const DENSITY_SPRITE_PX = 2.2;
+export const SLAB_OFF = 1e30;
+
+export function createPointUniforms(): PointUniforms {
+  return {
+    mRef: uniform(0), pxPerRad: uniform(1000), dpr: uniform(1), opacity: uniform(1),
+    sunView: uniform(new THREE.Vector3()), densityMix: uniform(0), densityK: uniform(0.3),
+    fixedPx: uniform(DENSITY_SPRITE_PX), slabZ: uniform(0), slabHalf: uniform(SLAB_OFF),
+  } as unknown as PointUniforms;
+}
+
+/** soft-edged slab weight for a view-space z (1 inside, 0 outside, 15 % ramp at the faces) */
+export function slabWeight(z: N, u: PointUniforms): N {
+  const U = u as unknown as Record<string, N>;
+  const dz = z.sub(U.slabZ).abs();
+  return float(1.0).sub(smoothstep(U.slabHalf.mul(0.85), U.slabHalf, dz));
 }
 
 export interface LayerMaterials {
@@ -75,7 +103,7 @@ export function photometry(M: N, r: N, physRadiusPc: N | null, maxCssPx: number,
   const peak = flux.div(rRef.mul(rRef).mul(K_GAUSS));
   const maxPx = U.dpr.mul(maxCssPx);
   const fade = physRadiusPc ? float(1.0).sub(smoothstep(maxPx, maxPx.mul(4.0), trueSize)) : float(1.0);
-  return { size: min(trueSize, maxPx), peak, fade, flux };
+  return { size: min(trueSize, maxPx), peak, fade, flux, m };
 }
 
 /** rim-zeroed Gaussian of the squared normalised radius */
@@ -88,13 +116,7 @@ export const objectAlpha = () => uniform(1).onObjectUpdate(({ object }: any) => 
 const objectSlot = () => uniform(0).onObjectUpdate(({ object }: any) => object?.userData?.slot ?? 0);
 
 export function createLayerMaterials(kind: PointKind, layerCode: number): LayerMaterials {
-  const uniforms: PointUniforms = {
-    mRef: uniform(0) as unknown as { value: number },
-    pxPerRad: uniform(1000) as unknown as { value: number },
-    dpr: uniform(1) as unknown as { value: number },
-    opacity: uniform(1) as unknown as { value: number },
-    sunView: uniform(new THREE.Vector3()) as unknown as { value: THREE.Vector3 },
-  };
+  const uniforms = createPointUniforms();
   const U = uniforms as unknown as Record<string, N>;
   const isGal = kind === 'galaxy';
   const alpha: N = objectAlpha();
@@ -108,7 +130,14 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   const M = isGal ? float(-14.0).sub(code.div(20.0)) : float(20.0).sub(code.div(10.0));
   const phys = isGal ? float(1e4).mul(pow(float(10.0), M.add(21.0).mul(-0.12))) : null;
   const ph = photometry(M, r, phys, isGal ? GAL_MAX_PX : STAR_MAX_PX, uniforms);
-  const intensity: N = ph.peak.mul(ph.fade).mul(U.opacity).mul(alpha);
+  // galaxies at survey scales: fixed small sprite, intensity from the screen-density exposure with a
+  // mild boost for apparently bright galaxies; resolved/nearby galaxies keep flux photometry
+  const dm: N = isGal ? U.densityMix : float(0.0);
+  const brightBoost = min(max(float(1.0).add(float(17.5).sub(ph.m).mul(0.25)), 1.0), 2.5);
+  const dSize = max(U.dpr.mul(U.fixedPx), isGal ? min(ph.size, U.dpr.mul(GAL_MAX_PX)).mul(ph.fade) : float(0.0));
+  const dPeak = U.densityK.mul(brightBoost).mul(U.dpr.mul(U.fixedPx).div(dSize).pow(2.0));
+  const sizeMixed: N = mix(ph.size, dSize, dm);
+  const intensity: N = mix(ph.peak.mul(ph.fade), dPeak, dm).mul(U.opacity).mul(alpha).mul(slabWeight(mv.z, uniforms));
   const inFront: N = mv.z.lessThan(0.0);
   const drawKeep: N = intensity.greaterThan(DRAW_GATE).and(inFront);
 
@@ -131,7 +160,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false,
   });
   material.positionNode = inst;
-  material.sizeNode = select(drawKeep, ph.size.div(U.dpr), float(0.0));
+  material.sizeNode = select(drawKeep, sizeMixed.div(U.dpr), float(0.0));
   material.colorNode = Fn(() => {
     const u2 = shapeU2(uv().mul(2.0).sub(1.0));
     If(u2.greaterThan(1.0), () => {
@@ -144,7 +173,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
 
   // ---- pick: same gate quantity, minimum footprint, brightest wins (depth = 1/(1+I))
   const pickKeep: N = intensity.greaterThan(PICK_GATE).and(inFront);
-  const pickSize = max(ph.size, U.dpr.mul(2 * PICK_MIN_RADIUS_PX));
+  const pickSize = max(sizeMixed, U.dpr.mul(2 * PICK_MIN_RADIUS_PX));
   const vPickI: N = varying(intensity, 'vPickI');
   const vIdx: N = varying(float(instanceIndex), 'vIdx');
   const pickMaterial = new THREE.PointsNodeMaterial({
@@ -212,13 +241,18 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
 export function createBlobMaterial(u: PointUniforms): THREE.PointsNodeMaterial {
   const binst = attribute('binst', 'vec3'); // centroid − camera (pc), rewritten every frame
   const bcol = attribute('bcol', 'vec3'); // sRGB 0..1
-  const bdat = attribute('bdat', 'vec2'); // (L · blobAlpha, radius pc)
+  const bdat = attribute('bdat', 'vec2'); // (L · blobAlpha, RMS-based sprite radius pc)
+  const bn = attribute('bn', 'float'); // galaxy count · blobAlpha (density mode)
   const U = u as unknown as Record<string, N>;
   const mv = modelViewMatrix.mul(vec4(binst, 1.0));
   const r = max(length(mv.xyz), 1e-6);
   const M = float(-2.5).mul(log(max(bdat.x, 1e-30)).div(LOG10));
   const ph = photometry(M, r, bdat.y, GAL_MAX_PX, u);
-  const I: N = ph.peak.mul(ph.fade).mul(U.opacity);
+  // density mode: a blob is n galaxies' worth of fixed sprites, spread over its own footprint
+  const fixedDev = U.dpr.mul(U.fixedPx);
+  const bSize = max(ph.size, fixedDev);
+  const dPeak = U.densityK.mul(bn).mul(fixedDev.div(bSize).pow(2.0));
+  const I: N = mix(ph.peak.mul(ph.fade), dPeak, U.densityMix).mul(U.opacity).mul(slabWeight(mv.z, u));
   const keep: N = I.greaterThan(DRAW_GATE).and(mv.z.lessThan(0.0)).and(bdat.x.greaterThan(0.0));
   const vI: N = varying(I, 'vBlobI');
   const vC: N = varying(srgbToLinearNode(bcol), 'vBlobC');
@@ -226,7 +260,7 @@ export function createBlobMaterial(u: PointUniforms): THREE.PointsNodeMaterial {
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false,
   });
   mat.positionNode = binst;
-  mat.sizeNode = select(keep, ph.size.div(U.dpr), float(0.0));
+  mat.sizeNode = select(keep, mix(ph.size, bSize, U.densityMix).div(U.dpr), float(0.0));
   mat.colorNode = Fn(() => {
     const p = uv().mul(2.0).sub(1.0);
     const u2 = dot(p, p);

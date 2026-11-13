@@ -23,6 +23,10 @@ describe('deep link', () => {
     expect(back.sel).toMatchObject({ type: 'point', id });
     expect(BigInt((back.sel as { id: string }).id)).toBe(4472832130942575872n);
   });
+  it('round-trips the thin-slab setting', () => {
+    expect(parseHash(formatHash({ slab: 25 })).slab).toBe(25);
+    expect(parseHash(formatHash({ slab: 0 })).slab).toBeUndefined();
+  });
   it('round-trips catalogue selections with awkward names', () => {
     const back = parseHash(formatHash({ sel: { type: 'cat', name: 'Andromeda (M31) & co/α' } }));
     expect(back.sel).toEqual({ type: 'cat', name: 'Andromeda (M31) & co/α' });

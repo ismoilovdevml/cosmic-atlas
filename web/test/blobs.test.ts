@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildTree, cutBlobs, cutLight, lightFromLum, ownLight, type TreeNode } from '../src/tiles/blobs';
+import { buildTree, cutBlobs, cutLight, cutLightSplit, lightFromLum, ownLight, subtreeRms, type TreeNode } from '../src/tiles/blobs';
 import { parseMeta, parseRenderRecords } from '../src/tiles/format';
 
 const TILES = resolve(import.meta.dirname, '../../data/tiles');
@@ -57,6 +57,25 @@ for (const [layer, kind] of [['synthetic-stars', 'star'], ['synthetic-galaxies',
           const drawn = randomCut(root, p, r);
           const L = cutLight(root, (n) => drawn.has(n));
           expect(Math.abs(L / rootL - 1)).toBeLessThan(0.01);
+        }
+      }
+    });
+
+    it('with the 6 px eligibility rule: drawn + blob = eligible light, pending reported separately', () => {
+      const { root, rootL } = load();
+      const r = rng(11);
+      // a camera 1 Gpc out, 864 px/rad: a subtree may be blobbed only if 2·rms projects to <= 6 px
+      for (const dist of [3e5, 3e7, 1e9, 3e9]) {
+        const eligible = (n: TreeNode) => ((2 * subtreeRms(n)) / Math.max(dist, 1)) * 864 <= 6;
+        for (let k = 0; k < 10; k++) {
+          const drawn = randomCut(root, 0.6, r);
+          const c = cutLightSplit(root, (n) => drawn.has(n), eligible);
+          // blobs never stand in for resolvable light; the three parts add up to the root
+          expect(Math.abs((c.drawn + c.blob + c.pending) / rootL - 1)).toBeLessThan(0.01);
+          const eligibleL = rootL - c.pending;
+          if (eligibleL > rootL * 1e-6) expect(Math.abs((c.drawn + c.blob) / eligibleL - 1)).toBeLessThan(0.01);
+          else expect(c.drawn + c.blob).toBeLessThan(rootL * 1e-6); // nothing drawn, root resolvable: all pending
+          for (const b of cutBlobs(root, (n) => drawn.has(n))) if (!eligible(b)) expect(c.pending).toBeGreaterThan(0);
         }
       }
     });

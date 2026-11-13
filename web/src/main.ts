@@ -15,7 +15,9 @@ import { normName, resolveSesame, searchCatalog, viewDistanceFor, type Resolved 
 import { galToLB, galToRadec, radecDistToGal, type Vec3 } from './math/frames';
 import { describeLookback, fmtNum, formatDistance, formatLightTime, formatLy, niceScaleBar } from './math/units';
 import { NavController, type View } from './nav/controller';
-import { absMagFromLum } from './render/brightness';
+import { absMagFromLum, galaxyRadiusPc } from './render/brightness';
+import { DEFAULT_EXPOSURE, binCounts, exposureFromCounts, smoothExposure, type SamplePoints } from './render/exposure';
+import { DENSITY_SPRITE_PX, SLAB_OFF } from './render/pointMaterial';
 import { LabelLayer, type LabelItem } from './render/labels';
 import { MilkyWayModel, R0_PC } from './render/milkyway';
 import { GpuPicker } from './render/pick';
@@ -71,6 +73,14 @@ class App {
   fps = 0;
   /** render every frame even when nothing changes (benchmarks) */
   continuous = false;
+  /** thin slab through the focus, perpendicular to the view: half-thickness in Mpc (0 = off) */
+  slabMpc = 0;
+  private slabWanted = 80;
+  /** galaxy density-mode exposure (smoothed) and when it was last estimated */
+  private densityK = 0;
+  private densityTarget = 0;
+  private lastExposureT = 0;
+  private densityInfo = { p98: 0, k: 0 };
   private renders = 0;
   private fpsT0 = performance.now();
   private lastT = performance.now();
@@ -132,6 +142,7 @@ class App {
     if (h.view) this.applyHashView(h.view, false);
     else this.nav.setView({ focus: [0, 0, 0], dist: 6, yaw: (-150 * Math.PI) / 180, pitch: 0.38 });
     this.pendingSel = h.sel ?? null;
+    if (h.slab) this.setSlab(h.slab);
     window.addEventListener('hashchange', () => this.onHashChange());
 
     requestAnimationFrame(this.loop);
@@ -331,7 +342,11 @@ class App {
       if (!e.xyz) continue;
       const d = e.dist_pc;
       const absMag = e.mag !== null && e.mag !== undefined && d > 0 ? e.mag - 5 * Math.log10(d / 10) : null;
+      const isMw = /^milky way/i.test(e.name);
+      const sizePc = isMw ? 15000 : e.kind === 'galaxy' || e.kind === 'qso' ? (absMag !== null ? galaxyRadiusPc(absMag) : 10000)
+        : e.kind === 'lg_galaxy' ? (absMag !== null ? Math.min(galaxyRadiusPc(absMag), 20000) : 1500) : e.kind === 'cluster' ? 5 : undefined;
       items.push({
+        sizePc,
         name: e.name,
         xyz: e.xyz,
         kind: e.kind,
@@ -341,9 +356,9 @@ class App {
         onClick: () => this.showCatalogEntry(e),
       });
     }
-    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: 'Milky Way', xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5,
+    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: 'Milky Way', xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5, sizePc: 15000,
       onClick: () => this.nav.flyTo({ focus: [R0_PC, 0, 0], dist: 6e4, pitch: 1.5 }) });
-    for (const m of this.mw.labels) items.push({ name: m.name, xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5 });
+    for (const m of this.mw.labels) items.push({ name: m.name, xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
     this.dirty = true;
   }
@@ -384,7 +399,8 @@ class App {
     const D = this.nav.view.dist;
 
     // render on demand: only when something changed, a fade is running, or benchmarking
-    const want = this.continuous || this.dirty || moved || this.nav.flying || this.streamer.stats.fading;
+    const settling = this.densityK > 0 && Math.abs(Math.log(this.densityK / (this.densityTarget || this.densityK))) > 0.01;
+    const want = this.continuous || this.dirty || moved || this.nav.flying || this.streamer.stats.fading || settling;
     const gpuFree = this.backend !== 'WebGPU' || this.inFlight < MAX_FRAMES_IN_FLIGHT;
     if (want && gpuFree) {
       this.dirty = false;
@@ -418,6 +434,10 @@ class App {
     this.camera.updateProjectionMatrix();
 
     const logD = Math.log10(Math.max(D, 1e-9));
+    // galaxies switch from flux photometry to density mode between 10 and 40 Mpc of camera distance
+    const densityMix = smoothstep(7.0, 7.6, logD);
+    const slabHalf = this.slabMpc > 0 ? this.slabMpc * 1e6 : SLAB_OFF;
+    if (densityMix > 0) this.updateDensityExposure(cam, pxPerRad, dt);
     // view-space Sun, for line-of-sight streaks (float64 rotate, then narrow)
     const sunView = new THREE.Vector3(-cam[0], -cam[1], -cam[2]).applyMatrix4(this.camera.matrixWorldInverse);
     for (const L of this.layers) {
@@ -428,6 +448,10 @@ class App {
       u.dpr.value = this.dpr;
       u.opacity.value = L.opacity;
       u.sunView.value.copy(sunView);
+      u.densityMix.value = L.kind === 'galaxy' ? densityMix : 0;
+      u.densityK.value = this.densityK || 0.3;
+      u.slabZ.value = -D; // the focus sits at view-space z = −D
+      u.slabHalf.value = slabHalf;
     }
     this.mwFade = this.mw.update(cam, pxPerRad, this.dpr);
     const camFromSun = Math.hypot(cam[0], cam[1], cam[2]);
@@ -444,6 +468,47 @@ class App {
         dev.queue.onSubmittedWorkDone().then(() => (this.inFlight = Math.max(0, this.inFlight - 1)));
       }
     }
+  }
+
+  /** 98th-percentile screen density of the drawn galaxies → density-mode exposure (4 Hz) */
+  private updateDensityExposure(cam: Vec3, pxPerRad: number, dt: number) {
+    const now = performance.now();
+    if (now - this.lastExposureT > 250 || !this.densityTarget) {
+      this.lastExposureT = now;
+      const nodes: SamplePoints[] = [];
+      for (const n of this.streamer.drawn()) {
+        if (n.layer.kind !== 'galaxy' || !n.data || !n.layer.active) continue;
+        const c = n.meta.center;
+        nodes.push({ rel: [c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]], positions: n.data.positions, count: n.meta.count, alpha: n.ownAlpha });
+      }
+      const e = this.camera.matrixWorldInverse.elements; // column-major → row-major rotation
+      const W = this.renderer.domElement.width;
+      const H = this.renderer.domElement.height;
+      const bins = binCounts(nodes, {
+        rot: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]], f: pxPerRad, width: W, height: H,
+        slabZ: -this.nav.view.dist, slabHalf: this.slabMpc > 0 ? this.slabMpc * 1e6 : SLAB_OFF,
+      }, 150_000);
+      const r = exposureFromCounts(bins, W, H, { ...DEFAULT_EXPOSURE, spritePx: DENSITY_SPRITE_PX * this.dpr });
+      this.densityTarget = r.k * Math.pow(10, 0.4 * this.exposure);
+      this.densityInfo = { p98: r.p98, k: r.k };
+    }
+    this.densityK = smoothExposure(this.densityK, this.densityTarget, dt);
+  }
+
+  setSlab(halfMpc: number) {
+    this.slabMpc = halfMpc;
+    if (halfMpc > 0) this.slabWanted = halfMpc;
+    const cb = document.getElementById('slab-on') as HTMLInputElement | null;
+    const rg = document.getElementById('slab') as HTMLInputElement | null;
+    if (cb) cb.checked = halfMpc > 0;
+    if (rg) {
+      rg.value = String(this.slabWanted);
+      rg.disabled = !(halfMpc > 0);
+    }
+    const out = document.getElementById('slab-out');
+    if (out) out.textContent = `±${this.slabWanted} Mpc`;
+    this.dirty = true;
+    this.scheduleHash();
   }
 
   // ------------------------------------------------------------------ readouts & overlays
@@ -474,6 +539,10 @@ class App {
       const gpuMB = (st.loadedPoints * 16) / 1048576;
       const kept = Object.values(st.light).filter(Number.isFinite);
       const light = kept.length ? `${(Math.min(...kept) * 100).toFixed(1)} %` : 'n/a';
+      // pending light per layer (resolvable at this view, not loaded within the point budget)
+      const pend = Object.entries(st.pending).filter(([, v]) => Number.isFinite(v) && v > 0.0005).sort((a, b) => b[1] - a[1]);
+      const short = (id: string) => (this.layers.find((l) => l.cfg.id === id)?.cfg.title ?? id).replace(/ galaxies$/i, '');
+      const pending = pend.length ? pend.slice(0, 2).map(([id, v]) => `${short(id)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %`).join(', ') : 'none';
       stats.innerHTML =
         `<span>Renderer</span><b>${this.backend}</b>` +
         `<span>FPS</span><b>${this.fps < 0.5 ? 'idle' : this.fps.toFixed(0)}</b>` +
@@ -481,7 +550,9 @@ class App {
         `<span>Budget</span><b>${fmtNum(this.streamer.pointBudget / 1e6, 3)} M</b>` +
         `<span>Nodes drawn / loaded</span><b>${st.drawnNodes} / ${st.loadedNodes}</b>` +
         `<span>Subtree blobs</span><b>${st.blobs}</b>` +
-        `<span>Light kept</span><b>${light}</b>` +
+        `<span>Light kept (unresolved)</span><b>${light}</b>` +
+        `<span>Light pending</span><b>${pending}</b>` +
+        (this.slabMpc > 0 ? `<span>Slab</span><b>±${this.slabMpc} Mpc</b>` : '') +
         `<span>Loading</span><b>${st.inFlight + st.queued}</b>` +
         `<span>Point memory</span><b>${gpuMB.toFixed(0)} MB</b>` +
         `<span>Camera distance</span><b>${formatDistance(D)}</b>`;
@@ -869,6 +940,11 @@ class App {
       this.streamer.uncertainty = (e.target as HTMLInputElement).checked;
       this.dirty = true;
     });
+    $<HTMLInputElement>('slab-on').addEventListener('change', (e) => this.setSlab((e.target as HTMLInputElement).checked ? this.slabWanted : 0));
+    $<HTMLInputElement>('slab').addEventListener('input', (e) => {
+      this.slabWanted = +(e.target as HTMLInputElement).value;
+      this.setSlab(this.slabMpc > 0 ? this.slabWanted : 0);
+    });
     $<HTMLInputElement>('stats-on').addEventListener('change', (e) => ($('stats').hidden = !(e.target as HTMLInputElement).checked));
 
     $('info-close').addEventListener('click', () => this.closeInfo());
@@ -1028,6 +1104,7 @@ class App {
       view: { focus: v.focus, dist: v.dist, yawDeg: v.yaw * DEG, pitchDeg: v.pitch * DEG },
       layers: this.layers.length ? this.layerVisibility() : undefined,
       sel: this.selection?.ref ?? undefined,
+      slab: this.slabMpc > 0 ? this.slabMpc : undefined,
     });
     if (location.hash !== h) history.replaceState(null, '', h);
   }
@@ -1044,6 +1121,7 @@ class App {
   private async onHashChange() {
     const h = parseHash(location.hash);
     if (h.view) this.applyHashView(h.view, true);
+    if ((h.slab ?? 0) !== this.slabMpc) this.setSlab(h.slab ?? 0);
     await this.layersReady;
     if (h.layers) for (const [id, on] of Object.entries(h.layers)) if (this.layerVisibility()[id] !== undefined && this.layerVisibility()[id] !== on) this.setLayerVisible(id, on);
     const cur = this.selection?.ref;
@@ -1061,6 +1139,8 @@ class App {
       flyTo: (v: Partial<View>) => this.nav.flyTo(v),
       pickAt: (x: number, y: number) => this.pick(x, y, false),
       setContinuous: (on: boolean) => (this.continuous = on),
+      setSlab: (halfMpc: number) => this.setSlab(halfMpc),
+      density: () => ({ ...this.densityInfo, kSmoothed: this.densityK }),
       setExposure: (mag: number) => {
         this.exposure = mag;
         this.dirty = true;

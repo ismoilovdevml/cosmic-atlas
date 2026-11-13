@@ -62,7 +62,7 @@ cosmic web) — and deeper nodes add the rest: rendering a node never requires i
   "idPrefix": "Gaia DR3 ",
   "nodes": [
     {"name": "r", "center": [0,0,0], "half": 1000.0, "count": 20000, "children": 255,
-     "agg": {"n": 12345678, "L": 3.1e7, "c": [12.0, -3.5, 1.2], "rgb": [255, 236, 214]}}
+     "agg": {"n": 12345678, "L": 3.1e7, "c": [12.0, -3.5, 1.2], "rgb": [255, 236, 214], "rms": 410.2}}
   ]
 }
 ```
@@ -71,7 +71,7 @@ cosmic web) — and deeper nodes add the rest: rendering a node never requires i
 - `children` = 8-bit mask of existing children.
 - `agg` = summed light of the node **and all its descendants**: point count `n`, total luminosity `L`
   (units of an M=0 source, recovered from the `lum` codes), light-weighted centroid `c` (pc, relative to
-  `center`) and light-weighted mean `rgb`. The renderer draws one soft "blob" per unloaded subtree so
+  `center`), light-weighted mean `rgb` and light-weighted RMS radius `rms` (pc). The renderer draws one soft "blob" per unloaded subtree so
   distant views keep their total light (technique from skymap, MIT).
 
 ### `.bin` render record — 16 bytes, little endian

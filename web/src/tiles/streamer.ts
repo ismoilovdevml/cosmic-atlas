@@ -23,7 +23,7 @@ import type { Vec3 } from '../math/frames';
 import { parseMeta, parseRenderRecords, readExtRecord, type LayerMeta, type NodeMeta, type RenderRecords } from './format';
 import type { PointLayerConfig } from '../data/manifest';
 import { createBlobMaterial, createLayerMaterials, makeNodeGeometry, QUAD, type LayerMaterials, type PointUniforms } from '../render/pointMaterial';
-import { ownLight } from './blobs';
+import { ownLight, subtreeRms } from './blobs';
 
 const SQRT3 = Math.sqrt(3);
 /** seconds for a full split/merge cross-fade */
@@ -117,6 +117,7 @@ export class PointLayer {
     g.setAttribute('binst', new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3));
     g.setAttribute('bcol', new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3));
     g.setAttribute('bdat', new THREE.InstancedBufferAttribute(new Float32Array(cap * 2), 2));
+    g.setAttribute('bn', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1));
     g.instanceCount = 0;
     this.blobCap = cap;
   }
@@ -194,8 +195,10 @@ export interface StreamStats {
   failed: number;
   nearestPc: number;
   farthestPc: number;
-  /** drawn light / root subtree light, per active layer (1 = conserved) */
+  /** (drawn + blob light) / (root light − pending light), per active layer: 1 = conserved */
   light: Record<string, number>;
+  /** fraction of each layer's light that is resolvable at this view but not loaded (not drawn) */
+  pending: Record<string, number>;
   fading: boolean;
 }
 
@@ -249,6 +252,12 @@ export class Streamer {
   cacheFactor = 1.6;
   /** "distance uncertainty" display mode */
   uncertainty = false;
+  /**
+   * a subtree may be drawn as a blob only when its light is unresolved: 2 × RMS radius projects to at
+   * most this many device px. Larger subtrees are queued for loading instead; if the budget does not
+   * reach them, their light is reported as pending, never smeared.
+   */
+  blobMaxPx = 6;
   onLoaded: () => void = () => {};
 
   private inFlight = 0;
@@ -260,8 +269,39 @@ export class Streamer {
   private freeSlots: number[] = [];
   stats: StreamStats = {
     visibleNodes: 0, drawnNodes: 0, drawnPoints: 0, wantedPoints: 0, loadedNodes: 0, loadedPoints: 0, blobs: 0,
-    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, fading: false,
+    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, fading: false,
   };
+
+  /**
+   * May this subtree be represented by a blob (or nothing) at this view? Yes when its light is
+   * unresolved (2 × RMS projects to ≤ blobMaxPx), or when even ALL of its light combined would be
+   * below visibility in flux mode (nothing to hide, so no reason to load it). In galaxy density mode
+   * every galaxy is visible, so only the size test applies.
+   */
+  private blobOk(n: TileNode, v: StreamView): boolean {
+    if (this.blobPx(n, v.camPos, v.pxPerRad) <= this.blobMaxPx) return true;
+    const u = n.layer.uniforms;
+    if (u.densityMix.value > 0.5) return false;
+    const a = n.meta.agg;
+    if (!a || !(a.L > 0)) return true;
+    const c = n.meta.center;
+    const d = Math.max(Math.hypot(c[0] + a.c[0] - v.camPos[0], c[1] + a.c[1] - v.camPos[1], c[2] + a.c[2] - v.camPos[2]), 1e-6);
+    const flux = a.L * Math.pow(10, 0.4 * u.mRef.value) * (10 / d) * (10 / d);
+    return flux < 1e-3;
+  }
+
+  /** projected diameter (device px) of a subtree's light, 2 × RMS about its centroid; Infinity if inside */
+  private blobPx(n: TileNode, cam: Vec3, pxPerRad: number): number {
+    const c = n.meta.center;
+    const a = n.meta.agg;
+    const x = c[0] + (a?.c[0] ?? 0) - cam[0];
+    const y = c[1] + (a?.c[1] ?? 0) - cam[1];
+    const z = c[2] + (a?.c[2] ?? 0) - cam[2];
+    const d = Math.hypot(x, y, z);
+    const rms = subtreeRms(n);
+    if (d <= rms) return Infinity;
+    return ((2 * rms) / d) * pxPerRad;
+  }
 
   nodeForSlot(slot: number): TileNode | null {
     return this.slots[slot] ?? null;
@@ -297,7 +337,9 @@ export class Streamer {
     let farthest = 0;
     while (heap.size) {
       const n = heap.pop()!;
-      if (budgetUsed + n.meta.count > this.pointBudget) break;
+      // layer roots are always drawn (≤ nodeCapacity each), so a small layer is never starved by a
+      // big one; other nodes that do not fit are skipped (smaller ones may still fit)
+      if (n.parent && budgetUsed + n.meta.count > this.pointBudget) continue;
       budgetUsed += n.meta.count;
       cut.add(n);
       n.lastUsed = v.frame;
@@ -309,7 +351,8 @@ export class Streamer {
       for (const ch of n.children) {
         if (!this.inFrustum(ch, v)) continue;
         const p = this.projected(ch, v.camPos, v.pxPerRad).px;
-        if (p < this.minNodePx) continue;
+        // refine big nodes (detail) and every subtree whose light would be resolved (honest blobs)
+        if (p < this.minNodePx && this.blobOk(ch, v)) continue;
         ch.priority = p;
         heap.push(ch);
       }
@@ -323,13 +366,16 @@ export class Streamer {
     // ---- 2. targets: own points for loaded cut nodes, blobs for the undrawn frontier
     const ownTarget = new Set<TileNode>();
     const blobTarget = new Set<TileNode>();
+    const pendingL: Record<string, number> = {};
     for (const L of this.layers) {
       if (!L.active || !L.root) continue;
+      pendingL[L.cfg.id] = 0;
       const walk = (n: TileNode) => {
         if (cut.has(n) && n.state === NodeState.Loaded) {
           ownTarget.add(n);
           for (const c of n.children) walk(c);
-        } else blobTarget.add(n);
+        } else if (this.blobOk(n, v)) blobTarget.add(n);
+        else pendingL[L.cfg.id] += n.meta.agg?.L ?? 0;
       };
       walk(L.root);
     }
@@ -386,9 +432,12 @@ export class Streamer {
       if (n.blobAlpha > 0.001 && n.meta.agg && n.meta.agg.L > 0) list.push(n);
     }
     let blobs = 0;
+    const pending: Record<string, number> = {};
     for (const [L, list] of blobLists) {
       const rootL = L.root!.meta.agg?.L;
-      light[L.cfg.id] = rootL ? light[L.cfg.id] / rootL : NaN;
+      const pend = pendingL[L.cfg.id] ?? 0;
+      pending[L.cfg.id] = rootL ? pend / rootL : NaN;
+      light[L.cfg.id] = rootL && rootL - pend > rootL * 1e-9 ? light[L.cfg.id] / (rootL - pend) : NaN;
       L.ensureBlobCapacity(list.length);
       const g = L.blobMesh.geometry as THREE.InstancedBufferGeometry;
       const pos = g.getAttribute('binst') as THREE.InstancedBufferAttribute;
@@ -397,6 +446,8 @@ export class Streamer {
       const P = pos.array as Float32Array;
       const C = col.array as Float32Array;
       const D = dat.array as Float32Array;
+      const cnt = g.getAttribute('bn') as THREE.InstancedBufferAttribute;
+      const NN = cnt.array as Float32Array;
       list.forEach((n, i) => {
         const a = n.meta.agg!;
         const c = n.meta.center;
@@ -408,11 +459,13 @@ export class Streamer {
         C[i * 3 + 1] = a.rgb[1] / 255;
         C[i * 3 + 2] = a.rgb[2] / 255;
         D[i * 2] = a.L * n.blobAlpha;
-        // points fill the node cube (rms ≈ 0.58 half-edge); the sprite Gaussian has σ ≈ radius/2.8
-        D[i * 2 + 1] = n.meta.half * 1.6;
+        // sprite radius from the light-weighted RMS: a 3D RMS r projects to a 2D RMS of r·√(2/3), and the
+        // sprite's Gaussian exp(-4u²) has a 2D RMS of radius/2, so radius = 2·√(2/3)·rms ≈ 1.63·rms
+        D[i * 2 + 1] = 1.63 * subtreeRms(n);
+        NN[i] = a.n * n.blobAlpha;
       });
       g.instanceCount = list.length;
-      pos.needsUpdate = col.needsUpdate = dat.needsUpdate = true;
+      pos.needsUpdate = col.needsUpdate = dat.needsUpdate = cnt.needsUpdate = true;
       L.blobMesh.visible = list.length > 0;
       L.blobMesh.position.set(0, 0, 0);
       blobs += list.length;
@@ -435,7 +488,7 @@ export class Streamer {
     this.stats = {
       visibleNodes: cut.size, drawnNodes, drawnPoints, wantedPoints: budgetUsed, loadedNodes: this.loaded.size, loadedPoints,
       blobs, inFlight: this.inFlight, queued: toLoad.length, failed: this.failed, nearestPc: nearest, farthestPc: farthest,
-      light, fading,
+      light, pending, fading,
     };
     return this.stats;
   }

@@ -25,6 +25,8 @@ export interface HashState {
   view?: HashView;
   layers?: Record<string, boolean>;
   sel?: SelRef;
+  /** thin-slab half-thickness, Mpc (absent = off) */
+  slab?: number;
 }
 
 const num = (x: number, p = 9) => String(+x.toPrecision(p));
@@ -38,6 +40,7 @@ export function formatHash(s: HashState): string {
   if (s.layers && Object.keys(s.layers).length) {
     parts.push(`l=${Object.entries(s.layers).map(([id, on]) => (on ? id : `~${id}`)).join(',')}`);
   }
+  if (s.slab !== undefined && s.slab > 0) parts.push(`slab=${+s.slab.toPrecision(4)}`);
   if (s.sel) {
     parts.push(
       s.sel.type === 'cat'
@@ -66,6 +69,9 @@ export function parseHash(hash: string): HashState {
         if (tok.startsWith('~')) out.layers[tok.slice(1)] = false;
         else out.layers[tok] = true;
       }
+    } else if (key === 'slab') {
+      const v = Number(val);
+      if (Number.isFinite(v) && v > 0) out.slab = v;
     } else if (key === 'sel') {
       if (val.startsWith('cat:')) {
         out.sel = { type: 'cat', name: decodeURIComponent(val.slice(4)) };

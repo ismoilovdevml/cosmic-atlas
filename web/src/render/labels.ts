@@ -20,6 +20,8 @@ export interface LabelItem {
   absMag: number | null;
   minScale?: number;
   maxScale?: number;
+  /** physical radius (pc) of an extended object; its label hides when the object is under a pixel */
+  sizePc?: number;
   onClick?: () => void;
 }
 
@@ -81,6 +83,7 @@ export class LabelLayer {
   }
 
   update(camera: THREE.PerspectiveCamera, camPos: Vec3, focusDist: number, width: number, height: number, occluders: DOMRect[], dt: number) {
+    const pxPerRadCss = height / 2 / Math.tan((camera.fov * Math.PI) / 360);
     type C = { it: LabelItem; x: number; y: number; rank: number };
     const cands: C[] = [];
     if (this.enabled) {
@@ -93,6 +96,8 @@ export class LabelLayer {
         const dz = it.xyz[2] - camPos[2];
         const r = Math.hypot(dx, dy, dz);
         if (r < focusDist * 1e-3) continue; // we are sitting on it
+        // an extended object smaller than a pixel is not "at scale": its label would sit on unrelated points
+        if (it.sizePc !== undefined && ((2 * it.sizePc) / r) * pxPerRadCss < 1) continue;
         if (it.kind !== 'model' && r > focusDist * (it.kind.includes('galaxy') ? 100 : 300)) continue;
         this.v.set(dx, dy, dz).project(camera);
         if (this.v.z > 1 || this.v.z < -1) continue;

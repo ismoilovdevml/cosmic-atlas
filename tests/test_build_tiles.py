@@ -114,3 +114,27 @@ def test_root_aggregate_counts_everything(tmp_path):
     assert root["agg"]["n"] == n
     ext = np.fromfile(out / "n" / "r.ext.bin", dtype=bt.EXT_DTYPE)
     assert np.allclose(ext["dist_lo"], 0.9) and np.allclose(ext["dist_hi"], 1.1)
+
+
+def test_rms_matches_direct_computation(tmp_path):
+    rng = np.random.default_rng(5)
+    n = 4000
+    pd.DataFrame({"id": [f"S {i}" for i in range(n)], "source_id": np.arange(n, dtype=np.int64),
+                  "ra": rng.uniform(0, 360, n), "dec": rng.uniform(-80, 80, n),
+                  "dist_pc": rng.uniform(1e8, 2e9, n), "mag": rng.uniform(14, 22, n), "z": 0.2,
+                  "color": np.nan, "kind": "galaxy"}).to_parquet(tmp_path / "a.parquet")
+    out = tmp_path / "t"
+    bt.main(["g", "--src", str(tmp_path), "--out", str(out), "--capacity", "200",
+             "--order", "random", "--kind-model", "galaxy"])
+    meta = json.loads((out / "meta.json").read_text())
+    root = next(nd for nd in meta["nodes"] if nd["name"] == "r")
+    pts, ws = [], []
+    for nd in meta["nodes"]:
+        rec = np.fromfile(out / "n" / f"{nd['name']}.bin", dtype=bt.RENDER_DTYPE)
+        pts.append(np.stack([rec["x"], rec["y"], rec["z"]], 1).astype(float) + nd["center"])
+        ws.append(10 ** (-0.4 * (-14.0 - rec["lum"] / 20.0)))
+    x, w = np.concatenate(pts), np.concatenate(ws)
+    c = (x * w[:, None]).sum(0) / w.sum()
+    rms = np.sqrt((w * ((x - c) ** 2).sum(1)).sum() / w.sum())
+    assert abs(root["agg"]["rms"] - rms) / rms < 1e-4
+    assert np.allclose(np.array(root["agg"]["c"]) + root["center"], c, rtol=1e-6)

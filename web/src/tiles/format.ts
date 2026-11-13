@@ -10,6 +10,8 @@ export interface NodeAgg {
   c: [number, number, number];
   /** light-weighted mean colour, sRGB bytes */
   rgb: [number, number, number];
+  /** light-weighted RMS radius about the centroid, pc (optional; proposed contract field) */
+  rms?: number;
 }
 
 export interface NodeMeta {

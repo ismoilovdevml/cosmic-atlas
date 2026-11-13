@@ -92,11 +92,38 @@ Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copi
 - **LOD and budget.** A node refines when its bounding sphere projects larger than `minNodePx` (the
   Detail slider). Nodes are taken in priority order until the point budget (default 4 M, slider
   0.5–12 M) is used up.
-- **Subtree blobs.** Every node that is not drawn, but whose parent is (or an undrawn root), is drawn
-  as one soft blob with its subtree's `agg` light, colour and centroid. Because
-  `agg.L(n) = own(n) + Σ agg.L(children)`, any cut draws the root's total light. The overlay shows
-  this live ("Light kept", 100.0 % at every scale), and `test/blobs.test.ts` checks it on the tiles
-  on disk, the real 15 M DESI tiles included.
+- **Subtree blobs, honest version.** A blob may only stand in for light that is unresolved at the
+  current view. A subtree that is not drawn becomes a blob only when twice its light-weighted RMS
+  radius projects to at most `blobMaxPx` = 6 device px. The sprite radius is 1.63 × RMS, so its 2D
+  RMS matches the subtree's projected RMS.
+  - A larger subtree is never smeared. It is queued for loading in priority order, and if the point
+    budget does not reach it, its light is reported as **pending** in the overlay (for example
+    "Light pending: DESI 81 %" at 1 Gpc with the default 4 M budget).
+  - Flux-mode subtrees whose combined light would be invisible anyway are neither loaded nor
+    reported pending.
+  - Layer roots are always drawn, so a small layer is never starved by a big one.
+  - The overlay's "Light kept (unresolved)" is (drawn + blob) / (root − pending), 100.0 % at every
+    scale. `test/blobs.test.ts` checks drawn + blob + pending = root, and that blobs never cover
+    resolvable light, on the tiles on disk including the 15 M DESI tiles.
+  - **RMS radius:** the tiles' `agg` has no RMS radius yet. The viewer reads `agg.rms` when present,
+    and otherwise uses the RMS of a uniformly filled cube about its centre, which is the half-edge.
+    *Proposed contract field:* `rms = sqrt(Σ L·|x − c|² / Σ L)` per subtree. It can be merged from
+    child moments (Σ L, Σ L·x, Σ L·|x|²) in `pipeline/build_tiles.py`.
+- **Galaxies at survey scales (density mode).** Between 10 and 40 Mpc of camera distance, galaxy
+  layers blend from flux photometry to a fixed 2.2 CSS-px sprite.
+  - **Exposure:** every few frames the app projects a strided sample of up to 150 k drawn galaxy
+    points into a 48×30 screen grid and finds the 98th-percentile bin count. It then sets the
+    per-galaxy peak so that this bin's mean luminance hits the target
+    (`k = T·binArea/(p98·K·r²)`, `src/render/exposure.ts`, unit-tested), smoothed in log space.
+    The dense z < 0.4 BGS core does not saturate, and a floor keeps a lone galaxy faintly visible.
+  - Apparently bright galaxies get up to a 2.5× boost.
+  - Blobs in this mode carry galaxy counts (`agg.n`), not light.
+- **Thin slab** (Display → Thin slab, ±10–300 Mpc, also in the deep link as `slab=`). Only points
+  and blobs within ± the half-thickness of a plane through the focus, facing the viewer, are drawn,
+  with a soft edge. The exposure estimate uses the same slab. This is the standard way to show the
+  cosmic web (CfA slice, SDSS and DESI wedges; DESI DR1 Fig. 1 is a ±5° declination wedge).
+  Checked on real DESI: `figures/viewer-200Mpc-slab.png` (±25 Mpc) shows filaments and voids, and
+  `figures/viewer-1Gpc-slab.png` (±75 Mpc) shows the survey wedge.
 - **Fades.** Each node has an own-points channel and a blob channel, which walk linearly toward
   their targets at one rate (0.35 s). During a split, the parent's blob fades out while its points
   and its children's blobs fade in, so the light stays constant.
@@ -167,7 +194,7 @@ otherwise redshift via Planck18 comoving distance when z ≥ 0.003. Otherwise th
 
 ### Deep links
 
-`#v=x,y,z,D,yawDeg,pitchDeg&l=<id>,~<hidden id>&sel=<layer>:<id>@x,y,z` (or `sel=cat:<name>`).
+`#v=x,y,z,D,yawDeg,pitchDeg&l=<id>,~<hidden id>&slab=<half Mpc>&sel=<layer>:<id>@x,y,z` (or `sel=cat:<name>`).
 The selection is stored as a **stable catalogue id** plus its position. On load, the viewer walks
 the octree path to that position, finds the id in those nodes' `.ext.bin` files and opens the card.
 A rebuilt tile set keeps working, unlike skymap's record-index links. Round-1 links (`#v=` only)
@@ -203,4 +230,8 @@ for 4×. Arrow keys orbit; + and − zoom. Click shows the brightest visible poi
 - Catalogue entries with `xyz: null` are searchable and turn the view toward their direction, but
   have no label.
 - With the dev data, labels from the real named-star catalogues do not sit on synthetic points.
+- Labels of extended objects (galaxies, Milky Way entries, model features, clusters) hide when the
+  object projects to less than 1 px. Stars are points and keep their labels.
+- At 1 Gpc without the slab, a full-depth projection is inherently crowded, and the high-z
+  LRG/ELG fan shows as a dense violet region. Use the slab to read the web.
 - The sky image also contains the stars inside 1 kpc, so near the Sun those stars appear twice.

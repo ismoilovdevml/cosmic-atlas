@@ -23,6 +23,46 @@ export function ownLight(n: TreeNode): number {
   return Math.max(0, L - ch);
 }
 
+/**
+ * Light-weighted RMS radius of a subtree about its centroid. Uses `agg.rms` when the tiles carry
+ * it; otherwise the RMS radius of a uniformly filled cube about its centre, which equals the
+ * half-edge (each axis has variance half²/3).
+ */
+export function subtreeRms(n: TreeNode): number {
+  return n.meta.agg?.rms ?? n.meta.half;
+}
+
+export interface CutLight {
+  /** own light of drawn nodes */
+  drawn: number;
+  /** subtree light drawn as blobs (unresolved at this view) */
+  blob: number;
+  /** subtree light neither drawn nor blobbed: resolvable but not loaded yet */
+  pending: number;
+}
+
+/**
+ * Split a cut's light into drawn / blob / pending. A subtree that is not drawn becomes a blob only
+ * when `isEligible` says it is unresolved at the current view; otherwise its light is pending.
+ * drawn + blob + pending always equals the root's agg.L.
+ */
+export function cutLightSplit<T extends TreeNode>(
+  root: T, isDrawn: (n: T) => boolean, isEligible: (n: T) => boolean, own: (n: T) => number = ownLight,
+): CutLight {
+  const out: CutLight = { drawn: 0, blob: 0, pending: 0 };
+  const walk = (n: T) => {
+    if (!isDrawn(n)) {
+      if (isEligible(n)) out.blob += n.meta.agg?.L ?? 0;
+      else out.pending += n.meta.agg?.L ?? 0;
+      return;
+    }
+    out.drawn += own(n);
+    for (const c of n.children) walk(c as T);
+  };
+  walk(root);
+  return out;
+}
+
 /** nodes represented by a blob for the cut `isDrawn` (drawn set must be closed toward the root) */
 export function cutBlobs<T extends TreeNode>(root: T, isDrawn: (n: T) => boolean): T[] {
   const out: T[] = [];

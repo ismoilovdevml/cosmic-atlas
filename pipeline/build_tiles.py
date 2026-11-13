@@ -198,28 +198,31 @@ def build_octree(xyz: np.ndarray, capacity: int):
 def subtree_aggregates(nodes, xyz, rgb, lin_l) -> dict:
     """Per node, summed light of the node and ALL its descendants: point count n, total luminosity L
     (units of an M=0 source), light-weighted centroid c (pc, relative to the node centre), and
-    light-weighted mean colour rgb. Lets the renderer draw one 'blob' for an unloaded subtree so
+    light-weighted mean colour rgb, light-weighted RMS radius about the centroid (pc). Lets the renderer draw one 'blob' for an unloaded subtree so
     distant views keep their total brightness (idea from skymap, MIT, cut.wesl)."""
     own = {}
     for name, center, half, idx in nodes:
         w = lin_l[idx]
-        own[name] = (len(idx), w.sum(), (xyz[idx] * w[:, None]).sum(0), (rgb[idx].astype(np.float64) * w[:, None]).sum(0), center)
+        own[name] = (len(idx), w.sum(), (xyz[idx] * w[:, None]).sum(0), (rgb[idx].astype(np.float64) * w[:, None]).sum(0),
+                     (w * np.einsum("ij,ij->i", xyz[idx], xyz[idx])).sum(), center)
     acc = {}
     for name in sorted(own, key=len, reverse=True):
-        n, L, wx, wc, center = own[name]
+        n, L, wx, wc, wxx, center = own[name]
         for c in range(8):
             ch = acc.get(name + str(c))
             if ch:
-                n, L, wx, wc = n + ch[0], L + ch[1], wx + ch[2], wc + ch[3]
-        acc[name] = (n, L, wx, wc, center)
+                n, L, wx, wc, wxx = n + ch[0], L + ch[1], wx + ch[2], wc + ch[3], wxx + ch[4]
+        acc[name] = (n, L, wx, wc, wxx, center)
     out = {}
-    for name, (n, L, wx, wc, center) in acc.items():
+    for name, (n, L, wx, wc, wxx, center) in acc.items():
         if L > 0:
-            cen, col = wx / L - center, wc / L
+            mean = wx / L
+            cen, col = mean - center, wc / L
+            rms = float(np.sqrt(max(wxx / L - float(mean @ mean), 0.0)))
         else:
-            cen, col = np.zeros(3), np.array([255.0, 255.0, 255.0])
+            cen, col, rms = np.zeros(3), np.array([255.0, 255.0, 255.0]), 0.0
         out[name] = {"n": int(n), "L": float(f"{L:.6g}"), "c": [round(float(v), 4) for v in cen],
-                     "rgb": [int(round(v)) for v in col]}
+                     "rgb": [int(round(v)) for v in col], "rms": float(f"{rms:.5g}")}
     return out
 
 

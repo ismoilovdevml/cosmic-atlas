@@ -50,6 +50,12 @@
             <span>Detail <output id="detail-out"></output></span>
             <input id="detail" type="range" min="60" max="400" step="10" value="140" />
           </label>
+          <label class="check" title="Show only points within ± the slab half-thickness of a plane through the focus, facing you, the usual way to show the cosmic web (CfA slice, SDSS and DESI wedges)">
+            <input id="slab-on" type="checkbox" /> Thin slab</label>
+          <label class="field">
+            <span>Slab half-thickness <output id="slab-out">±80 Mpc</output></span>
+            <input id="slab" type="range" min="10" max="300" step="5" value="80" disabled />
+          </label>
           <label class="check"><input id="labels-on" type="checkbox" checked /> Labels</label>
           <label class="check" title="Stretch each point along the line of sight from its 16th to 84th percentile distance, for the most detailed nodes on screen">
             <input id="unc-on" type="checkbox" /> Distance uncertainty</label>
