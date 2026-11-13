@@ -35,3 +35,14 @@ See the end of this file for the sources re-opened after writing.
 | star | Proxima apparent magnitude | 11.13 (too faint for naked eye, limit ≈6) | atlas named-stars.json (SIMBAD V); LCO magnitude page |
 | star | named stars in atlas | 653 | data/raw/named-stars/PROVENANCE.json (IAU WGSN) |
 | star | Gaia layer limit | 1 kpc | README.md, scripts/fetch_gaia.py |
+| galaxy | largest galaxies | trillions of stars, > 1 million ly across | NASA Science, Galaxies |
+| galaxy | galaxy groups / clusters | up to ~100 members / thousands | NASA Science, Galaxies |
+| galaxy | Hubble finds Cepheid V1 in M31 | night of 5–6 Oct 1923 | NASA Science, Hubble views the star that changed the universe |
+| galaxy | Hubble's distances to M31 | ≈1 million ly (V1), 900,000 ly (12 Cepheids, end 1924) | same NASA page |
+| galaxy | M31 distance in atlas | 783 kpc ≈ 2.55 million ly (light ≈2.6 Myr) | atlas local-group.json / messier-ngc.json (McConnachie 2012); computed ×3.2616 |
+| galaxy | M31 naked-eye | V = 3.44 < 6 | atlas messier-ngc.json; LCO naked-eye limit |
+| galaxy | galaxies in observable universe | ≈2 trillion (2.0 +0.7/−0.6 × 10^12), extrapolation | Conselice et al. 2016 abstract |
+| galaxy | DESI layer counts | 13,556,136 galaxies, 1,583,866 QSOs | data/raw/galaxies-desi/PROVENANCE.json |
+| galaxy | 2MRS / CF4 / LV counts | 43,463 / 55,877 / 868 | README.md layer table, PROVENANCE.json |
+| galaxy | M51, M104, M87 distances | 8.34, 9.3, 16.86 Mpc | atlas messier-ngc.json (refs per entry; M87 from CF4) |
+| galaxy | M87 giant elliptical | — | EHT 2019 Paper I abstract (arXiv:1906.11238) |
