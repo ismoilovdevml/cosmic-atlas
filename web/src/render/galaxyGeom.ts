@@ -93,14 +93,14 @@ export function diskAxes(raDeg: number, decDeg: number, paDeg: number, cosI: num
 /**
  * Cosine of the tilt used for the drawn plane. The catalogue inclination already includes the
  * intrinsic-thickness correction, so an edge-on disk can have cos i ≈ 0 while its isophote still
- * has b/a ≈ 0.15. The plane is a thin sheet, so it is never tilted beyond cos = 0.7 b/a: the
+ * has b/a ≈ 0.15. The plane is a thin sheet, so it is never tilted beyond cos = 0.85 b/a: the
  * Earth-view strip of the sheet then still contains the whole D25 ellipse (and the thumbnail's
  * galaxy). Without a catalogue inclination the thin-disk value cos i = b/a is used.
  */
 export function planeCos(inclDeg: number | null | undefined, q: number): number {
   const qq = Math.min(1, Math.max(0.02, q));
   if (inclDeg === null || inclDeg === undefined || !Number.isFinite(inclDeg)) return qq;
-  return Math.min(1, Math.max(Math.cos(inclDeg * DEG), 0.7 * qq));
+  return Math.min(1, Math.max(Math.cos(inclDeg * DEG), 0.85 * qq));
 }
 
 /**

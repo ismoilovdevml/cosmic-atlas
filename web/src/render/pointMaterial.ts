@@ -26,6 +26,7 @@ import {
   min, mix, modelViewMatrix, positionGeometry, pow, select, sin, smoothstep, uniform, uv, varying, vec2,
   vec3, vec4, viewportSize,
 } from 'three/tsl';
+import { maskFactor } from './galaxyMask';
 import { BASE_PX, E4, GAL_MAX_PX, K_GAUSS, KNEE, REF_PX_PER_RAD, STAR_MAX_PX, type PointKind } from './brightness';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -137,7 +138,10 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   const dSize = max(U.dpr.mul(U.fixedPx), isGal ? min(ph.size, U.dpr.mul(GAL_MAX_PX)).mul(ph.fade) : float(0.0));
   const dPeak = U.densityK.mul(brightBoost).mul(U.dpr.mul(U.fixedPx).div(dSize).pow(2.0));
   const sizeMixed: N = mix(ph.size, dSize, dm);
-  const intensity: N = mix(ph.peak.mul(ph.fade), dPeak, dm).mul(U.opacity).mul(alpha).mul(slabWeight(mv.z, uniforms));
+  // galaxies drawn as an oriented disk / thumbnail (galaxyShapes.ts) hand their light over from
+  // these points through the shared dot-weight mask
+  const dotW: N = isGal ? maskFactor(mv.xyz, U.sunView) : float(1.0);
+  const intensity: N = mix(ph.peak.mul(ph.fade), dPeak, dm).mul(U.opacity).mul(alpha).mul(slabWeight(mv.z, uniforms)).mul(dotW);
   const inFront: N = mv.z.lessThan(0.0);
   const drawKeep: N = intensity.greaterThan(DRAW_GATE).and(inFront);
 

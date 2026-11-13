@@ -9,7 +9,7 @@ import './style.css';
 
 import * as THREE from 'three/webgpu';
 import {
-  isPointLayer, loadCatalogs, loadManifest, loadTilesIndex, type CatalogEntry, type LayerConfig, type Manifest, type TilesIndex,
+  catalogKey, isPointLayer, loadCatalogs, loadManifest, loadTilesIndex, type CatalogEntry, type LayerConfig, type Manifest, type TilesIndex,
 } from './data/manifest';
 import { normName, resolveSesame, searchCatalog, viewDistanceFor, type Resolved } from './data/resolve';
 import { galToLB, galToRadec, radecDistToGal, type Vec3 } from './math/frames';
@@ -20,6 +20,7 @@ import { DEFAULT_EXPOSURE, binCounts, exposureFromCounts, smoothExposure, type S
 import { DENSITY_SPRITE_PX, SLAB_OFF } from './render/pointMaterial';
 import { LabelLayer, type LabelItem } from './render/labels';
 import { MilkyWayModel, R0_PC } from './render/milkyway';
+import { GalaxyShapes, type GalaxyShapesDoc } from './render/galaxyShapes';
 import { GpuPicker } from './render/pick';
 import { PostPass } from './render/post';
 import { formatHash, parseHash, type SelRef } from './state/hash';
@@ -60,6 +61,7 @@ class App {
   streamer = new Streamer();
   layers: PointLayer[] = [];
   mw = new MilkyWayModel();
+  shapes = new GalaxyShapes();
   mwCfg: LayerConfig | null = null;
   skyCfg: LayerConfig | null = null;
   sky = { visible: true, opacity: 1, loaded: false };
@@ -128,6 +130,8 @@ class App {
     this.labels = new LabelLayer($('labels'));
     this.rail = new ScaleRail($('rail'), $('rail-ticks'), $('rail-mark'));
     this.scene.add(this.mw.points);
+    this.scene.add(this.shapes.group);
+    this.shapes.onChange = () => (this.dirty = true);
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
@@ -337,6 +341,7 @@ class App {
     }
     const { entries } = await loadCatalogs(urls);
     this.catalog = entries;
+    await this.initGalaxyShapes();
     const items: LabelItem[] = [];
     for (const e of entries) {
       if (!e.xyz) continue;
@@ -361,6 +366,26 @@ class App {
     for (const m of this.mw.labels) items.push({ name: m.name, xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
     this.dirty = true;
+  }
+
+  /** D25 axes / PA / inclination per catalogue galaxy (scripts/build_galaxy_shapes.py) */
+  private async initGalaxyShapes() {
+    const file = 'galaxy-shapes.json';
+    if (this.tilesIndex && !this.tilesIndex.catalogs.includes(file)) return;
+    try {
+      const r = await fetch(`tiles/catalogs/${file}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const doc = (await r.json()) as GalaxyShapesDoc;
+      this.shapes.setData(doc, this.catalog);
+    } catch (e) {
+      console.warn(`[galaxy shapes] not loaded: ${(e as Error).message}; galaxies stay points`);
+    }
+  }
+
+  /** catalogue entry by any name or alias, with catalogue-id normalisation (M81 = MESSIER081) */
+  private findEntry(name: string): CatalogEntry | null {
+    const k = catalogKey(name);
+    return this.catalog.find((e) => [e.name, ...(e.alt ?? [])].some((n) => catalogKey(n) === k)) ?? null;
   }
 
   private findCatalog(names: string[]): CatalogEntry | null {
@@ -400,7 +425,7 @@ class App {
 
     // render on demand: only when something changed, a fade is running, or benchmarking
     const settling = this.densityK > 0 && Math.abs(Math.log(this.densityK / (this.densityTarget || this.densityK))) > 0.01;
-    const want = this.continuous || this.dirty || moved || this.nav.flying || this.streamer.stats.fading || settling;
+    const want = this.continuous || this.dirty || moved || this.nav.flying || this.streamer.stats.fading || settling || this.shapes.animating;
     const gpuFree = this.backend !== 'WebGPU' || this.inFlight < MAX_FRAMES_IN_FLIGHT;
     if (want && gpuFree) {
       this.dirty = false;
@@ -454,6 +479,13 @@ class App {
       u.slabHalf.value = slabHalf;
     }
     this.mwFade = this.mw.update(cam, pxPerRad, this.dpr);
+    const ge = AUTO_EXPOSURE.galaxy;
+    this.shapes.update({
+      cam, camera: this.camera, frustum: this.frustum, pxPerRad, dpr: this.dpr, dt, exposure: this.exposure,
+      mRef: ge.base + ge.perDecade * Math.max(-2, logD) + this.exposure,
+      // resolved galaxies follow the nearby-galaxy layers' switches
+      enabled: this.layers.some((L) => L.kind === 'galaxy' && L.active && L.cfg.id !== 'galaxies-desi' && !L.cfg.dev),
+    });
     const camFromSun = Math.hypot(cam[0], cam[1], cam[2]);
     const skyFade = 1 - smoothstep(1500, 2500, camFromSun);
     this.skyAmount = this.sky.visible && this.sky.loaded ? this.sky.opacity * skyFade : 0;
@@ -574,7 +606,9 @@ class App {
   }
 
   private project(p: Vec3, cam: Vec3): { x: number; y: number } | null {
-    const v = new THREE.Vector3(p[0] - cam[0], p[1] - cam[1], p[2] - cam[2]).project(this.camera);
+    const v = new THREE.Vector3(p[0] - cam[0], p[1] - cam[1], p[2] - cam[2]).applyMatrix4(this.camera.matrixWorldInverse);
+    if (v.z >= 0) return null; // behind the camera (NDC z alone rounds to 1 with a tiny near plane)
+    v.applyMatrix4(this.camera.projectionMatrix);
     if (v.z > 1 || v.z < -1) return null;
     return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
   }
@@ -633,7 +667,12 @@ class App {
     const L = hit ? this.layers.find((l) => l.code === hit.layerCode) : undefined;
     const n = hit && L ? this.streamer.nodeForSlot(hit.slot) : null;
     if (!hit || !n || n.layer !== L || !n.data || hit.index >= n.meta.count) {
-      if (!fly) this.closeInfo();
+      // a drawn galaxy disk (its points are faded out) is picked on the CPU
+      const g = this.shapes.pickAt(cx, cy, this.nav.camPos(), this.camera, window.innerWidth, window.innerHeight);
+      if (g) {
+        this.showCatalogEntry(g.entry);
+        if (fly) void this.nav.flyTo(this.viewFor(g.entry));
+      } else if (!fly) this.closeInfo();
       return;
     }
     const p = n.data.positions;
@@ -720,6 +759,25 @@ class App {
       rows.push(['Galactic l, b', `${lb.l.toFixed(3)}°, ${lb.b.toFixed(3)}°`]);
       rows.push(['RA, Dec (ICRS)', `${e.ra.toFixed(4)}°, ${e.dec >= 0 ? '+' : ''}${e.dec.toFixed(4)}°`]);
     }
+    let note = e.ref ? `Source: ${e.ref}` : '';
+    const g = e.kind.includes('galaxy') ? this.shapes.shapeFor(e) : null;
+    if (g) {
+      const src = (k?: string) => (k ? ({ hyperleda: 'HyperLEDA', openngc: 'OpenNGC', leda2003: 'HyperLEDA 2003', ungc: 'UNGC', mcc: 'McConnachie 2012', derived: 'from b/a' } as Record<string, string>)[k] ?? k : '');
+      if (g.major_arcmin) {
+        const minor = g.minor_arcmin ?? g.major_arcmin;
+        const am = (x: number) => (x >= 100 ? `${(x / 60).toFixed(2)}°` : `${fmtNum(x, 3)}′`);
+        const size = has ? `${fmtNum((g.major_arcmin * Math.PI / 10800) * e.dist_pc / 1e3, 3)} × ${fmtNum((minor * Math.PI / 10800) * e.dist_pc / 1e3, 3)} kpc, ` : '';
+        rows.push([`Size (${g.axes_def ?? 'D25'})`, `${size}${am(g.major_arcmin)} × ${am(minor)} (${src(g.axes_src)})`]);
+      }
+      if (g.morph || (g.t !== null && g.t !== undefined)) rows.push(['Morphology', `${g.morph ?? ''}${g.t !== null && g.t !== undefined ? `${g.morph ? ', ' : ''}T = ${g.t.toFixed(1)}` : ''} (${src(g.morph_src)})`]);
+      if (g.shape === 'disk' && g.incl_deg !== undefined) rows.push(['Inclination', `${g.incl_deg.toFixed(0)}° (${src(g.incl_src)}); near side unknown`]);
+      if (g.pa_deg !== undefined) rows.push(['Position angle', `${g.pa_deg.toFixed(0)}° E of N (${src(g.pa_src)})`]);
+      const ti = this.shapes.thumbInfo(g.name);
+      const s = this.shapes.survey;
+      const how = ti && 'via' in ti ? (ti.via === 'hips2fits' ? 'cutout from CDS hips2fits' : `HiPS tiles from ${new URL(ti.via).host}, reprojected in the browser (hips2fits unavailable)`)
+        : ti && 'error' in ti ? `not available (${ti.error}); the procedural disk is shown` : 'loaded when the galaxy is large on screen';
+      note += `${note ? ' ' : ''}Image: ${s.title} HiPS, ${s.credit}; ${how}. The image is the view from Earth, shown on the disk plane oriented by PA and inclination, so it is approximate when seen from far from the Sun.`;
+    }
     const fly = this.viewFor(e);
     const xyz = e.xyz ?? (radecDistToGal(e.ra ?? 0, e.dec ?? 0, 1e3) as Vec3);
     this.selection = { xyz, title: e.name, fly, ref: { type: 'cat', name: e.name },
@@ -729,7 +787,7 @@ class App {
       title: e.name,
       italic: e.kind.includes('galaxy'),
       rows,
-      note: e.ref ? `Source: ${e.ref}` : '',
+      note,
       links: e.name === 'Sun' ? [] : [['SIMBAD', `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]],
       fly,
     });
@@ -1146,6 +1204,30 @@ class App {
         this.dirty = true;
       },
       setLayer: (id: string, on: boolean) => this.setLayerVisible(id, on),
+      shapes: () => this.shapes.stats(),
+      /** view of a catalogue galaxy from the Sun's side, its D25 major axis filling `fill` of the height */
+      galaxyView: (name: string, fill = 0.6) => {
+        const e = this.findEntry(name);
+        const it = e ? this.shapes.itemFor(e) : null;
+        if (!e || !e.xyz || !it) return null;
+        const d = Math.hypot(...e.xyz);
+        const s = e.xyz.map((v) => v / d);
+        const dist = (2 * it.R) / (fill * 2 * Math.tan((this.camera.fov * Math.PI) / 360));
+        return { focus: e.xyz.slice(), dist, yaw: Math.atan2(-s[1], -s[0]), pitch: Math.asin(-s[2]) };
+      },
+      /** CSS-px screen position of a sky offset (arcmin north / east) from a catalogue object, seen from the camera */
+      skyPoint: (name: string, northArcmin: number, eastArcmin: number) => {
+        const e = this.findEntry(name);
+        if (!e || !e.xyz || e.ra === undefined || e.dec === undefined) return null;
+        const dec = e.dec + northArcmin / 60;
+        const ra = e.ra + eastArcmin / 60 / Math.cos((e.dec * Math.PI) / 180);
+        return this.project(radecDistToGal(ra, dec, e.dist_pc), this.nav.camPos());
+      },
+      showEntry: (name: string) => {
+        const e = this.findEntry(name);
+        if (e) this.showCatalogEntry(e);
+        return !!e;
+      },
       setSky: (on: boolean) => this.setLayerVisible(this.skyCfg?.id ?? 'gaia-sky', on),
       setUncertainty: (on: boolean) => {
         this.streamer.uncertainty = on;

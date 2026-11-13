@@ -445,6 +445,12 @@ def assemble(objs, leda, l03, ngc, ungc, mcc) -> list[dict]:
                 rec["incl_deg"], rec["incl_src"] = round(incl_from_q(rec["minor_arcmin"] / rec["major_arcmin"]), 1), "derived"
             else:
                 flags.append("no inclination")
+        # apparent magnitude for the renderer's photometry (some entries, e.g. M31 in local-group, have none)
+        for e in o["entries"]:  # entries are sorted messier-ngc (V) > local-volume (B) > local-group (V)
+            if e.get("mag") is not None:
+                rec["mag"], rec["mag_band"] = e["mag"], e.get("mag_band") or "V"
+                rec["mag_src"] = e["_cat"].removesuffix(".json")
+                break
         if o["spread_arcmin"] > 3:
             flags.append(f"catalogue positions differ by {o['spread_arcmin']:.1f} arcmin")
         rec["cats"] = o["cats"]
@@ -499,6 +505,7 @@ def main() -> None:
             "incl_deg": "inclination of the disk, 0 = face-on (disks only); the near side is not known",
             "shape": "disk (thin oriented disk) or spheroid (E/dE/dSph: drawn as a camera-facing ellipse)",
             "t": "de Vaucouleurs numerical type T", "morph": "morphological type string",
+            "mag": "apparent magnitude copied from the first catalogue entry that has one (mag_band, mag_src)",
             "keys": "every name/alias of the merged catalogue entries (viewer looks shapes up by catalogKey)",
             "*_src": "key into sources",
         },

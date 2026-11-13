@@ -92,8 +92,8 @@ describe('disk orientation on the sky (seen from the Sun)', () => {
     expect(thumbUV(0, fov, fov)[1]).toBeCloseTo(0, 12); // north edge -> first row
     expect(thumbUV(fov, 0, fov)[0]).toBeCloseTo(0, 12); // east edge -> left column
   });
-  it('plane tilt never hides the D25 ellipse: cos >= 0.7 b/a', () => {
-    expect(planeCos(90, 0.17)).toBeCloseTo(0.7 * 0.17, 12);
+  it('plane tilt never hides the D25 ellipse: cos >= 0.85 b/a', () => {
+    expect(planeCos(90, 0.17)).toBeCloseTo(0.85 * 0.17, 12);
     expect(planeCos(60, 0.52)).toBeCloseTo(0.5, 12);
     expect(planeCos(null, 0.4)).toBe(0.4);
   });
