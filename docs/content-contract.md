@@ -45,7 +45,7 @@ Same shape as data-contract §4, plus:
 
 ```json
 {"name": "Gaia BH3", "alt": ["Gaia DR3 4318465066420528000"], "kind": "black_hole",
- "ra": 294.8278, "dec": 14.9306, "dist_pc": 590.6, "dist_lo_pc": 589.0, "dist_hi_pc": 592.2,
+ "ra": 294.8278, "dec": 14.9306, "dist_pc": 590.6, "dist_lo_pc": 584.8, "dist_hi_pc": 596.4,
  "xyz": [...], "docs": "black-hole",
  "facts": {"mass_msun": [32.70, 0.82], "type": "stellar, dormant", "discovered": 2024},
  "ref": "Gaia Collaboration, Panuzzo et al. 2024, A&A 686, L2", "doi": "10.1051/0004-6361/202449763"}
