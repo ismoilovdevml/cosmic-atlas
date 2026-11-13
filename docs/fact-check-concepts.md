@@ -153,6 +153,12 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| star-cluster | open clusters: tens–thousands of stars, typically < 1 Gyr, disperse; globulars: tens of thousands–millions, halo, stars 8–13 Gyr old, ≈150 known in Milky Way | — | NASA Science, Star clusters page |
+| star-cluster | Hunt & Reffert 2023 | 729 M Gaia DR3 sources; 7,167 clusters; 2,387 new; 134 globulars; 4,105 highly reliable; tidal tails; some old clusters may not be real | Hunt & Reffert 2023 abstract |
+| star-cluster | Baumgardt & Vasiliev 2021 | 162 globular-cluster distances, ≈20 to ≤ 1 % | Baumgardt & Vasiliev 2021 abstract |
+| star-cluster | Pleiades | > 1,000 stars; ≈445 ly "not universally agreed upon" (NASA); 134.84 pc ≈ 440 ly in atlas | NASA Hubble M45 page; atlas messier-ngc.json (Hunt & Reffert) |
+| star-cluster | Arecibo message to M13, 1974 | — | National Geographic Arecibo article |
+| star-cluster | M44, M13, NGC 5139, NGC 104 distances | 183 pc, 7.42, 5.43, 4.52 kpc | atlas messier-ngc.json |
 | milky-way | disc > 100,000 ly; spiral | — | NASA Science, Galaxies |
 | milky-way | > 100 billion stars | — | NASA Science, Stars |
 | milky-way | R0 | 8,275 ± 9 (stat) ± 33 (sys) pc ≈ 27,000 ly | GRAVITY 2021 (arXiv:2101.12098) eq. 38 |
