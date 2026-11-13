@@ -145,3 +145,12 @@ See the end of this file for the sources re-opened after writing.
 | gaia-mission | final release | not before end of 2030 | ESA Gaia overview |
 | gaia-mission | Gaia BH3 found in DR4 validation | 32.7 M☉, 590 pc (2024) | Panuzzo et al. 2024 abstract |
 | gaia-mission | 1 kpc in ly | 3,262 ly | computed |
+| desi-survey | telescope | Mayall 4-m, Kitt Peak, Arizona | Fermilab DR1 press release; DESI home page |
+| desi-survey | fibres, cadence | 5,000; new set ≈ every 20 min in clear weather | Fermilab DR1 press release |
+| desi-survey | main survey start; DR1 span; DR1 release | May 2021; first 13 months (to June 2022) + SV; 19 Mar 2025 | arXiv:2503.14745 abstract; Fermilab release |
+| desi-survey | DR1 content | 18.7 M (13.1 M galaxies, 1.6 M QSOs, 4 M stars) | arXiv:2503.14745 abstract; Fermilab release |
+| desi-survey | DR1 map reaches galaxies seen ≈11 Gyr ago | — | Fermilab DR1 press release |
+| desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
+| desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
+| desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| desi-survey | atlas DESI layer | 15,140,002 = 13,556,136 galaxies + 1,583,866 QSOs; cuts ZWARN=0, DELTACHI2>25, no stars, z ≥ 0.003 | data/raw/galaxies-desi/PROVENANCE.json |
