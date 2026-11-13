@@ -110,3 +110,12 @@ See the end of this file for the sources re-opened after writing.
 | redshift | galaxy colour ramp | ivory z=0 → rose → violet z≥1.5; QSO pale cyan | pipeline/build_tiles.py galaxy_rgb |
 | redshift | redshift distances not used below | z = 0.003 (≈13.3 Mpc) | docs/data-contract.md §1; astropy Planck18 |
 | redshift | readout switches to Planck18 beyond | 10 Mpc | web/src/math/units.ts describeLookback |
+| magnitude | Hipparchus 1st–6th magnitude, no Sun/Moon/planets | — | LCO, What is apparent magnitude? |
+| magnitude | Pogson: 5 mag = factor 100; 1 mag = 2.512 | — | LCO, Comparing magnitudes |
+| magnitude | Sun apparent / absolute V | −26.74 / +4.83 | NASA Sun Fact Sheet |
+| magnitude | table: Sun −26.7, full Moon −12.6, naked eye +6 (dark) / +3 (city), Hubble faintest ≈ +30 | — | LCO, What is apparent magnitude? (table) |
+| magnitude | Sirius V, Vega V | −1.46, 0.03 | atlas named-stars.json (SIMBAD) |
+| magnitude | 24 mag = factor ≈ 4 billion | 10^(0.4×24) = 3.98 × 10^9 | computed |
+| magnitude | Gaia range | G ≈ 3 to 21 | ESA Gaia DR3 page |
+| magnitude | brightness code M ignores extinction | — | docs/data-contract.md §3 (lum code) |
+| magnitude | Exposure slider | −4 to +6 mag | web/index.html (`#exposure`) |
