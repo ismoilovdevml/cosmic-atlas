@@ -153,6 +153,15 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| milky-way | disc > 100,000 ly; spiral | — | NASA Science, Galaxies |
+| milky-way | > 100 billion stars | — | NASA Science, Stars |
+| milky-way | R0 | 8,275 ± 9 (stat) ± 33 (sys) pc ≈ 27,000 ly | GRAVITY 2021 (arXiv:2101.12098) eq. 38 |
+| milky-way | Sgr A* mass | 4.297 ± 0.013 × 10^6 M☉ | GRAVITY 2021 Table 2 |
+| milky-way | ≈200 masers; four-arm spiral; Θ0 = 236 ± 7 km/s; Θ0+V☉ = 247 ± 4 km/s; ω = 30.32 km/s/kpc; scale height 19 pc within 7 kpc | — | Reid et al. 2019 abstract |
+| milky-way | orbital period | 2π/ω = 202.6 Myr (computed); NASA ≈230 Myr | computed from Reid 2019; NASA Sun facts |
+| milky-way | Sun formed ≈4.6 Gyr ago → ≈20 orbits | 4.6/0.23 = 20; 4.6/0.203 = 22.7 | NASA Sun facts; computed |
+| milky-way | EHT Sgr A* ring | 51.8 ± 2.3 µas (2022) | EHT 2022 Paper I abstract |
+| milky-way | atlas model | Reid 2019 arms + disc + long bar, R0 = 8.275 kpc | README.md; web/public/layers.json credit |
 | local-group | > 100 galaxies within 3 Mpc | — | McConnachie 2012 abstract |
 | local-group | next most massive members M33 and LMC; merger "in around five billion years" commonly believed; ≈50 % chance of no merger in 10 Gyr | — | Sawala et al. 2024 (arXiv:2408.00064) abstract |
 | local-group | LMC distance (20 eclipsing binaries) | 49.59 ± 0.09 (stat) ± 0.54 (sys) kpc | Pietrzyński et al. 2019 abstract |
