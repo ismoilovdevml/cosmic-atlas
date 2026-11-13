@@ -153,6 +153,11 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| neutron-star | formation (protons+electrons → neutrons; 1–3 M☉ core); ≈20 km; ≈1.5 M☉ ("half a million Earth masses"); sugar cube ≈ 1 trillion kg; field trillions × Earth; magnetar ≈1,000 × stronger; densest known object | — | NASA Imagine, Neutron stars |
+| neutron-star | progenitor ≥ ≈8 M☉ | — | NASA Imagine, Supernovae |
+| neutron-star | PSR J0952−0607 | 2.35 ± 0.17 M☉; accreted ≈1 M☉ if born typical; M_max > 2.19 M☉ (1σ) | Romani et al. 2022 abstract |
+| neutron-star | GW170817 | 17 Aug 2017; ≈40 Mpc; GRB 1.7 s later; EM counterparts | LIGO/Virgo 2017 abstract |
+| neutron-star | fastest spin | 716 Hz | Hessels et al. 2006 abstract |
 | supernova-remnant | core collapse ≥ ≈8 M☉; WD accretes to ≈1.4 M☉ (type Ia); X/γ-rays; heavy elements, heating, cosmic rays | — | NASA Imagine, Supernovae |
 | supernova-remnant | Green catalogue | 310 SNRs (2024 Oct version); +21 since 2019, 5 removed as HII regions | MRAO page; Green 2025 (arXiv:2411.03367) abstract |
 | supernova-remnant | SN 1054 / Crab | 4 Jul 1054, visible in daylight for weeks; ≈6,500 ly; pulsar 30/s; progenitor ≈10 M☉; filaments > 3 million mph (= 1,341 km/s computed) | NASA Hubble Crab page |
