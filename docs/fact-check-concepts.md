@@ -153,4 +153,10 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| cosmic-web | "large-scale backbone of the cosmos", primarily dark matter; filaments bound voids; gas filaments > 10 million ly; 37,000 SDSS galaxies, 350 quasars | — | NASA Science, slime mold simulations article |
+| cosmic-web | "A slice of the universe" | de Lapparent, Geller & Huchra 1986, ApJ 302, L1 | Crossref record for doi:10.1086/184625 |
+| cosmic-web | Laniakea defined by peculiar-velocity flows | 2014 | Tully et al. 2014 abstract |
+| cosmic-web | Laniakea size, galaxies, mass, name | ≈500 million ly; ≈100,000 galaxies; 10^17 M☉; "immense heaven" | NRAO news page |
+| cosmic-web | slab settings shown on real DESI | ±25 Mpc at 200 Mpc; ±75 Mpc at 1 Gpc | web/README.md (Thin slab) |
+| cosmic-web | CF4 layer | 55,877 galaxies | data/raw/galaxies-cf4/PROVENANCE.json |
 | desi-survey | atlas DESI layer | 15,140,002 = 13,556,136 galaxies + 1,583,866 QSOs; cuts ZWARN=0, DELTACHI2>25, no stars, z ≥ 0.003 | data/raw/galaxies-desi/PROVENANCE.json |
