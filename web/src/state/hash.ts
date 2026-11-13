@@ -6,6 +6,9 @@
  *   &sel=<layerId>:<numericId>@<x>,<y>,<z>          a tile point, by its STABLE catalogue id plus
  *                                                   position (to find the node), never a record index
  *   &sel=cat:<url-encoded name>                     a named catalogue entry
+ *   &doc=<slug>                                     the open docs article (web/public/docs/<lang>/<slug>.md)
+ *   &focus=<url-encoded name>                       one-shot: fly to a named object or view, then dropped
+ *   &layer=<layerId>                                one-shot: turn a layer on and fly to a view of it, then dropped
  *
  * skymap encodes survey stars by record index, which breaks on every re-bake; ids survive rebuilds.
  */
@@ -27,6 +30,12 @@ export interface HashState {
   sel?: SelRef;
   /** thin-slab half-thickness, Mpc (absent = off) */
   slab?: number;
+  /** open docs article slug */
+  doc?: string;
+  /** one-shot request to fly to a named object (docs `#focus=` links); never written back */
+  focus?: string;
+  /** one-shot request to show a layer (docs `#layer=` links); never written back */
+  layer?: string;
 }
 
 const num = (x: number, p = 9) => String(+x.toPrecision(p));
@@ -41,6 +50,7 @@ export function formatHash(s: HashState): string {
     parts.push(`l=${Object.entries(s.layers).map(([id, on]) => (on ? id : `~${id}`)).join(',')}`);
   }
   if (s.slab !== undefined && s.slab > 0) parts.push(`slab=${+s.slab.toPrecision(4)}`);
+  if (s.doc && /^[a-z0-9][a-z0-9-]*$/.test(s.doc)) parts.push(`doc=${s.doc}`);
   if (s.sel) {
     parts.push(
       s.sel.type === 'cat'
@@ -72,6 +82,17 @@ export function parseHash(hash: string): HashState {
     } else if (key === 'slab') {
       const v = Number(val);
       if (Number.isFinite(v) && v > 0) out.slab = v;
+    } else if (key === 'doc') {
+      if (/^[a-z0-9][a-z0-9-]{0,63}$/.test(val)) out.doc = val;
+    } else if (key === 'layer') {
+      if (/^[A-Za-z0-9_.-]{1,64}$/.test(val)) out.layer = val;
+    } else if (key === 'focus') {
+      try {
+        const name = decodeURIComponent(val).trim();
+        if (name) out.focus = name;
+      } catch {
+        /* malformed escape: ignore */
+      }
     } else if (key === 'sel') {
       if (val.startsWith('cat:')) {
         out.sel = { type: 'cat', name: decodeURIComponent(val.slice(4)) };

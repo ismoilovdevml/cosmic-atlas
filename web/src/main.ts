@@ -6,6 +6,7 @@ import '@fontsource/ibm-plex-sans/400.css';
 import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
 import './style.css';
+import './ui/okina';
 
 import * as THREE from 'three/webgpu';
 import {
@@ -13,8 +14,16 @@ import {
 } from './data/manifest';
 import { DEFAULT_TILE_BASE, applyTileBase, resolveTileBase } from './data/tilebase';
 import { normName, resolveSesame, searchCatalog, viewDistanceFor, type Resolved } from './data/resolve';
+import { DocsPanel } from './docs/panel';
+import { loadArticle } from './docs/store';
+import { decimalSep, fmtFixed, getLang, initLang, onLangChange, t, tOr } from './i18n';
+import { applyI18n, mountLangSwitch } from './i18n/dom';
 import { galToLB, galToRadec, radecDistToGal, type Vec3 } from './math/frames';
-import { describeLookback, fmtNum, formatDistance, formatLightTime, formatLy, niceScaleBar } from './math/units';
+import { describeLookback, fmtNum, formatDistance, formatLightTime, formatLy, formatRange, niceScaleBar } from './math/units';
+import { docSlugFor, kindFromOtype, kindInfo } from './objects/kinds';
+import { NAMED_VIEWS, fold, type NamedView } from './search/aliases';
+import { LAYER_VIEWS, resolveFocus } from './search/focus';
+import { buildSuggestions, type BodyProvider, type SuggestItem } from './search/suggest';
 import { NavController, type View } from './nav/controller';
 import { absMagFromLum, galaxyRadiusPc } from './render/brightness';
 import { DEFAULT_EXPOSURE, binCounts, exposureFromCounts, smoothExposure, type SamplePoints } from './render/exposure';
@@ -28,7 +37,7 @@ import { formatHash, parseHash, type SelRef } from './state/hash';
 import { factRows, planetRows } from './objects/facts';
 import { findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
-import { SCALE_TOUR, resolveBeat, type Tour, type TourContext } from './tour/tours';
+import { SCALE_TOUR, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
 import { ScaleRail } from './ui/rail';
 // --- Solar System hook (web/src/solar): live planets, time control, probes
 import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, solarInfo, tr as solarTr, type SolarEntry } from './solar';
@@ -104,6 +113,15 @@ class App {
   private inFlight = 0;
   private pendingSel: SelRef | null = null;
   private layersReady: Promise<void> = Promise.resolve();
+  docs!: DocsPanel;
+  /** live Solar System bodies (registered by the Solar System module) */
+  bodies: BodyProvider | null = null;
+  /** re-renders the open info card (language change) */
+  private infoRefresh: (() => void) | null = null;
+  private infoToken = 0;
+  /** the tour beat on screen, for re-captioning on a language change */
+  private tourBeat: Beat | null = null;
+  private refreshOutputs: () => void = () => {};
   // --- Solar System hook
   solar = new SolarSystem();
   private timebar!: TimeBar;
@@ -111,6 +129,14 @@ class App {
   private solarInfoT = 0;
 
   async start() {
+    initLang();
+    applyI18n();
+    mountLangSwitch($('lang'));
+    this.docs = new DocsPanel();
+    this.docs.onFocus = (name) => this.focusByName(name);
+    this.docs.onLayer = (id) => this.showLayer(id);
+    this.docs.onChange = () => this.scheduleHash();
+    onLangChange(() => this.onLang());
     const canvas = $<HTMLCanvasElement>('view');
     // WebGPU first; three.js falls back to its WebGL2 backend by itself. ?backend=webgl forces it.
     const forceWebGL = new URLSearchParams(location.search).get('backend') === 'webgl';
@@ -125,7 +151,7 @@ class App {
       });
       await this.renderer.init();
     } catch (e) {
-      this.status(`Neither WebGPU nor WebGL 2 is available in this browser, so the map cannot be drawn. (${(e as Error).message})`, 'warn');
+      this.status(t('status.noGpu', { msg: (e as Error).message }), 'warn');
       return;
     }
     const be = (this.renderer as unknown as { backend: { isWebGPUBackend?: boolean } }).backend;
@@ -169,6 +195,7 @@ class App {
     else this.nav.setView({ focus: [0, 0, 0], dist: 6, yaw: (-150 * Math.PI) / 180, pitch: 0.38 });
     this.pendingSel = h.sel ?? null;
     if (h.slab) this.setSlab(h.slab);
+    if (h.doc) void this.docs.open(h.doc, { push: false });
     window.addEventListener('hashchange', () => this.onHashChange());
 
     requestAnimationFrame(this.loop);
@@ -176,7 +203,7 @@ class App {
     try {
       this.manifest = await loadManifest();
     } catch (e) {
-      this.status(`Could not load layers.json: ${(e as Error).message}`, 'warn');
+      this.status(t('status.noLayers', { msg: (e as Error).message }), 'warn');
       return;
     }
     // tile origin: ?tiles= > VITE_TILE_BASE > layers.json tilesBase > tiles/ (src/data/tilebase.ts)
@@ -188,6 +215,24 @@ class App {
     await this.initCatalogs();
     this.exposeDebugApi();
     if (this.pendingSel) void this.restoreSelection(this.pendingSel);
+    if (h.layer) await this.showLayer(h.layer);
+    if (h.focus) this.focusByName(h.focus);
+    if (h.layer || h.focus) this.writeHash(); // drop the one-shot params
+  }
+
+  /** the UI language changed: re-render everything built from strings */
+  private onLang() {
+    applyI18n();
+    this.rail?.build();
+    if (this.manifest) this.renderLayerPanel();
+    if (this.labels) this.buildLabels();
+    this.refreshOutputs();
+    if (!$('info').hidden) this.infoRefresh?.();
+    if (this.tourAbort && this.tourBeat) this.showCaption(this.tourBeat);
+    const tb = $('tour').querySelector('span')!;
+    tb.textContent = this.tourAbort ? t('tour.stop') : t(SCALE_TOUR.label);
+    $('search-status').textContent = '';
+    this.dirty = true;
   }
 
   // ------------------------------------------------------------------ layers
@@ -300,7 +345,7 @@ class App {
       cb.checked = opts.checked;
       const rg = li.querySelector<HTMLInputElement>('input[type=range]')!;
       rg.value = String(opts.opacity);
-      rg.setAttribute('aria-label', `${opts.title} opacity`);
+      rg.setAttribute('aria-label', t('layers.opacity', { title: opts.title }));
       rg.hidden = !opts.checked;
       cb.addEventListener('change', () => this.setLayerVisible(opts.id, cb.checked));
       rg.addEventListener('input', () => {
@@ -310,23 +355,24 @@ class App {
       list.appendChild(li);
     };
 
+    const title = (c: LayerConfig) => layerTitle(c);
     for (const L of this.layers) {
       if (L.status === 'missing' || L.status === 'error') {
-        missing.push(L.cfg.title + (L.status === 'error' ? ' (invalid)' : ''));
+        missing.push(L.status === 'error' ? t('layers.invalid', { title: title(L.cfg) }) : title(L.cfg));
         continue;
       }
       if (L.status !== 'ready' || L.superseded) continue;
       const m = L.meta!;
-      const fmtCount = (c: number) => (c >= 1e5 ? `${fmtNum(c / 1e6, 3)} million` : c.toLocaleString('en-US'));
+      const fmtCount = (c: number) => (c >= 1e5 ? t('num.million', { n: fmtNum(c / 1e6, 3) }) : fmtFixed(c, 0));
       // lite tile sets (scripts/make_lite_tiles.py) say how much of the full layer they carry
       const what = m.lite && m.fullCount
-        ? `lite: ${fmtCount(m.count)} of ${fmtCount(m.fullCount)} points`
-        : `${fmtCount(m.count)} ${L.kind === 'star' ? 'stars' : 'galaxies'}`;
+        ? t('layers.lite', { a: fmtCount(m.count), b: fmtCount(m.fullCount) })
+        : t(L.kind === 'star' ? 'layers.stars' : 'layers.galaxies', { n: m.count, nText: fmtCount(m.count) });
       row({
         id: L.cfg.id,
-        title: L.cfg.title,
+        title: title(L.cfg),
         swatch: L.kind,
-        tag: L.cfg.dev ? ['synthetic', 'synthetic'] : m.lite ? ['lite', 'lite'] : undefined,
+        tag: L.cfg.dev ? ['synthetic', t('tag.synthetic')] : m.lite ? ['lite', t('tag.lite')] : undefined,
         meta: `${what}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
         checked: L.visible,
         opacity: L.opacity,
@@ -335,14 +381,14 @@ class App {
     }
     if (this.mwCfg) {
       row({
-        id: this.mwCfg.id, title: this.mwCfg.title, swatch: 'model', tag: ['model', 'model'],
-        meta: this.mwCfg.credit ?? 'Spiral arms after Reid et al. 2019', checked: this.mw.visible, opacity: this.mw.opacity,
+        id: this.mwCfg.id, title: title(this.mwCfg), swatch: 'model', tag: ['model', t('tag.model')],
+        meta: this.mwCfg.credit ?? t('layers.mwCredit'), checked: this.mw.visible, opacity: this.mw.opacity,
         onOpacity: (v) => (this.mw.opacity = v),
       });
     }
     if (this.skyCfg) {
       row({
-        id: this.skyCfg.id, title: this.skyCfg.title, swatch: 'sky',
+        id: this.skyCfg.id, title: title(this.skyCfg), swatch: 'sky',
         meta: this.skyCfg.credit ?? '', checked: this.sky.visible, opacity: this.sky.opacity,
         onOpacity: (v) => (this.sky.opacity = v),
       });
@@ -352,15 +398,15 @@ class App {
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
       checked: this.solar.visible, opacity: this.solar.opacity, onOpacity: (v) => (this.solar.opacity = v),
     });
-    $('layer-missing').textContent = missing.length ? `Not built yet: ${missing.join(', ')}.` : '';
+    $('layer-missing').textContent = missing.length ? t('layers.notBuilt', { list: missing.join(', ') }) : '';
     $('credits').innerHTML = '';
     const credits = [
-      ...this.layers.filter((L) => L.status === 'ready' && !L.superseded).map((L) => `${L.cfg.title}: ${L.cfg.credit ?? (L.cfg.dev ? 'synthetic development data, not observations' : L.meta?.title ?? '')}`),
-      this.mwCfg ? `${this.mwCfg.title}: ${this.mwCfg.credit}` : '',
-      this.skyCfg ? `${this.skyCfg.title}: ${this.skyCfg.credit}` : '',
+      ...this.layers.filter((L) => L.status === 'ready' && !L.superseded).map((L) => `${title(L.cfg)}: ${L.cfg.credit ?? (L.cfg.dev ? t('layers.syntheticCredit') : L.meta?.title ?? '')}`),
+      this.mwCfg ? `${title(this.mwCfg)}: ${this.mwCfg.credit}` : '',
+      this.skyCfg ? `${title(this.skyCfg)}: ${this.skyCfg.credit}` : '',
       solarTr('solar.credit'), // --- Solar System hook
-      'Name resolution: CDS Sesame (via the VizieR mirror at CfA). Distances for redshifts use Planck18 comoving distance.',
-      'Rendering techniques (subtree blobs, solid-angle photometry, GPU picking, label declutter) adapted from skymap by Alexander Rulkens (MIT).',
+      t('credits.sesame'),
+      t('credits.skymap'),
     ].filter(Boolean);
     for (const c of credits) {
       const p = document.createElement('span');
@@ -383,8 +429,20 @@ class App {
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
     this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
+    this.buildLabels();
+  }
+
+  /** map labels from the catalogues and the Milky Way model; rebuilt when the language changes */
+  private buildLabels() {
+    const entries = this.catalog.filter((e) => !(e as unknown as SolarEntry).solar);
     const items: LabelItem[] = [];
-    items.push(...this.solar.labelItems); // --- Solar System hook
+    // --- Solar System hook; body labels in the current language (the items are live objects: rename in place)
+    for (const it of this.solar.labelItems) {
+      const en = SOLAR_LABEL_EN.get(it) ?? it.name;
+      SOLAR_LABEL_EN.set(it, en);
+      it.name = tOr(`body.${en.toLowerCase()}`, en);
+    }
+    items.push(...this.solar.labelItems);
     for (const e of entries) {
       if (!e.xyz) continue;
       const d = e.dist_pc;
@@ -394,7 +452,7 @@ class App {
         : e.kind === 'lg_galaxy' ? (absMag !== null ? Math.min(galaxyRadiusPc(absMag), 20000) : 1500) : e.kind === 'cluster' ? 5 : undefined;
       items.push({
         sizePc,
-        name: e.name,
+        name: displayName(e.name),
         xyz: e.xyz,
         kind: e.kind,
         absMag: e.name === 'Sun' ? 4.83 : absMag,
@@ -403,9 +461,9 @@ class App {
         onClick: () => this.showCatalogEntry(e),
       });
     }
-    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: 'Milky Way', xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5, sizePc: 15000,
+    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: t('view.milky-way'), xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5, sizePc: 15000,
       onClick: () => this.nav.flyTo({ focus: [R0_PC, 0, 0], dist: 6e4, pitch: 1.5 }) });
-    for (const m of this.mw.labels) items.push({ name: m.name, xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
+    for (const m of this.mw.labels) items.push({ name: tOr(MW_LABEL_KEYS[m.name] ?? '', m.name), xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
     this.dirty = true;
   }
@@ -432,7 +490,9 @@ class App {
 
   private findCatalog(names: string[]): CatalogEntry | null {
     const keys = names.map(normName);
-    return this.catalog.find((e) => e.xyz && [e.name, ...(e.alt ?? [])].some((n) => keys.includes(normName(n)))) ?? null;
+    // own name before alias: "Sgr A*" is also an alias of "Milky Way (Galactic Centre)"
+    return this.catalog.find((e) => e.xyz && keys.includes(normName(e.name)))
+      ?? this.catalog.find((e) => e.xyz && (e.alt ?? []).some((n) => keys.includes(normName(n)))) ?? null;
   }
 
   // ------------------------------------------------------------------ frame loop
@@ -584,7 +644,7 @@ class App {
       rg.disabled = !(halfMpc > 0);
     }
     const out = document.getElementById('slab-out');
-    if (out) out.textContent = `±${this.slabWanted} Mpc`;
+    if (out) out.textContent = `±${this.slabWanted} ${t('unit.Mpc')}`;
     this.dirty = true;
     this.scheduleHash();
   }
@@ -598,46 +658,53 @@ class App {
     ($('bar').style.width = `${Math.max(8, sb.px).toFixed(1)}px`);
     $('bar-label').textContent = sb.label;
     $('bar-light').textContent = sb.pc < 0.05 ? formatLightTime(sb.pc) : formatLy(sb.pc) || formatLightTime(sb.pc);
-    this.rail.set(Math.log10(D), `Camera ${formatDistance(D)} from focus`);
+    this.rail.set(Math.log10(D), t('readout.camera', { d: formatDistance(D) }));
 
     const f = this.nav.view.focus;
     const fd = Math.hypot(f[0], f[1], f[2]);
     if (fd < Math.max(1e-6, D * 1e-3)) {
-      $('focus-where').textContent = 'Focus on the Sun';
-      $('focus-lookback').textContent = `Camera ${formatDistance(D)} away`;
+      $('focus-where').textContent = t('readout.focusSun');
+      $('focus-lookback').textContent = t('readout.cameraAway', { d: formatDistance(D) });
     } else {
       const lb = galToLB(f);
-      $('focus-where').textContent = `Focus ${formatDistance(fd)} from the Sun`;
+      $('focus-where').textContent = t('readout.focusFrom', { d: formatDistance(fd) });
       const look = describeLookback(fd);
-      $('focus-lookback').textContent = `l ${lb.l.toFixed(1)}°, b ${lb.b.toFixed(1)}°; ${look.text}${look.z !== undefined ? ` (z ${look.z.toFixed(3)})` : ''}`;
+      $('focus-lookback').textContent = t('readout.where', { l: fmtFixed(lb.l, 1), b: fmtFixed(lb.b, 1), look: look.text })
+        + (look.z !== undefined ? ` ${t('readout.z', { z: fmtFixed(look.z, 3) })}` : '');
     }
 
     const stats = $('stats');
     if (!stats.hidden) {
       const gpuMB = (st.loadedPoints * 16) / 1048576;
       const kept = Object.values(st.light).filter(Number.isFinite);
-      const light = kept.length ? `${(Math.min(...kept) * 100).toFixed(1)} %` : 'n/a';
+      const pctText = (v: number, d: number) => `${fmtFixed(v * 100, d)} %`;
+      const light = kept.length ? pctText(Math.min(...kept), 1) : t('common.na');
       // pending light per layer (resolvable at this view, not loaded within the point budget)
       const pend = Object.entries(st.pending).filter(([, v]) => Number.isFinite(v) && v > 0.0005).sort((a, b) => b[1] - a[1]);
-      const short = (id: string) => (this.layers.find((l) => l.cfg.id === id)?.cfg.title ?? id).replace(/ galaxies$/i, '');
-      const pct = ([id, v]: [string, number]) => `${short(id)} ${(v * 100).toFixed(v < 0.1 ? 1 : 0)} %`;
-      const pending = pend.length ? pend.slice(0, 2).map(pct).join(', ') : 'none';
+      const short = (id: string) => {
+        const L = this.layers.find((l) => l.cfg.id === id);
+        return L ? layerTitle(L.cfg).replace(/ galaxies$/i, '') : id;
+      };
+      const pct = ([id, v]: [string, number]) => `${short(id)} ${pctText(v, v < 0.1 ? 1 : 0)}`;
+      const pending = pend.length ? pend.slice(0, 2).map(pct).join(', ') : t('stats.none');
       // lite tile sets: resolvable light whose points were dropped from the set
       const drop = Object.entries(st.dropped).filter(([, v]) => Number.isFinite(v) && v > 0.0005).sort((a, b) => b[1] - a[1]);
+      const M = (n: number) => t('num.millionShort', { n: fmtNum(n / 1e6, 3) });
+      const row = (k: string, v: string | number) => `<span>${t(k)}</span><b>${v}</b>`;
       stats.innerHTML =
-        `<span>Renderer</span><b>${this.backend}</b>` +
-        `<span>FPS</span><b>${this.fps < 0.5 ? 'idle' : this.fps.toFixed(0)}</b>` +
-        `<span>Points drawn</span><b>${fmtNum(st.drawnPoints / 1e6, 3)} M</b>` +
-        `<span>Budget</span><b>${fmtNum(this.streamer.pointBudget / 1e6, 3)} M</b>` +
-        `<span>Nodes drawn / loaded</span><b>${st.drawnNodes} / ${st.loadedNodes}</b>` +
-        `<span>Subtree blobs</span><b>${st.blobs}</b>` +
-        `<span>Light kept (unresolved)</span><b>${light}</b>` +
-        `<span>Light pending</span><b>${pending}</b>` +
-        (drop.length ? `<span>Not in lite tiles</span><b>${drop.slice(0, 2).map(pct).join(', ')}</b>` : '') +
-        (this.slabMpc > 0 ? `<span>Slab</span><b>±${this.slabMpc} Mpc</b>` : '') +
-        `<span>Loading</span><b>${st.inFlight + st.queued}</b>` +
-        `<span>Point memory</span><b>${gpuMB.toFixed(0)} MB</b>` +
-        `<span>Camera distance</span><b>${formatDistance(D)}</b>`;
+        row('stats.renderer', this.backend) +
+        row('stats.fps', this.fps < 0.5 ? t('stats.idle') : this.fps.toFixed(0)) +
+        row('stats.points', M(st.drawnPoints)) +
+        row('stats.budget', M(this.streamer.pointBudget)) +
+        row('stats.nodes', `${st.drawnNodes} / ${st.loadedNodes}`) +
+        row('stats.blobs', st.blobs) +
+        row('stats.light', light) +
+        row('stats.pending', pending) +
+        (drop.length ? row('stats.dropped', drop.slice(0, 2).map(pct).join(', ')) : '') +
+        (this.slabMpc > 0 ? row('stats.slab', `±${this.slabMpc} ${t('unit.Mpc')}`) : '') +
+        row('stats.loading', st.inFlight + st.queued) +
+        row('stats.memory', `${gpuMB.toFixed(0)} ${t('unit.MB')}`) +
+        row('stats.camDist', formatDistance(D));
     }
   }
 
@@ -706,7 +773,7 @@ class App {
     lab.setAttribute('x', ((a.x + b.x) / 2 + nx * 2.4 * side).toFixed(1));
     lab.setAttribute('y', ((a.y + b.y) / 2 + Math.abs(ny) * 2.4 + 14).toFixed(1));
     lab.setAttribute('text-anchor', 'middle');
-    lab.textContent = hiD ? '16–84 % distance range' : 'lower bound only';
+    lab.textContent = hiD ? t('errbar.range') : t('errbar.lower');
     lab.style.display = len > 24 ? '' : 'none';
   }
 
@@ -747,13 +814,13 @@ class App {
     if (fly) void this.nav.flyTo(flyView);
     const synthetic = !!L.cfg.dev;
     const rows: [string, string][] = [];
-    let title = `${L.meta?.idPrefix ?? ''}point ${i}`;
+    let title = `${L.meta?.idPrefix ?? ''}${t('info.pointTitle', { i: String(i) })}`;
     let ext: ReturnType<typeof readExtRecord> | null = null;
     try {
       ext = readExtRecord(await L.loadExt(n), i, L.extStride);
       title = `${L.meta?.idPrefix ?? ''}${ext.id.toString()}`;
     } catch (e) {
-      rows.push(['Catalogue record', `unavailable (${(e as Error).message})`]);
+      rows.push([t('row.catalogueRecord'), t('row.unavailable', { msg: (e as Error).message })]);
     }
     const ref: SelRef | null = ext ? { type: 'point', layer: L.cfg.id, id: ext.id.toString(), xyz } : null;
     this.selection = { xyz, title, fly: flyView, ref, lo: ext?.distLo, hi: ext?.distHi };
@@ -764,92 +831,102 @@ class App {
       if (ext && Number.isFinite(ext.distLo)) {
         const hiOk = Number.isFinite(ext.distHi);
         const frac = hiOk ? (ext.distHi - ext.distLo) / 2 / dist : NaN;
-        rows.push(['16–84 % range', hiOk ? `${formatRange(ext.distLo, ext.distHi)} (±${(frac * 100).toFixed(frac < 0.1 ? 1 : 0)} %)` : `> ${formatDistance(ext.distLo)} (no upper bound)`]);
+        rows.push([t('row.range'), hiOk ? `${formatRange(ext.distLo, ext.distHi)} (±${fmtFixed(frac * 100, frac < 0.1 ? 1 : 0)} %)` : t('row.noUpper', { d: formatDistance(ext.distLo) })]);
       }
     };
     if (kind === 'star') {
-      if (ext) rows.push(['Apparent G', ext.mag.toFixed(2)], ['BP − RP', isFinite(ext.color) ? ext.color.toFixed(2) : 'n/a']);
-      distRows('Distance (median)');
-      rows.push(['Brightness code M', `${M.toFixed(1)} (rendering proxy)`]);
+      if (ext) rows.push([t('row.apparentG'), fmtFixed(ext.mag, 2)], [t('row.bpRp'), isFinite(ext.color) ? fmtFixed(ext.color, 2) : t('common.na')]);
+      distRows(t('row.distMedian'));
+      rows.push([t('row.brightnessCode'), t('row.renderingProxy', { m: fmtFixed(M, 1) })]);
     } else {
-      if (ext) rows.push(['Apparent mag', ext.mag.toFixed(2)], ['Redshift z', ext.color.toFixed(4)]);
-      distRows('Comoving distance');
-      rows.push(['Lookback', describeLookback(dist).text.replace('light left ', '')]);
+      if (ext) rows.push([t('row.apparentMag'), fmtFixed(ext.mag, 2)], [t('row.redshift'), fmtFixed(ext.color, 4)]);
+      distRows(t('row.comoving'));
+      rows.push([t('row.lookback'), describeLookback(dist).ago]);
     }
-    rows.push(['Galactic l, b', `${lb.l.toFixed(3)}°, ${lb.b.toFixed(3)}°`]);
-    rows.push(['RA, Dec (ICRS)', `${rd.ra.toFixed(4)}°, ${rd.dec >= 0 ? '+' : ''}${rd.dec.toFixed(4)}°`]);
+    rows.push(...this.positionRows(lb, rd.ra, rd.dec));
     const links: [string, string][] = [
-      ['SIMBAD at this position', `https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=${rd.ra.toFixed(5)}%20${rd.dec >= 0 ? '%2B' : ''}${rd.dec.toFixed(5)}&CooFrame=ICRS&Radius=10&Radius.unit=arcsec`],
+      [t('link.simbadPos'), `https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=${rd.ra.toFixed(5)}%20${rd.dec >= 0 ? '%2B' : ''}${rd.dec.toFixed(5)}&CooFrame=ICRS&Radius=10&Radius.unit=arcsec`],
     ];
     if (ext && L.meta?.idPrefix?.startsWith('Gaia DR3')) {
-      links.push(['Gaia DR3 record (VizieR)', `https://vizier.cds.unistra.fr/viz-bin/VizieR-5?-source=I/355/gaiadr3&Source=${ext.id.toString()}`]);
+      links.push([t('link.gaia'), `https://vizier.cds.unistra.fr/viz-bin/VizieR-5?-source=I/355/gaiadr3&Source=${ext.id.toString()}`]);
     }
     if (kind === 'galaxy') {
-      links.push(['Legacy Surveys / DESI viewer', `https://www.legacysurvey.org/viewer?ra=${rd.ra.toFixed(5)}&dec=${rd.dec.toFixed(5)}&layer=ls-dr10&zoom=15&mark=${rd.ra.toFixed(5)},${rd.dec.toFixed(5)}`]);
+      links.push([t('link.legacy'), `https://www.legacysurvey.org/viewer?ra=${rd.ra.toFixed(5)}&dec=${rd.dec.toFixed(5)}&layer=ls-dr10&zoom=15&mark=${rd.ra.toFixed(5)},${rd.dec.toFixed(5)}`]);
     }
+    // the article: the layer's own kind (layers.json `kind`, e.g. lg_galaxy) or its colour mode
+    const docKind = (L.cfg as { kind?: string }).kind ?? kind;
+    this.infoRefresh = () => void this.showPoint(n, i, xyz, false, lum);
     this.openInfo({
-      kind: `${synthetic ? 'Synthetic ' : ''}${kind === 'star' ? 'star' : 'galaxy'} in ${L.cfg.title}`,
+      kind: t(synthetic ? 'info.point.synthetic' : kind === 'star' ? 'info.point.star' : 'info.point.galaxy', { layer: layerTitle(L.cfg) }),
       title,
       italic: kind === 'galaxy',
       rows,
-      note: synthetic ? 'Synthetic development point: there is no real object behind this id. Position links search the real sky in that direction.' : '',
+      note: synthetic ? t('info.syntheticNote') : '',
       links,
       fly: flyView,
+      doc: docSlugFor({ kind: docKind }),
     });
     this.dirty = true;
+  }
+
+  /** Galactic l, b and ICRS RA, Dec rows, in the current number format */
+  private positionRows(lb: { l: number; b: number }, ra: number, dec: number): [string, string][] {
+    return [
+      [t('row.galactic'), `${fmtFixed(lb.l, 3)}°, ${fmtFixed(lb.b, 3)}°`],
+      [t('row.radec'), `${fmtFixed(ra, 4)}°, ${dec >= 0 ? '+' : ''}${fmtFixed(dec, 4)}°`],
+    ];
   }
 
   private showCatalogEntry(e: CatalogEntry) {
     if ((e as unknown as SolarEntry).solar) return this.showSolar(e as unknown as SolarEntry); // --- Solar System hook
     const rows: [string, string][] = [];
-    if (e.alt?.length) rows.push(['Also', e.alt.slice(0, 3).join(', ')]);
+    if (e.alt?.length) rows.push([t('row.also'), e.alt.slice(0, 3).join(', ')]);
     const has = !!e.xyz && e.dist_pc > 0;
     if (has) {
-      rows.push(['Distance', `${formatDistance(e.dist_pc, 4)}${formatLy(e.dist_pc) && e.dist_pc < 1e6 ? ` (${formatLy(e.dist_pc)})` : ''}`]);
+      rows.push([t('row.distance'), `${formatDistance(e.dist_pc, 4)}${formatLy(e.dist_pc) && e.dist_pc < 1e6 ? ` (${formatLy(e.dist_pc)})` : ''}`]);
       if (Number.isFinite(e.dist_lo_pc) && Number.isFinite(e.dist_hi_pc)) {
         const frac = (e.dist_hi_pc! - e.dist_lo_pc!) / 2 / e.dist_pc;
-        rows.push(['16–84 % range', `${formatRange(e.dist_lo_pc!, e.dist_hi_pc!)} (±${(frac * 100).toFixed(frac < 0.1 ? 1 : 0)} %)`]);
+        rows.push([t('row.range'), `${formatRange(e.dist_lo_pc!, e.dist_hi_pc!)} (±${fmtFixed(frac * 100, frac < 0.1 ? 1 : 0)} %)`]);
       }
-    } else rows.push(['Distance', 'unknown (direction only)']);
-    if (e.mag !== null && e.mag !== undefined) rows.push(['Apparent mag', e.mag.toFixed(2)]);
-    // catalogue facts (labels: i18n keys facts.<key>, falling back to the key) and exoplanets
-    rows.push(...factRows(e.facts), ...planetRows(e.planets));
-    if (e.ra !== undefined && e.dec !== undefined) {
-      const lb = galToLB(radecDistToGal(e.ra, e.dec, 1));
-      rows.push(['Galactic l, b', `${lb.l.toFixed(3)}°, ${lb.b.toFixed(3)}°`]);
-      rows.push(['RA, Dec (ICRS)', `${e.ra.toFixed(4)}°, ${e.dec >= 0 ? '+' : ''}${e.dec.toFixed(4)}°`]);
-    }
-    let note = e.ref ? `Source: ${e.ref}` : '';
+    } else rows.push([t('row.distance'), t('row.directionOnly')]);
+    if (e.mag !== null && e.mag !== undefined) rows.push([t('row.apparentMag'), fmtFixed(e.mag, 2)]);
+    // catalogue facts (labels facts.<key>, units and decimal mark per language) and exoplanets
+    const loc = { t: (k: string) => t(k), decimal: decimalSep() };
+    rows.push(...factRows(e.facts, loc.t, loc), ...planetRows(e.planets, loc));
+    if (e.ra !== undefined && e.dec !== undefined) rows.push(...this.positionRows(galToLB(radecDistToGal(e.ra, e.dec, 1)), e.ra, e.dec));
+    let note = e.ref ? t('info.source', { ref: e.ref }) : '';
     const g = e.kind.includes('galaxy') ? this.shapes.shapeFor(e) : null;
     if (g) {
-      const src = (k?: string) => (k ? ({ hyperleda: 'HyperLEDA', openngc: 'OpenNGC', leda2003: 'HyperLEDA 2003', ungc: 'UNGC', mcc: 'McConnachie 2012', derived: 'from b/a' } as Record<string, string>)[k] ?? k : '');
+      const src = (k?: string) => (k ? ({ hyperleda: 'HyperLEDA', openngc: 'OpenNGC', leda2003: 'HyperLEDA 2003', ungc: 'UNGC', mcc: 'McConnachie 2012', derived: t('shape.derived') } as Record<string, string>)[k] ?? k : '');
       if (g.major_arcmin) {
         const minor = g.minor_arcmin ?? g.major_arcmin;
-        const am = (x: number) => (x >= 100 ? `${(x / 60).toFixed(2)}°` : `${fmtNum(x, 3)}′`);
-        const size = has ? `${fmtNum((g.major_arcmin * Math.PI / 10800) * e.dist_pc / 1e3, 3)} × ${fmtNum((minor * Math.PI / 10800) * e.dist_pc / 1e3, 3)} kpc, ` : '';
-        rows.push([`Size (${g.axes_def ?? 'D25'})`, `${size}${am(g.major_arcmin)} × ${am(minor)} (${src(g.axes_src)})`]);
+        const am = (x: number) => (x >= 100 ? `${fmtFixed(x / 60, 2)}°` : `${fmtNum(x, 3)}′`);
+        const size = has ? `${fmtNum((g.major_arcmin * Math.PI / 10800) * e.dist_pc / 1e3, 3)} × ${fmtNum((minor * Math.PI / 10800) * e.dist_pc / 1e3, 3)}\u00a0${t('unit.kpc')}, ` : '';
+        rows.push([t('shape.size', { def: g.axes_def ?? 'D25' }), `${size}${am(g.major_arcmin)} × ${am(minor)} (${src(g.axes_src)})`]);
       }
-      if (g.morph || (g.t !== null && g.t !== undefined)) rows.push(['Morphology', `${g.morph ?? ''}${g.t !== null && g.t !== undefined ? `${g.morph ? ', ' : ''}T = ${g.t.toFixed(1)}` : ''} (${src(g.morph_src)})`]);
-      if (g.shape === 'disk' && g.incl_deg !== undefined) rows.push(['Inclination', `${g.incl_deg.toFixed(0)}° (${src(g.incl_src)}); near side unknown`]);
-      if (g.pa_deg !== undefined) rows.push(['Position angle', `${g.pa_deg.toFixed(0)}° E of N (${src(g.pa_src)})`]);
+      if (g.morph || (g.t !== null && g.t !== undefined)) rows.push([t('shape.morphology'), `${g.morph ?? ''}${g.t !== null && g.t !== undefined ? `${g.morph ? ', ' : ''}T = ${fmtFixed(g.t, 1)}` : ''} (${src(g.morph_src)})`]);
+      if (g.shape === 'disk' && g.incl_deg !== undefined) rows.push([t('shape.inclination'), t('shape.inclinationValue', { deg: g.incl_deg.toFixed(0), src: src(g.incl_src) })]);
+      if (g.pa_deg !== undefined) rows.push([t('shape.pa'), t('shape.paValue', { deg: g.pa_deg.toFixed(0), src: src(g.pa_src) })]);
       const ti = this.shapes.thumbInfo(g.name);
       const s = this.shapes.survey;
-      const how = ti && 'via' in ti ? (ti.via === 'hips2fits' ? 'cutout from CDS hips2fits' : `HiPS tiles from ${new URL(ti.via).host}, reprojected in the browser (hips2fits unavailable)`)
-        : ti && 'error' in ti ? `not available (${ti.error}); the procedural disk is shown` : this.shapes.thumbsEnabled ? 'loaded when the galaxy is large on screen' : 'image loading is off (?thumbs=off), the procedural disk is shown';
-      note += `${note ? ' ' : ''}Image: ${s.title} HiPS, ${s.credit}; ${how}. The image is the view from Earth, shown on the disk plane oriented by PA and inclination, so it is approximate when seen from far from the Sun.`;
+      const how = ti && 'via' in ti ? (ti.via === 'hips2fits' ? t('shape.how.hips2fits') : t('shape.how.hips', { host: new URL(ti.via).host }))
+        : ti && 'error' in ti ? t('shape.how.error', { error: ti.error }) : this.shapes.thumbsEnabled ? t('shape.how.later') : t('shape.how.off');
+      note += `${note ? ' ' : ''}${t('shape.note', { survey: s.title, credit: s.credit, how })}`;
     }
     const fly = this.viewFor(e);
     const xyz = e.xyz ?? (radecDistToGal(e.ra ?? 0, e.dec ?? 0, 1e3) as Vec3);
     this.selection = { xyz, title: e.name, fly, ref: { type: 'cat', name: e.name },
       lo: e.dist_lo_pc ?? undefined, hi: e.dist_hi_pc ?? undefined };
+    this.infoRefresh = () => this.showCatalogEntry(e);
     this.openInfo({
-      kind: kindLabel(e.kind),
-      title: e.name,
+      kind: t(e.kind === 'exoplanet' ? 'kind.planetary_system' : kindInfo(e.kind).label),
+      title: displayName(e.name),
       italic: e.kind.includes('galaxy'),
       rows,
       note,
       links: catalogLinks(e),
       fly,
+      doc: e.name === 'Sun' ? 'sun' : docSlugFor(e),
     });
     this.dirty = true;
   }
@@ -862,12 +939,13 @@ class App {
     return { focus: [0, 0, 0], dist: 1e-3, yaw: Math.atan2(-d[1], -d[0]), pitch: Math.asin(-d[2]) };
   }
 
-  private openInfo(o: { kind: string; title: string; italic: boolean; rows: [string, string][]; note: string; links: [string, string][]; fly: Partial<View>; docs?: string }) {
+  private openInfo(o: { kind: string; title: string; italic: boolean; rows: [string, string][]; note: string; links: [string, string][]; fly: Partial<View>; doc?: string }) {
     $('info-kind').textContent = o.kind;
-    $('info').dataset.docs = o.docs ?? ''; // docs slug (content contract section 4) for the docs panel
-    const t = $('info-title');
-    t.textContent = o.title;
-    t.classList.toggle('galaxy', o.italic);
+    $('info').dataset.docs = o.doc ?? ''; // docs slug (content contract section 4) for the docs panel
+    const ti = $('info-title');
+    ti.textContent = o.title;
+    ti.classList.toggle('galaxy', o.italic);
+    this.showInfoDoc(o.doc, o.title);
     const dl = $('info-rows');
     dl.textContent = '';
     for (const [k, v] of o.rows) {
@@ -895,11 +973,34 @@ class App {
     this.scheduleHash();
   }
 
+  /** the article summary under the card title and its "Learn more" button (fetched, cached per lang/slug) */
+  private showInfoDoc(slug: string | undefined, title: string) {
+    const my = ++this.infoToken;
+    const sum = $('info-summary');
+    const more = $<HTMLButtonElement>('info-more');
+    sum.hidden = true;
+    more.hidden = !slug;
+    if (!slug) return;
+    more.setAttribute('aria-label', t('info.learnMoreLabel', { title }));
+    more.onclick = () => void this.docs.open(slug);
+    void loadArticle(slug, getLang()).then((a) => {
+      if (my !== this.infoToken) return;
+      if (!a) {
+        more.hidden = true;
+        return;
+      }
+      sum.textContent = a.meta.summary;
+      sum.lang = a.lang;
+      sum.hidden = !a.meta.summary;
+    });
+  }
+
   private closeInfo() {
     this.solarSel = null; // --- Solar System hook
     $('info').hidden = true;
     document.body.classList.remove('has-info');
     this.selection = null;
+    this.infoRefresh = null;
     this.scheduleHash();
   }
 
@@ -908,12 +1009,12 @@ class App {
     if (ref.type === 'cat') {
       const e = this.findCatalog([ref.name]) ?? this.catalog.find((c) => c.name === ref.name);
       if (e) this.showCatalogEntry(e);
-      else this.status(`The linked object “${ref.name}” is not in the loaded catalogues.`, 'warn');
+      else this.status(t('status.linkedMissing', { name: ref.name }), 'warn');
       return;
     }
     const L = this.layers.find((l) => l.cfg.id === ref.layer);
     if (!L || L.status !== 'ready' || !L.meta) {
-      this.status(`The linked layer “${ref.layer}” is not available.`, 'warn');
+      this.status(t('status.layerMissing', { layer: ref.layer }), 'warn');
       return;
     }
     const metaByName = new Map(L.meta.nodes.map((m) => [m.name, m]));
@@ -941,7 +1042,7 @@ class App {
       await this.showPoint(n, i, xyz, false, lum);
       return;
     }
-    this.status(`The linked object ${L.meta.idPrefix}${ref.id} was not found near the linked position.`, 'warn');
+    this.status(t('status.pointMissing', { id: `${L.meta.idPrefix}${ref.id}` }), 'warn');
   }
 
   // ------------------------------------------------------------------ Solar System hook
@@ -952,7 +1053,10 @@ class App {
     const fly = this.solar.viewFor(e);
     this.solarSel = e;
     this.selection = { xyz: e.xyz, title: e.name, fly, ref: { type: 'cat', name: e.name } };
-    this.openInfo({ kind: info.kind, title: info.title, italic: false, rows: info.rows, note: info.note, links: [], fly, docs: info.docs });
+    const title = e.solar.type === 'body' ? tOr(`body.${e.solar.id}`, info.title) : info.title;
+    this.infoRefresh = () => this.showSolar(e);
+    const rows = info.rows.map(([k, v]) => [k, localNums(v)] as [string, string]);
+    this.openInfo({ kind: info.kind, title, italic: false, rows, note: info.note, links: [], fly, doc: info.docs });
     $('info-fly').onclick = () => this.flySolar(e);
     this.dirty = true;
   }
@@ -978,7 +1082,7 @@ class App {
       this.solarInfoT = t;
       const info = solarInfo(this.solar, this.solarSel);
       const dds = $('info-rows').querySelectorAll('dd');
-      if (dds.length === info.rows.length) info.rows.forEach(([, v], i) => (dds[i].textContent = v));
+      if (dds.length === info.rows.length) info.rows.forEach(([, v], i) => (dds[i].textContent = localNums(v)));
     }
   }
 
@@ -1014,20 +1118,9 @@ class App {
       render();
       it?.run();
     };
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
     const update = () => {
-      const q = input.value.trim();
       active = -1;
-      items = searchCatalog(this.catalog, q).map((s) => ({
-        label: `<span class="n ${s.entry.kind.includes('galaxy') ? 'galaxy' : ''}">${esc(s.entry.name)}</span><span class="d">${s.entry.xyz && s.entry.dist_pc > 0 ? esc(formatDistance(s.entry.dist_pc)) : s.entry.xyz ? '' : 'direction only'}</span>${s.matched !== s.entry.name ? `<span class="a">${esc(s.matched)}</span>` : `<span class="a">${esc(kindLabel(s.entry.kind))}</span>`}`,
-        run: () => this.goToEntry(s.entry),
-      }));
-      if (q.length >= 2) {
-        items.push({
-          label: `<span class="n remote">Look up “${esc(q)}” in CDS Sesame</span><span class="d"></span><span class="a">SIMBAD, NED and VizieR names</span>`,
-          run: () => void this.sesame(q),
-        });
-      }
+      items = buildSuggestions(input.value, this.catalog).map((s) => this.suggestionRow(s));
       render();
     };
     input.addEventListener('input', update);
@@ -1041,6 +1134,10 @@ class App {
         const q = input.value.trim();
         if (active >= 0) choose(active);
         else if (items.length > 1 || (items.length === 1 && !searchCatalog(this.catalog, q).length)) choose(0);
+        else if (!items.length && q) {
+          items = buildSuggestions(q, this.catalog).map((s) => this.suggestionRow(s));
+          choose(0);
+        }
         input.blur();
         return;
       } else if (e.key === 'Escape') {
@@ -1057,8 +1154,9 @@ class App {
         e.preventDefault();
         input.focus();
       }
-      if (e.key === 'Escape' && document.activeElement !== input) this.closeInfo();
+      if (e.key === 'Escape' && document.activeElement !== input && !this.docs.isOpen) this.closeInfo();
     });
+    $('docs-btn').addEventListener('click', () => (this.docs.isOpen ? this.docs.close() : void this.docs.open('index')));
 
     // panels above the instrument strip are placed from its measured height (it wraps to two rows
     // on narrow screens and grows with the safe-area inset), so they never cover the rail or buttons
@@ -1075,7 +1173,7 @@ class App {
     const expOut = $('exposure-out');
     const setExp = () => {
       this.exposure = +exp.value;
-      expOut.textContent = `${this.exposure > 0 ? '+' : ''}${this.exposure.toFixed(2)} mag`;
+      expOut.textContent = `${this.exposure > 0 ? '+' : ''}${fmtFixed(this.exposure, 2)} ${t('unit.mag')}`;
       this.dirty = true;
     };
     exp.addEventListener('input', setExp);
@@ -1084,7 +1182,7 @@ class App {
     const budOut = $('budget-out');
     const setBud = () => {
       this.streamer.pointBudget = Math.round(+bud.value * 1e6);
-      budOut.textContent = `${(+bud.value).toFixed(1)} M`;
+      budOut.textContent = t('num.millionShort', { n: fmtFixed(+bud.value, 1) });
       this.dirty = true;
     };
     bud.addEventListener('input', setBud);
@@ -1098,6 +1196,11 @@ class App {
     };
     det.addEventListener('input', setDet);
     setDet();
+    this.refreshOutputs = () => {
+      setExp();
+      setBud();
+      this.setSlab(this.slabMpc);
+    };
     $<HTMLInputElement>('labels-on').addEventListener('change', (e) => {
       this.labels.enabled = (e.target as HTMLInputElement).checked;
       this.dirty = true;
@@ -1120,9 +1223,9 @@ class App {
       this.writeHash();
       try {
         await navigator.clipboard.writeText(location.href);
-        this.status('Link to this view copied.');
+        this.status(t('status.copied'));
       } catch {
-        this.status('Copy failed; the link is in the address bar.', 'warn');
+        this.status(t('status.copyFailed'), 'warn');
       }
     });
     const help = $<HTMLDialogElement>('help');
@@ -1146,47 +1249,188 @@ class App {
       return;
     }
     this.showCatalogEntry(e);
-    if (e.xyz) this.status(`${e.name}: ${e.dist_pc > 0 ? formatDistance(e.dist_pc) + ' from the Sun' : 'the origin of the map'}.`);
-    else this.status(`${e.name}: no distance in the catalogue; looking toward it from the Sun.`);
+    const name = displayName(e.name);
+    if (e.xyz) this.status(e.dist_pc > 0 ? t('status.goto', { name, d: formatDistance(e.dist_pc) }) : t('status.origin', { name }));
+    else this.status(t('status.noDistance', { name }));
     void this.nav.flyTo(this.viewFor(e));
+  }
+
+  /** one dropdown row (HTML is built from escaped text only) */
+  private suggestionRow(s: SuggestItem): { label: string; run: () => void } {
+    const row = (name: string, cls: string, right: string, sub: string) =>
+      `<span class="n ${cls}">${esc(name)}</span><span class="d">${esc(right)}</span><span class="a">${esc(sub)}</span>`;
+    switch (s.type) {
+      case 'catalog': {
+        const e = s.entry;
+        const dist = e.xyz && e.dist_pc > 0 ? formatDistance(e.dist_pc) : e.xyz ? '' : t('search.directionOnly');
+        return {
+          label: row(displayName(e.name), e.kind.includes('galaxy') ? 'galaxy' : '', dist, s.matched !== e.name ? s.matched : t(kindInfo(e.kind).label)),
+          run: () => this.goToEntry(e),
+        };
+      }
+      case 'alias': {
+        const name = t(s.entry.label);
+        const sub = s.matched && fold(s.matched) !== fold(name) ? s.matched : t(s.entry.target.type === 'body' ? 'search.body' : 'search.view');
+        return { label: row(name, s.entry.target.type === 'view' ? 'galaxy' : '', '', sub), run: () => this.goToAlias(s.entry.target) };
+      }
+      case 'kind': {
+        const doc = s.entry.target.type === 'kind' ? s.entry.target.doc : 'index';
+        const count = s.count < 0 ? '' : s.count > 0 ? t('search.kindObjects', { n: s.count }) : t('search.kindNone');
+        return {
+          label: `<span class="n doc">${esc(t('search.article', { title: t(s.entry.label) }))}</span><span class="d">${esc(count)}</span><span class="a">${esc(t('search.articleHint'))}</span>`,
+          run: () => void this.docs.open(doc),
+        };
+      }
+      case 'sesame':
+        return {
+          label: `<span class="n remote">${esc(t('search.lookup', { q: s.q }))}</span><span class="d"></span><span class="a">${esc(t('search.lookupHint'))}</span>`,
+          run: () => void this.sesame(s.q),
+        };
+    }
+  }
+
+  private goToAlias(target: import('./search/aliases').AliasTarget) {
+    if (target.type === 'body') this.goToBody(target.id);
+    else if (target.type === 'view') this.goToView(target.id);
+    else if (target.type === 'catalog') {
+      const e = this.findCatalog(target.names);
+      if (e) this.goToEntry(e);
+    } else void this.docs.open(target.doc);
+  }
+
+  /** register live Solar System bodies (called by the Solar System module) */
+  registerBodies(p: BodyProvider) {
+    this.bodies = p;
+  }
+
+  private goToBody(id: string) {
+    this.stopTour(false);
+    if (this.bodies?.has(id)) {
+      this.bodies.focus(id);
+      return;
+    }
+    // the Solar System layer (src/solar): live position, card, and a flight that follows the body
+    const se = this.solar.entries.find((e) => e.solar.type === 'body' && e.solar.id === id);
+    if (se) {
+      if (!this.solar.visible) this.setLayerVisible('solar', true);
+      this.showSolar(se);
+      this.flySolar(se);
+      this.status(t('status.view', { name: tOr(`body.${id}`, se.name) }));
+      return;
+    }
+    const sun = id === 'sun' ? this.findCatalog(['Sun']) : null;
+    if (sun) return this.goToEntry(sun);
+    this.goToView('solar-system');
+    this.status(t('status.bodiesMissing'));
+  }
+
+  /** a named view (src/search/aliases.ts): camera only, plus a small card linking its article */
+  private goToView(id: string) {
+    const v = NAMED_VIEWS[id];
+    if (v) this.flyToNamedView(v, () => t(`view.${id}`));
+  }
+
+  private flyToNamedView(v: NamedView, title: () => string) {
+    this.stopTour(false);
+    for (const l of v.show ?? []) if (this.layerVisibility()[l] === false) this.setLayerVisible(l, true);
+    const ctx = this.tourContext();
+    const focus = resolveTarget(v.target, ctx);
+    const dist = typeof v.dist === 'number' ? v.dist : v.dist.galaxyEdge * ctx.galaxyEdgePc();
+    const fly: Partial<View> = { focus, dist, pitch: (v.pitchDeg * Math.PI) / 180, ...(v.yawDeg !== undefined ? { yaw: (v.yawDeg * Math.PI) / 180 } : {}) };
+    // a view of one catalogue object (Andromeda, M87 …) shows that object's card: facts, links, deep link
+    const entry = 'catalog' in v.target ? this.findCatalog(v.target.catalog) : null;
+    if (entry) {
+      this.showCatalogEntry(entry);
+      this.status(t('status.view', { name: displayName(entry.name) }));
+      void this.nav.flyTo(fly);
+      return;
+    }
+    const show = () => {
+      const name = title();
+      const d = Math.hypot(...focus);
+      this.selection = { xyz: focus, title: name, fly, ref: null };
+      this.infoRefresh = show;
+      this.openInfo({
+        kind: t('search.view'), title: name, italic: false,
+        rows: d > 1e-6 ? [[t('row.distance'), formatDistance(d)]] : [],
+        note: v.ref ? t('info.source', { ref: v.ref }) : '', links: [], fly, doc: v.doc,
+      });
+      this.status(t('status.view', { name }));
+    };
+    show();
+    void this.nav.flyTo(fly);
+  }
+
+  /** `#layer=<id>` (docs links, page URLs): switch the layer on and fly to a view that shows it */
+  async showLayer(id: string): Promise<boolean> {
+    await this.layersReady;
+    const vis = this.layerVisibility();
+    if (!(id in vis)) {
+      this.status(t('status.layerMissing', { layer: id }), 'warn');
+      return false;
+    }
+    if (!vis[id]) this.setLayerVisible(id, true);
+    const L = this.layers.find((l) => l.cfg.id === id);
+    const cfg = L?.cfg ?? (this.mwCfg?.id === id ? this.mwCfg : this.skyCfg);
+    const v = LAYER_VIEWS[id];
+    if (v && cfg) this.flyToNamedView({ ...v, ref: cfg.credit }, () => layerTitle(cfg));
+    this.scheduleHash();
+    return true;
+  }
+
+  /**
+   * `#focus=<name>` (docs links, page URLs): a Solar System body or view id, a catalogue object by
+   * name, alias or slug ("sgr-a-star" ↔ "Sgr A*"), or an exact multilingual alias (src/search/focus.ts).
+   */
+  focusByName(name: string): boolean {
+    const r = resolveFocus(name, this.catalog);
+    if (!r) {
+      this.status(t('status.focusMissing', { name: name.trim() }), 'warn');
+      return false;
+    }
+    if (r.type === 'catalog') this.goToEntry(r.entry);
+    else this.goToAlias(r);
+    return true;
   }
 
   private async sesame(q: string) {
     this.stopTour(false);
-    this.status(`Looking up “${q}” in CDS Sesame…`);
+    this.status(t('status.sesameLooking', { q }));
     let r: Resolved | null = null;
     try {
       r = await resolveSesame(q);
     } catch (e) {
-      this.status(`${(e as Error).message}. Local names still work.`, 'warn');
+      this.status(t('status.sesameError', { msg: t('status.sesameUnreachable', { msg: (e as Error).message.replace(/^Sesame unreachable \((.*)\)$/, '$1') }) }), 'warn');
       return;
     }
     if (!r) {
-      this.status(`Sesame does not know “${q}”. Check the spelling or try a catalogue id such as HIP 32349.`, 'warn');
+      this.status(t('status.sesameUnknown', { q }), 'warn');
       return;
     }
-    const rows: [string, string][] = [
-      ['Type (SIMBAD)', r.otype || 'n/a'],
-      ['RA, Dec (ICRS)', `${r.ra.toFixed(4)}°, ${r.dec >= 0 ? '+' : ''}${r.dec.toFixed(4)}°`],
-    ];
-    const lb = galToLB(r.dir);
-    rows.push(['Galactic l, b', `${lb.l.toFixed(3)}°, ${lb.b.toFixed(3)}°`]);
-    rows.push(['Distance', r.distPc !== null ? formatDistance(r.distPc) : 'unknown']);
-    const link: [string, string][] = [['SIMBAD', `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(q)}`]];
+    this.showResolved(r, q, true);
+  }
+
+  private showResolved(r: Resolved, q: string, fly: boolean) {
+    const kind = kindFromOtype(r.otype, r.kind);
+    const rows: [string, string][] = [[t('row.typeSimbad'), r.otype || t('common.na')], ...this.positionRows(galToLB(r.dir), r.ra, r.dec)];
+    rows.push([t('row.distance'), r.distPc !== null ? formatDistance(r.distPc) : t('row.unknown')]);
+    const link: [string, string][] = [[t('link.simbad'), `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(q)}`]];
+    const src = sesameSource(r);
+    const card = { kind: t('info.sesameKind', { kind: t(kindInfo(kind).label) }), title: r.name, italic: r.kind === 'galaxy', links: link, rows, doc: docSlugFor({ kind }) };
+    this.infoRefresh = () => this.showResolved(r, q, false);
     if (r.xyz && r.distPc !== null) {
-      const fly = { focus: r.xyz, dist: viewDistanceFor(r.kind, r.distPc) };
-      this.selection = { xyz: r.xyz, title: r.name, fly, ref: null };
-      this.openInfo({ kind: `Resolved by Sesame (${r.kind})`, title: r.name, italic: r.kind === 'galaxy', rows, note: `Distance from ${r.distSource}.`, links: link, fly });
-      this.status(`${r.name}: ${formatDistance(r.distPc)} (${r.distSource}).`);
-      void this.nav.flyTo(fly);
+      const view = { focus: r.xyz, dist: viewDistanceFor(r.kind, r.distPc) };
+      this.selection = { xyz: r.xyz, title: r.name, fly: view, ref: null };
+      this.openInfo({ ...card, note: t('info.distFrom', { src }), fly: view });
+      this.status(t('status.sesameFound', { name: r.name, d: formatDistance(r.distPc), src }));
+      if (fly) void this.nav.flyTo(view);
     } else {
       const d = r.dir;
       const view: Partial<View> = { focus: [0, 0, 0], dist: 1e-3, yaw: Math.atan2(-d[1], -d[0]), pitch: Math.asin(-d[2]) };
       this.selection = { xyz: [d[0] * 1e3, d[1] * 1e3, d[2] * 1e3], title: r.name, fly: view, ref: null };
-      this.openInfo({ kind: `Resolved by Sesame (${r.kind})`, title: r.name, italic: r.kind === 'galaxy', rows,
-        note: `Direction only: ${r.distSource}. The view turns toward it from the Sun.`, links: link, fly: view });
-      this.status(`${r.name}: no usable distance (${r.distSource}); looking toward it from the Sun.`);
-      void this.nav.flyTo(view);
+      this.openInfo({ ...card, note: t('info.directionOnly', { src }), fly: view });
+      this.status(t('status.sesameDirection', { name: r.name, src }));
+      if (fly) void this.nav.flyTo(view);
     }
   }
 
@@ -1217,7 +1461,7 @@ class App {
         });
         return halves.length ? Math.min(Math.max(...halves), 3e9) : 2.5e9;
       },
-      lookbackText: (d) => describeLookback(d).text.replace('light left ', ''),
+      lookbackText: (d) => describeLookback(d).ago,
       // --- Solar System hook: live body positions for tour beats
       body: (id) => (this.solar.bodies.some((b) => b.def.id === id) ? ([...this.solar.positionOf(id as 'earth')] as Vec3) : null),
     };
@@ -1238,14 +1482,15 @@ class App {
       this.nav.cancelFlight();
       cap.hidden = true;
       btn.setAttribute('aria-pressed', 'false');
-      btn.querySelector('span')!.textContent = tour.label;
+      btn.querySelector('span')!.textContent = t(tour.label);
+      this.tourBeat = null;
       for (const [id, on] of Object.entries(snap.layers)) if (this.layerVisibility()[id] !== on) this.setLayerVisible(id, on);
       if (snap.sel) this.selection = snap.sel;
       if (restoreView) void this.nav.flyTo(snap.view);
     };
     this.tourAbort = restore;
     btn.setAttribute('aria-pressed', 'true');
-    btn.querySelector('span')!.textContent = 'Stop tour';
+    btn.querySelector('span')!.textContent = t('tour.stop');
     // on a phone the expanded layers panel would cover the caption and most of the view
     if (window.innerWidth < 640) $('layers-toggle').setAttribute('aria-expanded', 'false');
     this.closeInfo();
@@ -1254,15 +1499,23 @@ class App {
       if (stopped) return;
       const r = resolveBeat(beat, ctx); // targets resolved now, at playback
       for (const id of beat.show ?? []) this.setLayerVisible(id, true);
-      cap.innerHTML = '<b></b><span></span>';
-      cap.querySelector('b')!.textContent = r.title;
-      cap.querySelector('span')!.textContent = r.text;
-      cap.hidden = false;
+      this.showCaption(beat);
       const ok = await this.nav.flyTo({ focus: r.focus, dist: r.dist, pitch: r.pitch, ...(r.yaw !== undefined ? { yaw: r.yaw } : {}) }, { durationScale: 1.15 });
       if (!ok || stopped) return;
       await new Promise((res) => setTimeout(res, this.nav.reducedMotion ? 4000 : beat.dwellMs));
     }
     this.stopTour(true);
+  }
+
+  /** caption of a tour beat in the current language */
+  private showCaption(beat: Beat) {
+    this.tourBeat = beat;
+    const r = resolveBeat(beat, this.tourContext());
+    const cap = $('caption');
+    cap.innerHTML = '<b></b><span></span>';
+    cap.querySelector('b')!.textContent = r.title;
+    cap.querySelector('span')!.textContent = r.text;
+    cap.hidden = false;
   }
 
   // ------------------------------------------------------------------ deep links
@@ -1280,6 +1533,7 @@ class App {
       layers: this.layers.length ? this.layerVisibility() : undefined,
       sel: this.selection?.ref ?? undefined,
       slab: this.slabMpc > 0 ? this.slabMpc : undefined,
+      doc: this.docs.current ?? undefined,
     });
     if (location.hash !== h) history.replaceState(null, '', h);
   }
@@ -1297,7 +1551,14 @@ class App {
     const h = parseHash(location.hash);
     if (h.view) this.applyHashView(h.view, true);
     if ((h.slab ?? 0) !== this.slabMpc) this.setSlab(h.slab ?? 0);
+    if (h.doc && h.doc !== this.docs.current) void this.docs.open(h.doc);
+    else if (!h.doc && this.docs.isOpen && !h.focus && !h.layer) this.docs.close();
     await this.layersReady;
+    if (h.layer) await this.showLayer(h.layer);
+    if (h.focus) this.focusByName(h.focus);
+    if (h.focus || h.layer) {
+      this.writeHash(); // drop the one-shot focus= from the URL
+    }
     if (h.layers) for (const [id, on] of Object.entries(h.layers)) if (this.layerVisibility()[id] !== undefined && this.layerVisibility()[id] !== on) this.setLayerVisible(id, on);
     const cur = this.selection?.ref;
     if (h.sel && JSON.stringify(h.sel) !== JSON.stringify(cur)) void this.restoreSelection(h.sel);
@@ -1393,36 +1654,64 @@ class App {
   }
 }
 
-function formatRange(lo: number, hi: number): string {
-  const u = formatDistance(hi).split(' ')[1];
-  const a = formatDistance(lo, 3);
-  const b = formatDistance(hi, 3);
-  return a.endsWith(u) ? `${a.replace(` ${u}`, '')} – ${b}` : `${a} – ${b}`;
-}
-
 function smoothstep(a: number, b: number, x: number) {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
+  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
 }
 
-function kindLabel(kind: string): string {
-  return (
-    {
-      star: 'Star', wd: 'White dwarf', cluster: 'Star cluster', bh: 'Supermassive black hole', lg_galaxy: 'Local Group galaxy',
-      galaxy: 'Galaxy', qso: 'Quasar', black_hole: 'Black hole', exoplanet: 'Planetary system', pulsar: 'Pulsar',
-      nebula: 'Nebula', snr: 'Supernova remnant', message: 'Message sent to the stars', seti_signal: 'SETI candidate signal',
-    } as Record<string, string>
-  )[kind] ?? kind;
+/** a layer's title in the current language (layer.<id>), else the manifest's */
+function layerTitle(c: LayerConfig): string {
+  return tOr(`layer.${c.id}`, c.title);
+}
+
+/** catalogue names stay as catalogued, except the Sun, which is translated (contract §1) */
+function displayName(name: string): string {
+  return name === 'Sun' ? t('body.sun') : name;
+}
+
+/** English names of the Solar System labels, kept so a language switch can rename them again */
+const SOLAR_LABEL_EN = new WeakMap<LabelItem, string>();
+
+/**
+ * Numbers written with English separators (src/solar/info.ts) in the current language's form:
+ * "6,371 km" → "6 371 km", "0.9896" → "0,9896" for uz/ru. Text without digits is untouched.
+ */
+function localNums(s: string): string {
+  const dec = decimalSep();
+  if (dec === '.') return s;
+  return s.replace(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+/g, (m) => m.replace(/,/g, ' ').replace('.', dec));
+}
+
+/** Milky Way model label (src/render/milkyway.ts) → i18n key */
+const MW_LABEL_KEYS: Record<string, string> = {
+  '3-kpc arm': 'mw.3kpc', 'Norma arm': 'mw.norma', 'Scutum-Centaurus arm': 'mw.scutum', 'Sagittarius-Carina arm': 'mw.sagittarius',
+  'Local arm': 'mw.local', 'Perseus arm': 'mw.perseus', 'Outer arm': 'mw.outer', 'Galactic bar': 'mw.bar',
+};
+
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+}
+
+/** where a Sesame distance came from, in the current language */
+function sesameSource(r: Resolved): string {
+  const d = r.distInfo;
+  if (d.method === 'parallax') return t('sesame.parallax', { plx: fmtFixed(d.plx, 3), err: fmtFixed(d.err, 3) });
+  if (d.method === 'redshift') return t('sesame.redshift', { z: fmtFixed(d.z, 5) });
+  if (d.method === 'lowz') return t('sesame.lowz', { z: fmtFixed(d.z, 5) });
+  return t('sesame.none');
 }
 
 /** outbound links of a catalogue entry's info card */
 function catalogLinks(e: CatalogEntry): [string, string][] {
   const out: [string, string][] = [];
-  if (e.kind === 'exoplanet') out.push(['NASA Exoplanet Archive', `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(e.name)}`]);
+  if (e.kind === 'exoplanet') out.push([t('link.exoplanetArchive'), `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(e.name)}`]);
   else if (e.name !== 'Sun' && e.kind !== 'message' && e.kind !== 'seti_signal')
-    out.push(['SIMBAD', `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]);
-  if (e.doi) out.push(['Paper (DOI)', `https://doi.org/${e.doi}`]);
+    out.push([t('link.simbad'), `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]);
+  if (e.doi) out.push([t('link.doi'), `https://doi.org/${e.doi}`]);
   return out;
 }
 
-void new App().start();
+const app = new App();
+// the Solar System module registers live bodies here: __atlasBodies(provider)
+(window as unknown as { __atlasBodies: (p: BodyProvider) => void }).__atlasBodies = (p) => app.registerBodies(p);
+void app.start();

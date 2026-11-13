@@ -14,6 +14,24 @@ Data/tile rules stay in [data-contract.md](data-contract.md).
 - Object names stay as catalogued (Sirius, M31, Sgr A*); Solar System bodies get translated names
   (`Yer / Earth / Земля`). Numbers use the language's formatting (`Intl.NumberFormat`).
 - Uzbek uses the official Latin alphabet with `oʻ`, `gʻ` (U+02BB) and `ʼ` (U+02BC).
+- Unit abbreviations (`unit.*`, `facts.unit.*` in the dictionaries):
+
+  | | en | uz | ru |
+  |---|---|---|---|
+  | astronomical unit | AU | a.b. | а. е. |
+  | parsec (k, M, G) | pc, kpc, Mpc, Gpc | pk, kpk, Mpk, Gpk | пк, кпк, Мпк, Гпк |
+  | light-year | ly | yorugʻlik yili (written out) | св. год / св. года / св. лет |
+
+  Uzbek: Uzbek Wikipedia writes *yorugʻlik yili* in full and gives "ps" for the parsec (international pc).
+  "ps" collides with the SI picosecond, so the atlas uses *pk*, the Latin transliteration of the
+  Russian-school *пк* that Soviet-era Uzbek astronomy texts used. Not checked against the current
+  11th-grade textbook (its PDF was not machine-readable here); change `unit.*` in `uz.json` if it differs.
+- Numbers: Uzbek and Russian write `1 234,5` (no-break space, decimal comma). Chrome's ICU formats the
+  `uz` locale like English (`1,234.5`, measured 2026-11-13), so `NUMBER_LOCALES` in `src/i18n/index.ts`
+  formats Uzbek with a locale that has the CLDR `uz` separators.
+- Deep links inside articles: `[text](doc:slug)` opens another article, `[text](#focus=<name>)` flies to an
+  object (catalogue name or alias, Solar System id such as `Earth`, or a named view such as `milky-way`),
+  `[text](#layer=<id>)` turns a layer on and flies to a view of it. A vitest resolves every target used.
 
 ## 2. Object kinds
 
@@ -33,7 +51,7 @@ Every searchable or clickable thing has a `kind`. The registry is `web/src/objec
 | `pulsar` | pulsar / neutron star | ATNF Pulsar Catalogue | `pulsar` |
 | `black_hole` | black hole (SMBH, stellar, X-ray binary) | literature (see catalogue `ref`) | `black-hole` |
 | `exoplanet` | confirmed exoplanet (drawn at its host star) | NASA Exoplanet Archive `pscomppars` | `exoplanet` |
-| `sun`, `planet`, `dwarf_planet`, `moon` | Solar System bodies, live positions | JPL-derived ephemerides (astronomy-engine) | per body, e.g. `earth`, `mars` |
+| `sun`, `planet`, `dwarf_planet`, `moon` | Solar System bodies, live positions | astronomy-engine (VSOP87-based analytic ephemerides, about ±1′; checked against JPL Horizons) | per body, e.g. `earth`, `mars` |
 | `spacecraft` | interstellar probes (Voyager 1/2, Pioneer 10/11, New Horizons) | JPL Horizons vectors | `spacecraft` |
 | `message` | message sent to the stars (Arecibo 1974, Cosmic Call...) | literature | `interstellar-message` |
 | `seti_signal` | candidate signal (Wow! 1977) | literature | `seti` |

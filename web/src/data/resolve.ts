@@ -24,13 +24,21 @@ export const SESAME_MIRRORS = [
   'https://vizier.idia.ac.za/viz-bin/nph-sesame/-oxp/SNV?',
 ];
 
+export type DistInfo =
+  | { method: 'parallax'; plx: number; err: number }
+  | { method: 'redshift' | 'lowz'; z: number }
+  | { method: 'none' };
+
 export interface Resolved {
   name: string;
   kind: string;
   ra: number;
   dec: number;
   distPc: number | null;
+  /** English description of the distance source (logs, tests) */
   distSource: string;
+  /** the same, structured, for translated text */
+  distInfo: DistInfo;
   xyz: Vec3 | null;
   /** unit vector toward the object, always available */
   dir: Vec3;
@@ -68,17 +76,21 @@ export function parseSesame(xml: string, query: string): Resolved | null {
   const isGalaxy = GALAXY_OTYPES.test(otype);
   let distPc: number | null = null;
   let distSource = 'unknown';
+  let distInfo: DistInfo = { method: 'none' };
   let z: number | undefined;
   if (plx && plx.v > 0 && plx.e && plx.v / plx.e >= 5 && !isGalaxy) {
     distPc = 1000 / plx.v;
     distSource = `parallax ${plx.v.toFixed(3)} ± ${plx.e.toFixed(3)} mas`;
+    distInfo = { method: 'parallax', plx: plx.v, err: plx.e };
   } else {
     z = zb ? zb.v : vel ? vel.v / 299792.458 : undefined;
     if (z !== undefined && z >= 0.003) {
       distPc = comovingDistancePc(z);
       distSource = `redshift z = ${z.toFixed(5)} (Planck18 comoving)`;
+      distInfo = { method: 'redshift', z };
     } else if (z !== undefined) {
       distSource = `z = ${z.toFixed(5)} is below 0.003, too small for a Hubble-flow distance`;
+      distInfo = { method: 'lowz', z };
     } else {
       distSource = 'no parallax or redshift in Sesame';
     }
@@ -91,6 +103,7 @@ export function parseSesame(xml: string, query: string): Resolved | null {
     dec: +dec,
     distPc,
     distSource,
+    distInfo,
     xyz: distPc !== null ? [dir[0] * distPc, dir[1] * distPc, dir[2] * distPc] : null,
     dir,
     otype,

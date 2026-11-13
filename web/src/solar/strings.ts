@@ -5,6 +5,8 @@
  * these keys into en.json and replace `tr` with `t` one-for-one.
  */
 
+import { hasKey, t } from '../i18n';
+
 const EN: Record<string, string> = {
   'layer.solar': 'Solar System',
   'layer.solar.meta': 'Live positions from astronomy-engine; probe tracks from JPL Horizons.',
@@ -41,7 +43,9 @@ const EN: Record<string, string> = {
   'solar.credit': 'Solar System: positions from astronomy-engine 2.1.19 (MIT, Don Cross); probe tracks from JPL Horizons; textures: Solar System Scope (CC BY 4.0), Earth: NASA Blue Marble Next Generation (NASA Earth Observatory).',
 };
 
+/** the i18n `t()` for keys in the dictionaries (all of these are), else this English table */
 export function tr(key: string, vars?: Record<string, string | number>): string {
+  if (hasKey(key, 'en')) return t(key, vars);
   let s = EN[key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;

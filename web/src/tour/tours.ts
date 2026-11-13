@@ -5,6 +5,7 @@
  * main.ts snapshots the scene (camera, layer visibility, selection) and restores it afterwards.
  */
 
+import { t } from '../i18n';
 import type { Vec3 } from '../math/frames';
 
 export type TargetRef =
@@ -25,8 +26,9 @@ export interface Beat {
   dist: DistRef;
   pitchDeg: number;
   yawDeg?: number;
+  /** i18n key of the caption title */
   title: string;
-  /** may contain {edgeLookback}: lookback time to 90 % of the galaxy edge */
+  /** i18n key of the caption text; the message may use {edgeLookback}: lookback time to 90 % of the galaxy edge */
   text: string;
   dwellMs: number;
   /** layer ids that must be visible during this beat (restored afterwards) */
@@ -72,57 +74,57 @@ export function resolveBeat(b: Beat, ctx: TourContext) {
     dist,
     pitch: (b.pitchDeg * Math.PI) / 180,
     yaw,
-    title: b.title,
-    text: b.text.replace('{edgeLookback}', ctx.lookbackText(edge * 0.9)),
+    title: t(b.title),
+    text: t(b.text, { edgeLookback: ctx.lookbackText(edge * 0.9) }),
   };
 }
 
 export const SCALE_TOUR: Tour = {
   id: 'scale',
-  label: 'Scale tour',
+  label: 'tour.scale.label',
   beats: [
     {
-      id: 'sun', target: { sun: true }, dist: 1e-3, pitchDeg: 20, dwellMs: 3000, title: 'The Sun',
-      text: 'Home. This view is about 200 AU across; the nearest star is 270,000 times farther than the Earth is from the Sun.',
+      id: 'sun', target: { sun: true }, dist: 1e-3, pitchDeg: 20, dwellMs: 3000, title: 'tour.scale.sun.title',
+      text: 'tour.scale.sun.text',
     },
     // Earth -> Mars -> Jupiter, at their real positions when the tour plays (Solar System layer)
     {
       id: 'earth', target: { body: 'earth', fallback: [0, 0, 0] }, dist: 2.6e-8, pitchDeg: 25, yawDeg: 40, sunSide: true,
-      dwellMs: 3600, title: 'Earth and the Moon', show: ['solar'],
-      text: 'Our planet and its Moon, 384,400 km apart on average. Light crosses that gap in 1.3 seconds.',
+      dwellMs: 3600, title: 'tour.scale.earth.title', show: ['solar'],
+      text: 'tour.scale.earth.text',
     },
     {
       id: 'mars', target: { body: 'mars', fallback: [0, 0, 0] }, dist: 5.5e-10, pitchDeg: 15, yawDeg: 35, sunSide: true,
-      dwellMs: 3400, title: 'Mars', show: ['solar'],
-      text: 'Half the size of Earth. Depending on where both planets are, its light takes 3 to 22 minutes to reach us.',
+      dwellMs: 3400, title: 'tour.scale.mars.title', show: ['solar'],
+      text: 'tour.scale.mars.text',
     },
     {
       id: 'jupiter', target: { body: 'jupiter', fallback: [0, 0, 0] }, dist: 1.3e-7, pitchDeg: 20, yawDeg: 30, sunSide: true,
-      dwellMs: 3800, title: 'Jupiter and its moons', show: ['solar'],
-      text: 'The largest planet, with Io, Europa, Ganymede and Callisto, the four moons Galileo saw in 1610.',
+      dwellMs: 3800, title: 'tour.scale.jupiter.title', show: ['solar'],
+      text: 'tour.scale.jupiter.text',
     },
     {
       id: 'proxima', target: { catalog: ['Proxima Centauri', 'Proxima Cen', 'alf Cen C'], fallback: [0.9024, -0.9364, -0.0438] },
-      dist: 1.6, pitchDeg: 17, dwellMs: 3200, title: 'Proxima Centauri',
-      text: 'The nearest star, 1.30 pc away. Its light takes 4.2 years to reach us.',
+      dist: 1.6, pitchDeg: 17, dwellMs: 3200, title: 'tour.scale.proxima.title',
+      text: 'tour.scale.proxima.text',
     },
     {
-      id: 'neighbourhood', target: { sun: true }, dist: 3200, pitchDeg: 26, dwellMs: 3800, title: 'The solar neighbourhood',
-      text: 'Stars within 1 kpc of the Sun, the reach of Gaia parallaxes in this map. Light crosses it in about 6,500 years.',
+      id: 'neighbourhood', target: { sun: true }, dist: 3200, pitchDeg: 26, dwellMs: 3800, title: 'tour.scale.neighbourhood.title',
+      text: 'tour.scale.neighbourhood.text',
     },
     {
-      id: 'milky-way', target: { gc: true }, dist: 7e4, pitchDeg: 87.5, dwellMs: 4200, title: 'The Milky Way', show: ['milky-way-model'],
-      text: 'Our galaxy seen face-on. This is a model of the spiral arms (Reid et al. 2019), not data. The Sun sits 8.3 kpc from the centre.',
+      id: 'milky-way', target: { gc: true }, dist: 7e4, pitchDeg: 87.5, dwellMs: 4200, title: 'tour.scale.milky-way.title', show: ['milky-way-model'],
+      text: 'tour.scale.milky-way.text',
     },
     {
       id: 'local-group',
       target: { between: [{ gc: true }, { catalog: ['Andromeda (M31)', 'M31', 'Andromeda Galaxy'], fallback: [-368258, 608681, -281281] }], t: 0.4 },
-      dist: 2.6e6, pitchDeg: 29, dwellMs: 3600, title: 'The Local Group',
-      text: 'The Milky Way, Andromeda and their satellites, about 3 Mpc across.',
+      dist: 2.6e6, pitchDeg: 29, dwellMs: 3600, title: 'tour.scale.local-group.title',
+      text: 'tour.scale.local-group.text',
     },
     {
-      id: 'cosmic-web', target: { sun: true }, dist: { galaxyEdge: 1.4 }, pitchDeg: 29, dwellMs: 4500, title: 'The cosmic web',
-      text: 'Galaxies trace filaments around empty voids. Light from the far side of this view left {edgeLookback}.',
+      id: 'cosmic-web', target: { sun: true }, dist: { galaxyEdge: 1.4 }, pitchDeg: 29, dwellMs: 4500, title: 'tour.scale.cosmic-web.title',
+      text: 'tour.scale.cosmic-web.text',
     },
   ],
 };

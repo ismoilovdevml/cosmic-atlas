@@ -9,6 +9,11 @@
 
 export type FactValue = number | string | boolean | (number | null)[] | null;
 export type Translate = (key: string) => string;
+/** the UI language: unit symbols from i18n `facts.unit.<suffix>` and its decimal mark */
+export interface FactLocale {
+  t: Translate;
+  decimal: string;
+}
 
 /** key suffix -> unit shown after the number (longest suffix wins) */
 const UNITS: [string, string][] = [
@@ -29,11 +34,21 @@ const UNITS: [string, string][] = [
   ['_arcmin', '′'],
 ];
 
-export function unitFor(key: string): string {
+export function unitFor(key: string, L?: FactLocale): string {
   let best = '';
   let unit = '';
   for (const [suf, u] of UNITS) if (key.endsWith(suf) && suf.length > best.length) [best, unit] = [suf, u];
+  if (L && best) {
+    const k = `facts.unit.${best.slice(1)}`;
+    const s = L.t(k);
+    if (s && s !== k) return s;
+  }
   return unit;
+}
+
+/** decimal points between digits → the language's mark (text values are never touched) */
+function dec(s: string, L?: FactLocale): string {
+  return L && L.decimal !== '.' ? s.replace(/(\d)\.(\d)/g, `$1${L.decimal}$2`) : s;
 }
 
 /** a number with about `sig` significant digits; very large/small ones in a×10ⁿ form */
@@ -74,26 +89,26 @@ function withErrors(val: number, errs: { sign: string; e: number }[]): string {
   return exp ? `(${body})×10${superscript(exp)}` : body;
 }
 
-export function formatFact(key: string, v: FactValue): string {
-  const unit = unitFor(key);
+export function formatFact(key: string, v: FactValue, L?: FactLocale): string {
+  const unit = unitFor(key, L);
   const u = unit ? ` ${unit}` : '';
   if (v === null || v === undefined) return '—';
   if (typeof v === 'boolean') return v ? '✓' : '✗';
-  if (typeof v === 'string') return v + (unit && /\d$/.test(v) ? u : '');
-  if (typeof v === 'number') return (Number.isInteger(v) && Math.abs(v) < 1e5 ? String(v) : fmtSig(v, 6)) + u;
+  if (typeof v === 'string') return (/^[≥≤<>~]?\s*\d[\d.]*$/.test(v) ? dec(v, L) : v) + (unit && /\d$/.test(v) ? u : '');
+  if (typeof v === 'number') return dec(Number.isInteger(v) && Math.abs(v) < 1e5 ? String(v) : fmtSig(v, 6), L) + u;
   const [val, e1, e2] = v;
   if (val === null || val === undefined) return '—';
-  if (v.length === 2 && e1 !== null && e1 !== undefined) return withErrors(val, [{ sign: '± ', e: Math.abs(e1) }]) + u;
+  if (v.length === 2 && e1 !== null && e1 !== undefined) return dec(withErrors(val, [{ sign: '± ', e: Math.abs(e1) }]), L) + u;
   // asymmetric. Contract order: [value, err_minus, err_plus], both >= 0. The exoplanet archive's
   // order is [value, err1 (+), err2 (<= 0)]: a negative third element marks that convention.
   const n1 = e1 ?? null;
   const n2 = e2 ?? null;
-  if (n1 === null && n2 === null) return fmtSig(val, 4) + u;
+  if (n1 === null && n2 === null) return dec(fmtSig(val, 4), L) + u;
   const archive = n2 !== null && n2 < 0;
   const plus = archive ? n1 : n2;
   const minus = archive ? (n2 === null ? null : -n2) : n1;
   const errs = [...(plus === null ? [] : [{ sign: '+', e: plus }]), ...(minus === null ? [] : [{ sign: '−', e: minus }])];
-  return withErrors(val, errs) + u;
+  return dec(withErrors(val, errs), L) + u;
 }
 
 /** label for a fact key: i18n `facts.<key>` if the translator knows it, else the key itself */
@@ -104,9 +119,9 @@ export function factLabel(key: string, t: Translate = (k) => k): string {
 }
 
 /** info-card rows for an entry's facts, in the catalogue's key order */
-export function factRows(facts: Record<string, FactValue> | undefined, t?: Translate): [string, string][] {
+export function factRows(facts: Record<string, FactValue> | undefined, t?: Translate, L?: FactLocale): [string, string][] {
   if (!facts) return [];
-  return Object.entries(facts).map(([k, v]) => [factLabel(k, t), formatFact(k, v)]);
+  return Object.entries(facts).map(([k, v]) => [factLabel(k, t), formatFact(k, v, L)]);
 }
 
 /** one exoplanet of an exoplanets.json system (NASA Exoplanet Archive pscomppars columns) */
@@ -122,14 +137,14 @@ export interface Planet {
 }
 
 /** one info-card row per planet: name -> "P = 11.18 d · 1.02 R⊕ · ≥0.0033 M_J · 218 K · RV 2016" */
-export function planetRows(planets: Planet[] | undefined): [string, string][] {
+export function planetRows(planets: Planet[] | undefined, L?: FactLocale): [string, string][] {
   if (!planets) return [];
   return planets.map((p) => {
     const parts: string[] = [];
-    if (p.pl_orbper !== undefined) parts.push(`P = ${formatFact('x_days', p.pl_orbper)}`);
-    if (p.pl_rade !== undefined) parts.push(formatFact('x_rearth', p.pl_rade));
-    if (p.pl_bmassj !== undefined) parts.push((p.pl_bmassprov === 'Msini' ? '≥ ' : '') + formatFact('x_mjup', p.pl_bmassj));
-    if (p.pl_eqt !== undefined) parts.push(formatFact('x_k', p.pl_eqt));
+    if (p.pl_orbper !== undefined) parts.push(`P = ${formatFact('x_days', p.pl_orbper, L)}`);
+    if (p.pl_rade !== undefined) parts.push(formatFact('x_rearth', p.pl_rade, L));
+    if (p.pl_bmassj !== undefined) parts.push((p.pl_bmassprov === 'Msini' ? '≥ ' : '') + formatFact('x_mjup', p.pl_bmassj, L));
+    if (p.pl_eqt !== undefined) parts.push(formatFact('x_k', p.pl_eqt, L));
     const disc = [p.discoverymethod, p.disc_year].filter(Boolean).join(' ');
     if (disc) parts.push(disc);
     return [p.pl_name, parts.join(' · ')];

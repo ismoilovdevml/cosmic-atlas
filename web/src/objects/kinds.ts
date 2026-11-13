@@ -38,20 +38,50 @@ export const KINDS: Record<string, KindInfo> = {
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },
 };
 
-/** kind names used by older catalogues (messier-ngc.json) -> registry kind */
-export const KIND_ALIASES: Record<string, string> = {
-  planetary_nebula: 'nebula',
-  supernova_remnant: 'snr',
-  cluster_nebula: 'nebula',
-  open_cluster: 'cluster',
-  globular_cluster: 'cluster',
-  bh: 'black_hole',
+/**
+ * Finer kinds the current catalogue builds still emit (Messier/NGC, dev placeholder). Each maps to a
+ * registry kind for docs and colour, with its own label key. Catalogues should move to the KINDS ids.
+ */
+export const SUBKINDS: Record<string, { kind: string; label: string }> = {
+  open_cluster:      { kind: 'cluster',    label: 'kind.open_cluster' },
+  globular_cluster:  { kind: 'cluster',    label: 'kind.globular_cluster' },
+  association:       { kind: 'cluster',    label: 'kind.association' },
+  planetary_nebula:  { kind: 'nebula',     label: 'kind.planetary_nebula' },
+  cluster_nebula:    { kind: 'nebula',     label: 'kind.cluster_nebula' },
+  supernova_remnant: { kind: 'snr',        label: 'kind.snr' },
+  double_star:       { kind: 'star',       label: 'kind.double_star' },
+  bh:                { kind: 'black_hole', label: 'kind.black_hole' },
 };
 
 export function kindInfo(kind: string | undefined): KindInfo {
-  const k = kind ? (KINDS[kind] ? kind : KIND_ALIASES[kind]) : undefined;
-  return (k && KINDS[k]) || { doc: 'index', label: 'kind.unknown', color: '#cccccc' };
+  if (kind && KINDS[kind]) return KINDS[kind];
+  const sub = kind ? SUBKINDS[kind] : undefined;
+  if (sub) return { ...KINDS[sub.kind], label: sub.label };
+  return { doc: 'index', label: 'kind.unknown', color: '#cccccc' };
 }
+
+/** registry kind of a kind or sub-kind ('open_cluster' → 'cluster'); unknown kinds pass through */
+export function baseKind(kind: string): string {
+  return SUBKINDS[kind]?.kind ?? kind;
+}
+
+/** best registry kind for a SIMBAD object type (Sesame results), for the docs link */
+export function kindFromOtype(otype: string | undefined, fallback: string): string {
+  const o = (otype ?? '').trim();
+  if (/^(QSO|Bla|BLL|Q\?)$/.test(o)) return 'qso';
+  if (/^(Psr|PSR)$/.test(o)) return 'pulsar';
+  if (/^(WD\*|WD\?|wd\*)$/.test(o)) return 'wd';
+  if (/^(SNR|SR\?)$/.test(o)) return 'snr';
+  if (/^(PN|PN\?|HII|RNe|EmO|ISM|MoC|GNe|DNe|BNe|SFR)$/.test(o)) return 'nebula';
+  if (/^(OpC|GlC|Cl\*|As\*|C\?\*|Gl\?)$/.test(o)) return 'cluster';
+  if (/^(BH|BH\?|XB\*|HXB|LXB)$/.test(o)) return 'black_hole';
+  if (/^(Pl|Pl\?)$/.test(o)) return 'exoplanet';
+  if (/^(ClG|GrG|CGG|SCG|PCG)$/.test(o)) return 'galaxy';
+  return fallback;
+}
+
+/** sub-kind → registry kind (main's name for the same table) */
+export const KIND_ALIASES: Record<string, string> = Object.fromEntries(Object.entries(SUBKINDS).map(([k, v]) => [k, v.kind]));
 
 /** marker / label colour of a kind (registry colour; unknown kinds grey) */
 export function kindColor(kind: string | undefined): string {

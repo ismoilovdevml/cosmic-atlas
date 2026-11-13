@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="uz">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,8 +9,9 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23c9a66b' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23dce1ea'/%3E%3C/svg%3E" />
   </head>
   <body>
-    <a class="skip" href="#search">Skip to search</a>
-    <canvas id="view" tabindex="0" aria-label="3D map of the universe. Drag to orbit, scroll or pinch to zoom, W A S D to fly, click a point for details."></canvas>
+    <!-- Text below is the English fallback; src/i18n/dom.ts replaces it from data-i18n keys at start. -->
+    <a class="skip" href="#search" data-i18n="app.skip">Skip to search</a>
+    <canvas id="view" tabindex="0" data-i18n-attr="aria-label:app.canvas" aria-label="3D map of the universe. Drag to orbit, scroll or pinch to zoom, W A S D to fly, click a point for details."></canvas>
     <div id="labels" class="labels"></div>
     <svg id="errbar" class="errbar" aria-hidden="true">
       <path id="eb-line" /><path id="eb-ticks" /><text id="eb-label"></text>
@@ -18,48 +19,52 @@
     <div id="reticle" class="reticle" aria-hidden="true"></div>
 
     <header class="top">
-      <div class="search" role="search">
-        <span class="wordmark" aria-hidden="true">Cosmic Atlas</span>
-        <label class="sr-only" for="search">Search stars, galaxies and other objects</label>
-        <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search Sirius, M31, 3C 273…"
-          role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" />
-        <ul id="suggest" class="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
+      <div class="top-row">
+        <div class="search" role="search">
+          <span class="wordmark" aria-hidden="true" data-i18n="app.wordmark">Cosmic Atlas</span>
+          <label class="sr-only" for="search" data-i18n="search.label">Search stars, galaxies and other objects</label>
+          <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search Sirius, M31, Earth…"
+            data-i18n-attr="placeholder:search.placeholder"
+            role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" />
+          <ul id="suggest" class="suggest" role="listbox" aria-label="Suggestions" data-i18n-attr="aria-label:search.suggestions" hidden></ul>
+        </div>
+        <div id="lang" class="lang" role="group" aria-label="Language"></div>
       </div>
       <p id="search-status" class="status" role="status" aria-live="polite"></p>
     </header>
 
     <aside id="layers" class="panel layers" aria-labelledby="layers-title">
       <button id="layers-toggle" class="panel-head" type="button" aria-expanded="true" aria-controls="layers-body">
-        <h2 id="layers-title">Layers</h2>
+        <h2 id="layers-title" data-i18n="layers.title">Layers</h2>
         <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       <div id="layers-body" class="panel-body">
         <ul id="layer-list" class="layer-list"></ul>
         <p id="layer-missing" class="fine"></p>
         <details class="settings">
-          <summary>Display</summary>
+          <summary data-i18n="layers.display">Display</summary>
           <label class="field">
-            <span>Exposure <output id="exposure-out"></output></span>
+            <span><span data-i18n="layers.exposure">Exposure</span> <output id="exposure-out"></output></span>
             <input id="exposure" type="range" min="-4" max="6" step="0.25" value="0" />
           </label>
           <label class="field">
-            <span>Point budget <output id="budget-out"></output></span>
+            <span><span data-i18n="layers.budget">Point budget</span> <output id="budget-out"></output></span>
             <input id="budget" type="range" min="0.5" max="12" step="0.5" value="4" />
           </label>
           <label class="field">
-            <span>Detail <output id="detail-out"></output></span>
+            <span><span data-i18n="layers.detail">Detail</span> <output id="detail-out"></output></span>
             <input id="detail" type="range" min="60" max="400" step="10" value="140" />
           </label>
-          <label class="check" title="Show only points within ± the slab half-thickness of a plane through the focus, facing you, the usual way to show the cosmic web (CfA slice, SDSS and DESI wedges)">
-            <input id="slab-on" type="checkbox" /> Thin slab</label>
+          <label class="check" data-i18n-attr="title:layers.slabHint">
+            <input id="slab-on" type="checkbox" /> <span data-i18n="layers.slab">Thin slab</span></label>
           <label class="field">
-            <span>Slab half-thickness <output id="slab-out">±80 Mpc</output></span>
+            <span><span data-i18n="layers.slabHalf">Slab half-thickness</span> <output id="slab-out">±80 Mpc</output></span>
             <input id="slab" type="range" min="10" max="300" step="5" value="80" disabled />
           </label>
-          <label class="check"><input id="labels-on" type="checkbox" checked /> Labels</label>
-          <label class="check" title="Stretch each point along the line of sight from its 16th to 84th percentile distance, for the most detailed nodes on screen">
-            <input id="unc-on" type="checkbox" /> Distance uncertainty</label>
-          <label class="check"><input id="stats-on" type="checkbox" checked /> Performance overlay</label>
+          <label class="check"><input id="labels-on" type="checkbox" checked /> <span data-i18n="layers.labels">Labels</span></label>
+          <label class="check" data-i18n-attr="title:layers.uncertaintyHint">
+            <input id="unc-on" type="checkbox" /> <span data-i18n="layers.uncertainty">Distance uncertainty</span></label>
+          <label class="check"><input id="stats-on" type="checkbox" checked /> <span data-i18n="layers.stats">Performance overlay</span></label>
         </details>
       </div>
     </aside>
@@ -70,15 +75,20 @@
           <p id="info-kind" class="kind"></p>
           <h2 id="info-title"></h2>
         </div>
-        <button id="info-close" class="icon-btn" type="button" aria-label="Close details">
+        <button id="info-close" class="icon-btn" type="button" aria-label="Close details" data-i18n-attr="aria-label:info.close">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
       </div>
+      <p id="info-summary" class="summary" hidden></p>
       <dl id="info-rows" class="rows"></dl>
       <p id="info-note" class="fine"></p>
       <div id="info-links" class="links"></div>
       <div class="info-actions">
-        <button id="info-fly" class="btn" type="button">Fly here</button>
+        <button id="info-fly" class="btn" type="button" data-i18n="info.fly">Fly here</button>
+        <button id="info-more" class="btn btn-read" type="button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z" /></svg>
+          <span data-i18n="info.learnMore">Learn more</span>
+        </button>
       </div>
     </aside>
 
@@ -86,13 +96,13 @@
     <p id="caption" class="caption" role="status" aria-live="polite" hidden></p>
 
     <footer class="instrument">
-      <div class="scalebar" aria-label="Scale">
+      <div class="scalebar" aria-label="Scale" data-i18n-attr="aria-label:scale.label">
         <div id="bar" class="bar"><span></span></div>
         <p id="bar-label" class="bar-label"></p>
         <p id="bar-light" class="fine"></p>
       </div>
       <div class="rail-wrap">
-        <div id="rail" class="rail" role="slider" tabindex="0" aria-label="Scale, as camera distance"
+        <div id="rail" class="rail" role="slider" tabindex="0" aria-label="Scale, as camera distance" data-i18n-attr="aria-label:rail.label"
           aria-valuemin="-6.7" aria-valuemax="10.5" aria-valuenow="0">
           <div id="rail-ticks" class="rail-ticks"></div>
           <div id="rail-mark" class="rail-mark"></div>
@@ -105,38 +115,78 @@
       <div class="actions">
         <button id="tour" class="btn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 4 12 8-12 8z" /></svg>
-          <span>Scale tour</span>
+          <span class="tour-label" data-i18n="tour.scale.label">Scale tour</span>
         </button>
-        <button id="copy-link" class="icon-btn" type="button" aria-label="Copy link to this view" title="Copy link to this view">
+        <button id="docs-btn" class="icon-btn" type="button" aria-label="Articles about the atlas" title="Articles about the atlas" data-i18n-attr="aria-label:action.docs;title:action.docs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z" /></svg>
+        </button>
+        <button id="copy-link" class="icon-btn" type="button" aria-label="Copy link to this view" title="Copy link to this view" data-i18n-attr="aria-label:action.copyLink;title:action.copyLink">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></svg>
         </button>
-        <button id="home" class="icon-btn" type="button" aria-label="Return to the Sun" title="Return to the Sun">
+        <button id="home" class="icon-btn" type="button" aria-label="Return to the Sun" title="Return to the Sun" data-i18n-attr="aria-label:action.home;title:action.home">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
         </button>
-        <button id="help-btn" class="icon-btn" type="button" aria-label="Controls and credits" title="Controls and credits">
+        <button id="help-btn" class="icon-btn" type="button" aria-label="Controls and credits" title="Controls and credits" data-i18n-attr="aria-label:action.help;title:action.help">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" /></svg>
         </button>
       </div>
     </footer>
 
+    <aside id="docs" class="docs" role="dialog" aria-modal="false" aria-labelledby="docs-title" hidden>
+      <div class="docs-bar">
+        <button id="docs-back" class="icon-btn" type="button" aria-label="Back" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <button id="docs-home" class="docs-home" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9" /></svg>
+          <span data-i18n="docs.index">Contents</span>
+        </button>
+        <span class="docs-bar-title" aria-hidden="true" data-i18n="docs.dialog">Atlas guide</span>
+        <button id="docs-close" class="icon-btn" type="button" aria-label="Close the guide" data-i18n-attr="aria-label:docs.close;title:docs.close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div id="docs-scroll" class="docs-scroll">
+        <article class="docs-article">
+          <p id="docs-notice" class="docs-notice" role="note" hidden></p>
+          <h1 id="docs-title" tabindex="-1"></h1>
+          <p id="docs-lede" class="docs-lede"></p>
+          <div id="docs-body" class="docs-body"></div>
+          <section id="docs-related-wrap" class="docs-related" aria-labelledby="docs-related-h" hidden>
+            <h2 id="docs-related-h" data-i18n="docs.related">Related</h2>
+            <div id="docs-related" class="chips"></div>
+          </section>
+          <section id="docs-sources-wrap" class="docs-sources" aria-labelledby="docs-sources-h" hidden>
+            <h2 id="docs-sources-h" data-i18n="docs.sources">Sources</h2>
+            <ul id="docs-sources"></ul>
+          </section>
+          <p id="docs-updated" class="fine"></p>
+        </article>
+      </div>
+    </aside>
+
     <dialog id="help" class="panel help" aria-labelledby="help-title">
-      <h2 id="help-title">Controls</h2>
+      <h2 id="help-title" data-i18n="help.title">Controls</h2>
       <dl class="keys">
-        <dt>Drag</dt><dd>Orbit around the focus</dd>
-        <dt>Right-drag, Shift-drag</dt><dd>Pan</dd>
-        <dt>Scroll, pinch</dt><dd>Zoom toward the cursor, one decade every few notches</dd>
-        <dt>W A S D, Q E</dt><dd>Fly; Shift is faster. Speed follows the current scale</dd>
-        <dt>Arrows, + −</dt><dd>Orbit and zoom from the keyboard</dd>
-        <dt>Click</dt><dd>Details of the brightest point under the cursor</dd>
-        <dt>Double-click</dt><dd>Fly to that point</dd>
-        <dt>/</dt><dd>Search</dd>
+        <dt data-i18n="help.k.drag">Drag</dt><dd data-i18n="help.v.drag">Orbit around the focus</dd>
+        <dt data-i18n="help.k.pan">Right-drag, Shift-drag</dt><dd data-i18n="help.v.pan">Pan</dd>
+        <dt data-i18n="help.k.zoom">Scroll, pinch</dt><dd data-i18n="help.v.zoom">Zoom toward the cursor, one decade every few notches</dd>
+        <dt data-i18n="help.k.fly">W A S D, Q E</dt><dd data-i18n="help.v.fly">Fly; Shift is faster. Speed follows the current scale</dd>
+        <dt data-i18n="help.k.keys">Arrows, + −</dt><dd data-i18n="help.v.keys">Orbit and zoom from the keyboard</dd>
+        <dt data-i18n="help.k.click">Click</dt><dd data-i18n="help.v.click">Details of the brightest point under the cursor</dd>
+        <dt data-i18n="help.k.dbl">Double-click</dt><dd data-i18n="help.v.dbl">Fly to that point</dd>
+        <dt data-i18n="help.k.search">/</dt><dd data-i18n="help.v.search">Search</dd>
       </dl>
-      <h2>About the data</h2>
+      <h2 data-i18n="help.data">About the data</h2>
       <p id="credits" class="fine"></p>
-      <form method="dialog"><button class="btn" type="submit">Close</button></form>
+      <form method="dialog"><button class="btn" type="submit" data-i18n="help.close">Close</button></form>
     </dialog>
 
-    <noscript>Cosmic Atlas needs JavaScript and WebGL 2.</noscript>
+    <noscript>
+      <p lang="uz">Cosmic Atlas uchun JavaScript va WebGL 2 kerak.</p>
+      <p lang="en">Cosmic Atlas needs JavaScript and WebGL 2.</p>
+      <p lang="ru">Для Cosmic Atlas нужны JavaScript и WebGL 2.</p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -27,7 +27,7 @@ number on screen comes with the catalogue it came from.
 
 | | Objects | Source |
 |---|---|---|
-| Solar System | Sun, 8 planets, Pluto, the Moon, major moons, 5 interstellar probes | JPL ephemerides (astronomy-engine), JPL Horizons |
+| Solar System | Sun, 8 planets, Pluto, the Moon, major moons, 5 interstellar probes | astronomy-engine (VSOP87, checked against JPL Horizons), JPL Horizons |
 | Stars | Gaia DR3 within 1 kpc *(being added)*, 653 named stars | ESA Gaia, Bailer-Jones et al. 2021, IAU |
 | Exoplanets | 6,442 planets in 4,834 systems | NASA Exoplanet Archive |
 | Pulsars | 4,429 | ATNF Pulsar Catalogue |
@@ -86,7 +86,8 @@ More detail: [web/README.md](web/README.md) (the viewer), [docs/prior-work.md](d
 ## Credits
 
 - **Data:** ESA/Gaia/DPAC, the DESI Collaboration, NASA Exoplanet Archive, ATNF, JPL, 2MRS,
-  Cosmicflows-4, HyperLEDA, CDS (SIMBAD, VizieR, HiPS), OpenNGC, and every paper cited in the
+  Cosmicflows-4, HyperLEDA, CDS (SIMBAD, VizieR, HiPS), OpenNGC (CC BY-SA 4.0; our derived NGC
+  catalogues carry the same licence), and every paper cited in the
   catalogues.
 - **Images:** NASA Blue Marble (public domain), Solar System Scope textures (CC BY 4.0), DSS2
   colour via CDS and IRSA.

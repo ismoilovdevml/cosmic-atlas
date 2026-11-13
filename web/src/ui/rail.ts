@@ -3,27 +3,28 @@
  * The marker shows the current scale; click, drag or arrow keys set a new one.
  */
 
+import { t } from '../i18n';
 import { PC_PER_AU } from '../math/units';
 
 export const RAIL_MIN = Math.log10(2e-7);
 export const RAIL_MAX = Math.log10(3e10);
 
 const TICKS: [number, string][] = [
-  [Math.log10(PC_PER_AU), '1 AU'],
-  [0, '1 pc'],
-  [3, '1 kpc'],
-  [6, '1 Mpc'],
-  [9, '1 Gpc'],
+  [Math.log10(PC_PER_AU), 'AU'],
+  [0, 'pc'],
+  [3, 'kpc'],
+  [6, 'Mpc'],
+  [9, 'Gpc'],
 ];
 
 // object distances, placed where the view of that object roughly fits
 const LANDMARKS: [number, string][] = [
-  [Math.log10(100 * PC_PER_AU), 'Solar System'],
-  [Math.log10(1.3), 'Proxima'],
-  [Math.log10(3e4), 'Milky Way'],
-  [Math.log10(7.65e5), 'Andromeda'],
-  [Math.log10(3e8), 'Cosmic web'],
-  [Math.log10(1.43e10), 'Horizon'],
+  [Math.log10(100 * PC_PER_AU), 'rail.solarSystem'],
+  [Math.log10(1.3), 'rail.proxima'],
+  [Math.log10(3e4), 'rail.milkyWay'],
+  [Math.log10(7.65e5), 'rail.andromeda'],
+  [Math.log10(3e8), 'rail.cosmicWeb'],
+  [Math.log10(1.43e10), 'rail.horizon'],
 ];
 
 export class ScaleRail {
@@ -70,28 +71,31 @@ export class ScaleRail {
     return RAIL_MIN + f * (RAIL_MAX - RAIL_MIN);
   }
 
-  private build() {
+  /** (re)draw ticks and landmarks; called again when the UI language changes */
+  build() {
     this.ticks.textContent = '';
     for (let d = Math.ceil(RAIL_MIN); d <= RAIL_MAX; d++) {
-      const t = document.createElement('div');
-      t.className = 'tick' + (d % 3 === 0 ? ' major' : '');
-      t.style.left = `${this.frac(d) * 100}%`;
-      this.ticks.appendChild(t);
+      const tk = document.createElement('div');
+      tk.className = 'tick' + (d % 3 === 0 ? ' major' : '');
+      tk.style.left = `${this.frac(d) * 100}%`;
+      this.ticks.appendChild(tk);
     }
-    for (const [v, label] of TICKS) {
-      const t = document.createElement('div');
-      t.className = 'tick major';
-      t.style.left = `${this.frac(v) * 100}%`;
+    for (const [v, unit] of TICKS) {
+      const label = `1\u00a0${t(`unit.${unit}`)}`;
+      const tk = document.createElement('div');
+      tk.className = 'tick major';
+      tk.style.left = `${this.frac(v) * 100}%`;
       const l = document.createElement('span');
       l.className = 'tick-label';
       l.textContent = label;
       l.style.left = `${this.frac(v) * 100}%`;
-      this.ticks.append(t, l);
+      this.ticks.append(tk, l);
     }
     // landmarks, skipping any that would overlap the previous one at this width
     const w = this.el.clientWidth;
     let lastRight = -Infinity;
-    for (const [v, label] of LANDMARKS) {
+    for (const [v, key] of LANDMARKS) {
+      const label = t(key);
       const x = this.frac(v) * w;
       const half = (label.length * 6.6) / 2 + 4;
       if (x - half < lastRight || x - half < -4 || x + half > w + 4) continue;

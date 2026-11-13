@@ -282,7 +282,33 @@ Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copi
 | 19, 20 | Slot pools evicting their working set; stale rows | Only nodes fully faded out (alpha 0) and outside the cut are evicted; pick slots are freed on unload |
 | 4, 5, 7–10, 12, 14 | Vertex-stage sampling, Adreno by-value structs, f32 cancellation, denormals, layout-auto bind groups, cubemaps, NaN bisects | Not applicable to our shaders, or handled by three.js's bind groups |
 
+### Languages and the docs reader
+
+- **UI in uz / en / ru** (`src/i18n/`): `t(key, vars)` with ICU-style plurals (`{n, plural, one {…} other {…}}`),
+  `setLang()`, `onLangChange()`. Language: `?lang=` > saved choice > browser > `uz`. The UZ · EN · RU switch
+  in the top bar re-renders panels, card, rail, tour caption and labels without reloading. Static page
+  text uses `data-i18n` / `data-i18n-attr` attributes in `index.html`. Unit abbreviations and number format:
+  `../docs/content-contract.md` §1.
+- **Uzbek apostrophe:** IBM Plex Sans draws U+02BB 0.6 em wide ("yo ʻ li"), so `src/ui/okina.ts` takes
+  just U+02BB/U+02BC from the bundled Spectral file through a `unicode-range` font face.
+- **Docs reader** (`src/docs/`, `#doc=<slug>`): fetches `public/docs/<lang>/<slug>.md`, parses front matter,
+  renders Markdown with a small renderer that escapes all source text and emits a fixed tag set (raw HTML
+  in a file is shown as text, `javascript:`/`data:` URLs are dropped). `doc:` links open articles,
+  `#focus=` / `#layer=` links drive the map. Missing in the current language → English with a notice.
+  Placeholders carry `placeholder: true` and say so in the reader.
+- **Info card**: the article `summary` under the title and a "Learn more" button, for tile points (layer
+  kind), catalogue entries (`docs` or kind), named views and Sesame results (SIMBAD type → kind).
+- Visual check, dev server running: `node scripts/capture_i18n.mjs ../figures <devUrl>` captures
+  `figures/i18n-*.png` and audits each for page overflow, clipped text and contrast below 4.5:1.
+
 ### Search
+
+Typed names in any of the three languages go through `src/search/aliases.ts` first: Solar System bodies
+("Yer", "Earth", "Земля"), named views (Milky Way, Local Group, Laniakea, DESI footprint …, cameras reused
+from the tour where one exists) and kind words ("qora tuynuk", "black holes", "чёрные дыры" list the
+matching objects plus the article). Folding ignores case, diacritics and the Uzbek apostrophe variants and
+transliterates Cyrillic, so "Сомон йўли", "Somon yoli" and "Somon yoʻli" are one key; up to 1–2 typos are
+tolerated. The Solar System module registers live bodies with `window.__atlasBodies(provider)`.
 
 Local catalogues (contract section 4) are searched instantly, matching names and aliases while
 ignoring case and spaces. Duplicates across catalogues are merged by any shared name or alias
