@@ -1,5 +1,6 @@
 data/raw/
-data/tiles/
+data/tiles/*
+!data/tiles/catalogs/
 .venv/
 __pycache__/
 node_modules/

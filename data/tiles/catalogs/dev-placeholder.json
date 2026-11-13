@@ -1,0 +1,163 @@
+[
+ {
+  "name": "Sun",
+  "alt": [
+   "Sol"
+  ],
+  "kind": "star",
+  "ra": 0.0,
+  "dec": 0.0,
+  "dist_pc": 0.0,
+  "mag": -26.74,
+  "xyz": [
+   0,
+   0,
+   0
+  ],
+  "ref": "origin of the frame"
+ },
+ {
+  "name": "Proxima Centauri",
+  "alt": [
+   "alf Cen C",
+   "GJ 551",
+   "HIP 70890"
+  ],
+  "kind": "star",
+  "ra": 217.42894,
+  "dec": -62.67949,
+  "dist_pc": 1.3012,
+  "mag": 11.13,
+  "xyz": [
+   0.902396,
+   -0.936423,
+   -0.043758
+  ],
+  "ref": "SIMBAD; Gaia DR3 parallax (dev placeholder)"
+ },
+ {
+  "name": "Sirius",
+  "alt": [
+   "alf CMa",
+   "HIP 32349"
+  ],
+  "kind": "star",
+  "ra": 101.287155,
+  "dec": -16.716116,
+  "dist_pc": 2.64,
+  "mag": -1.46,
+  "xyz": [
+   -1.771163,
+   -1.914712,
+   -0.407993
+  ],
+  "ref": "SIMBAD (dev placeholder)"
+ },
+ {
+  "name": "Betelgeuse",
+  "alt": [
+   "alf Ori",
+   "HIP 27989"
+  ],
+  "kind": "star",
+  "ra": 88.792939,
+  "dec": 7.407064,
+  "dist_pc": 168.0,
+  "mag": 0.42,
+  "xyz": [
+   -156.152234,
+   -56.178972,
+   -26.161096
+  ],
+  "ref": "SIMBAD; Joyce+2020 distance (dev placeholder)"
+ },
+ {
+  "name": "Pleiades",
+  "alt": [
+   "M45",
+   "Mel 22"
+  ],
+  "kind": "cluster",
+  "ra": 56.75,
+  "dec": 24.1167,
+  "dist_pc": 135.0,
+  "mag": 1.6,
+  "xyz": [
+   -120.398631,
+   28.748209,
+   -53.876806
+  ],
+  "ref": "SIMBAD; Gaia EDR3 cluster distance (dev placeholder)"
+ },
+ {
+  "name": "Sagittarius A*",
+  "alt": [
+   "Sgr A*",
+   "Galactic Centre"
+  ],
+  "kind": "bh",
+  "ra": 266.41683,
+  "dec": -29.00781,
+  "dist_pc": 8178.0,
+  "mag": null,
+  "xyz": [
+   8177.993475,
+   -7.956712,
+   -6.588871
+  ],
+  "ref": "GRAVITY Collaboration 2019 (dev placeholder)"
+ },
+ {
+  "name": "Large Magellanic Cloud",
+  "alt": [
+   "LMC"
+  ],
+  "kind": "lg_galaxy",
+  "ra": 80.894,
+  "dec": -69.756,
+  "dist_pc": 49590.0,
+  "mag": 0.9,
+  "xyz": [
+   7563.742919,
+   -40949.47694,
+   -26927.648085
+  ],
+  "ref": "Pietrzynski+2019 (dev placeholder)"
+ },
+ {
+  "name": "Andromeda Galaxy",
+  "alt": [
+   "M31",
+   "NGC 224"
+  ],
+  "kind": "lg_galaxy",
+  "ra": 10.6847,
+  "dec": 41.269,
+  "dist_pc": 765000.0,
+  "mag": 3.44,
+  "xyz": [
+   -368257.649706,
+   608680.881765,
+   -281280.798504
+  ],
+  "ref": "SIMBAD; Li+2021 distance (dev placeholder)"
+ },
+ {
+  "name": "M87",
+  "alt": [
+   "Virgo A",
+   "NGC 4486"
+  ],
+  "kind": "galaxy",
+  "ra": 187.7059,
+  "dec": 12.3911,
+  "dist_pc": 16400000.0,
+  "mag": 8.6,
+  "xyz": [
+   1044347.324273,
+   -4258984.240412,
+   15802860.244469
+  ],
+  "ref": "SIMBAD; EHT 2019 distance (dev placeholder)"
+ }
+]
