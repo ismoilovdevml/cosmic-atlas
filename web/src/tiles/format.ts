@@ -1,11 +1,24 @@
 /** Tile format, docs/data-contract.md section 3. Pure functions, no DOM / three.js. */
 
+/** Summed light of a node and all its descendants (contract section 3). */
+export interface NodeAgg {
+  /** point count */
+  n: number;
+  /** total luminosity in units of an M = 0 source (from the lum codes) */
+  L: number;
+  /** light-weighted centroid, pc, relative to the node centre */
+  c: [number, number, number];
+  /** light-weighted mean colour, sRGB bytes */
+  rgb: [number, number, number];
+}
+
 export interface NodeMeta {
   name: string;
   center: [number, number, number];
   half: number;
   count: number;
   children: number;
+  agg?: NodeAgg;
 }
 
 export interface LayerMeta {
@@ -25,7 +38,9 @@ export interface LayerMeta {
 }
 
 export const RENDER_RECORD = 'xyz_f32_rgb_u8_lum_u8';
-export const EXT_RECORD = 'id_u64_mag_f32_color_f32';
+/** v1 pick record (16 B) and the current one with distance percentiles (24 B) */
+export const EXT_RECORD_V1 = 'id_u64_mag_f32_color_f32';
+export const EXT_RECORD = 'id_u64_mag_f32_color_f32_distlo_f32_disthi_f32';
 
 /** Validate meta.json against the contract. Throws with a specific message on mismatch. */
 export function parseMeta(json: unknown): LayerMeta {
@@ -37,15 +52,17 @@ export function parseMeta(json: unknown): LayerMeta {
   if (m.unit !== 'pc') fail(`unit is '${m.unit}', expected 'pc'`);
   if (m.frame !== 'galactic-helio') fail(`frame is '${m.frame}', expected 'galactic-helio'`);
   if (m.record !== RENDER_RECORD || m.bytesPerPoint !== 16) fail(`record '${m.record}' / ${m.bytesPerPoint} B`);
-  if (m.extRecord !== undefined && (m.extRecord !== EXT_RECORD || m.extBytesPerPoint !== 16))
-    fail(`extRecord '${m.extRecord}' / ${m.extBytesPerPoint} B`);
+  // the pick record may grow; its leading fields are fixed, its size comes from extBytesPerPoint
+  if (m.extRecord !== undefined && !String(m.extRecord).startsWith(EXT_RECORD_V1)) fail(`extRecord '${m.extRecord}'`);
+  if (m.extRecord !== undefined && !(Number(m.extBytesPerPoint) >= 16 && Number(m.extBytesPerPoint) % 4 === 0))
+    fail(`extBytesPerPoint ${m.extBytesPerPoint}`);
   if (!Array.isArray(m.nodes) || m.nodes.length === 0) fail('no nodes');
   for (const n of m.nodes!) {
     if (!/^r[0-7]*$/.test(n.name)) fail(`bad node name '${n.name}'`);
     if (!Array.isArray(n.center) || n.center.length !== 3) fail(`node ${n.name}: bad center`);
     if (!(n.half > 0)) fail(`node ${n.name}: bad half`);
   }
-  return { idPrefix: '', extRecord: EXT_RECORD, extBytesPerPoint: 16, ...m } as LayerMeta;
+  return { idPrefix: '', extRecord: EXT_RECORD_V1, extBytesPerPoint: 16, ...m } as LayerMeta;
 }
 
 /** Child index bits from the contract: (x>=cx)<<2 | (y>=cy)<<1 | (z>=cz). */
@@ -106,13 +123,42 @@ export interface ExtRecord {
   mag: number;
   /** BP-RP for stars, redshift z for galaxies */
   color: number;
+  /** 16th / 84th percentile distance, pc; NaN when unknown or not in this record version */
+  distLo: number;
+  distHi: number;
 }
 
-export function readExtRecord(buf: ArrayBuffer, index: number): ExtRecord {
-  const o = index * 16;
-  if (o + 16 > buf.byteLength) throw new Error(`ext record ${index} out of range`);
+/** Read pick record `index`; `stride` = meta.extBytesPerPoint (16 for v1, 24 now). */
+export function readExtRecord(buf: ArrayBuffer, index: number, stride: number): ExtRecord {
+  const o = index * stride;
+  if (o + stride > buf.byteLength) throw new Error(`ext record ${index} out of range`);
   const dv = new DataView(buf);
-  return { id: dv.getBigUint64(o, true), mag: dv.getFloat32(o + 8, true), color: dv.getFloat32(o + 12, true) };
+  return {
+    id: dv.getBigUint64(o, true),
+    mag: dv.getFloat32(o + 8, true),
+    color: dv.getFloat32(o + 12, true),
+    distLo: stride >= 24 ? dv.getFloat32(o + 16, true) : NaN,
+    distHi: stride >= 24 ? dv.getFloat32(o + 20, true) : NaN,
+  };
+}
+
+/** index of the record with this id, or -1 */
+export function findExtId(buf: ArrayBuffer, id: bigint, stride: number): number {
+  const dv = new DataView(buf);
+  for (let i = 0, n = Math.floor(buf.byteLength / stride); i < n; i++) if (dv.getBigUint64(i * stride, true) === id) return i;
+  return -1;
+}
+
+/** Names of the nodes on the path from the root to the deepest existing node containing p. */
+export function nodePath(nodes: Map<string, NodeMeta>, p: readonly number[]): string[] {
+  const out: string[] = [];
+  let n = nodes.get('r');
+  while (n) {
+    out.push(n.name);
+    const k = childIndex(p, n.center);
+    n = n.children & (1 << k) ? nodes.get(n.name + k) : undefined;
+  }
+  return out;
 }
 
 /** Absolute magnitude decoded from the lum byte (contract section 3). */

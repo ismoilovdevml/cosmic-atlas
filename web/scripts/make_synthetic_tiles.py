@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Emit contract-compliant synthetic octree tiles for viewer development.
+"""Synthetic development data for the viewer, written as contract section 2 raw tables and turned
+into tiles by the project's single tile writer, pipeline/build_tiles.py.
 
-Writes data/tiles/synthetic-stars/ and data/tiles/synthetic-galaxies/ following
-docs/data-contract.md sections 1 and 3 (heliocentric Galactic frame, parsec, 16-byte
-render records, 16-byte pick records, Potree-style node names, importance-sorted
-additive LOD).
+Writes data/raw/synthetic-{stars,galaxies}/synthetic.parquet (+ PROVENANCE.json), then runs
+    .venv/bin/python pipeline/build_tiles.py synthetic-stars    --order lum    --kind-model star
+    .venv/bin/python pipeline/build_tiles.py synthetic-galaxies --order random --kind-model galaxy
+so data/tiles/synthetic-* follow docs/data-contract.md exactly (24-byte pick records, subtree `agg`).
 
 The point distributions are synthetic. They are shaped to look plausible, not to be used
 for science:
   * stars: thin + thick exponential disc inside a 1 kpc sphere, a weak gradient toward
     the Galactic Centre, a few dozen open clusters, a crude Gaia G-band luminosity
     function, BP-RP from an approximate main-sequence relation, Gaia-like G < 20 cut.
+    Distance percentiles from a Gaia-like parallax error, sigma_plx = 0.02 mas at G <= 15
+    growing as 10^(0.2 (G - 15)), mapped through d = 1/plx (asymmetric 16/84 %).
   * galaxies: a jittered lattice of nodes ("clusters") joined by randomly kept edges
     ("filaments") plus a field population, Schechter luminosity function, a flux limit
     r < 19.5, comoving distances from astropy Planck18, Galactic zone of avoidance.
+    Distance percentiles from a 300 km/s peculiar-velocity + 1e-4 redshift error.
 
 Usage (from the repo root or web/):
     .venv/bin/python web/scripts/make_synthetic_tiles.py [--stars N] [--galaxies N] [--seed S]
@@ -23,136 +27,34 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parents[2]
-TILES = REPO / "data" / "tiles"
-NODE_CAPACITY = 20_000
-MAX_DEPTH = 22
+RAW = REPO / "data" / "raw"
+PY = REPO / ".venv" / "bin" / "python"
+
+# ICRS -> Galactic rotation (astropy, same matrix as pipeline/build_tiles.py); Galactic -> ICRS is M^T
+ICRS_TO_GAL = np.array([
+    [-0.05487565771259165, -0.8734370519556157, -0.48383507361671546],
+    [0.49410943719272676, -0.4448297212232951, 0.7469821839866675],
+    [-0.8676661375596576, -0.19807633727300059, 0.4559838136873016],
+])
 
 
-# --------------------------------------------------------------------------- octree
-
-
-def build_octree(pos: np.ndarray, order: np.ndarray, half: float, cap: int):
-    """Potree-style insertion of points already sorted by importance.
-
-    pos   (N,3) float64, heliocentric Galactic pc
-    order indices of pos sorted by descending importance
-    Returns a list of (name, center, half, indices) in breadth-first order.
-    Each node keeps the first `cap` points that fall into it; the rest descend to the
-    children, split by (x>=cx)<<2 | (y>=cy)<<1 | (z>=cz) with the original order kept.
-    """
-    out = []
-    stack = [("r", np.zeros(3), half, order)]
-    while stack:
-        name, c, h, idx = stack.pop()
-        depth = len(name) - 1
-        if len(idx) <= cap or depth >= MAX_DEPTH:
-            out.append((name, c, h, idx))
-            continue
-        keep, rest = idx[:cap], idx[cap:]
-        out.append((name, c, h, keep))
-        p = pos[rest]
-        child = ((p[:, 0] >= c[0]).astype(np.int8) << 2) | ((p[:, 1] >= c[1]).astype(np.int8) << 1) | (
-            p[:, 2] >= c[2]
-        ).astype(np.int8)
-        for k in range(7, -1, -1):
-            sel = rest[child == k]  # boolean mask keeps importance order
-            if len(sel) == 0:
-                continue
-            off = np.array([(k >> 2) & 1, (k >> 1) & 1, k & 1], dtype=float) * 2 - 1
-            stack.append((name + str(k), c + off * h / 2, h / 2, sel))
-    out.sort(key=lambda n: (len(n[0]), n[0]))
-    return out
-
-
-def write_layer(layer, title, pos, rgb, lum, ids, mag, color, importance, half, id_prefix, extra):
-    d = TILES / layer
-    if d.exists():
-        shutil.rmtree(d)
-    (d / "n").mkdir(parents=True)
-    order = np.argsort(-importance, kind="stable")
-    nodes = build_octree(pos, order, half, NODE_CAPACITY)
-    names = {n[0] for n in nodes}
-    meta_nodes = []
-    for name, c, h, idx in nodes:
-        mask = 0
-        for k in range(8):
-            if name + str(k) in names:
-                mask |= 1 << k
-        rec = np.zeros(len(idx), dtype=[("xyz", "<f4", 3), ("rgb", "u1", 3), ("lum", "u1")])
-        rec["xyz"] = (pos[idx] - c).astype("<f4")
-        rec["rgb"] = rgb[idx]
-        rec["lum"] = lum[idx]
-        assert rec.itemsize == 16
-        rec.tofile(d / "n" / f"{name}.bin")
-        ext = np.zeros(len(idx), dtype=[("id", "<u8"), ("mag", "<f4"), ("color", "<f4")])
-        ext["id"], ext["mag"], ext["color"] = ids[idx], mag[idx], color[idx]
-        assert ext.itemsize == 16
-        ext.tofile(d / "n" / f"{name}.ext.bin")
-        meta_nodes.append(
-            {"name": name, "center": [float(v) for v in c], "half": float(h), "count": int(len(idx)), "children": mask}
-        )
-    meta = {
-        "layer": layer,
-        "title": title,
-        "unit": "pc",
-        "frame": "galactic-helio",
-        "count": int(len(pos)),
-        "nodeCapacity": NODE_CAPACITY,
-        "record": "xyz_f32_rgb_u8_lum_u8",
-        "bytesPerPoint": 16,
-        "extRecord": "id_u64_mag_f32_color_f32",
-        "extBytesPerPoint": 16,
-        "idPrefix": id_prefix,
-        "synthetic": True,
-        **extra,
-        "nodes": meta_nodes,
-    }
-    (d / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
-    depth = max(len(n[0]) for n in nodes) - 1
-    print(f"  {layer}: {len(pos):,} points, {len(nodes)} nodes, depth {depth}")
-
-
-# --------------------------------------------------------------------------- colour
-
-
-def bp_rp_to_teff(c):
-    """Approximate Teff from Gaia BP-RP (dwarf colour-Teff polynomial, clamped)."""
-    c = np.clip(c, -0.4, 4.5)
-    theta = 0.4929 + 0.5092 * c - 0.0353 * c**2
-    return np.clip(5040.0 / theta, 2400.0, 40000.0)
-
-
-def blackbody_srgb(teff):
-    """Approximate sRGB of a blackbody (Tanner Helland fit to the Charity table)."""
-    t = teff / 100.0
-    r = np.where(t <= 66, 255.0, 329.698727446 * np.power(np.maximum(t - 60, 1e-6), -0.1332047592))
-    g = np.where(
-        t <= 66,
-        99.4708025861 * np.log(np.maximum(t, 1e-6)) - 161.1195681661,
-        288.1221695283 * np.power(np.maximum(t - 60, 1e-6), -0.0755148492),
-    )
-    b = np.where(
-        t >= 66, 255.0, np.where(t <= 19, 0.0, 138.5177312231 * np.log(np.maximum(t - 10, 1e-6)) - 305.0447927307)
-    )
-    rgb = np.stack([r, g, b], axis=1)
-    return np.clip(rgb, 0, 255).astype(np.uint8)
-
-
-def redshift_ramp(z):
-    """Galaxy colour ramp by redshift (contract: 'redshift ramp for galaxies')."""
-    stops_z = np.array([0.0, 0.05, 0.15, 0.3, 0.5, 0.8])
-    stops = np.array(
-        [[190, 210, 255], [225, 232, 255], [255, 244, 228], [255, 214, 170], [255, 170, 120], [240, 120, 100]], float
-    )
-    out = np.stack([np.interp(z, stops_z, stops[:, i]) for i in range(3)], axis=1)
-    return np.clip(out, 0, 255).astype(np.uint8)
+def gal_to_radec(pos):
+    """heliocentric Galactic xyz (pc) -> ICRS ra, dec (deg), distance (pc)"""
+    icrs = pos @ ICRS_TO_GAL  # row-vector form of M^T @ v
+    d = np.linalg.norm(icrs, axis=1)
+    ra = np.degrees(np.arctan2(icrs[:, 1], icrs[:, 0])) % 360.0
+    dec = np.degrees(np.arcsin(np.clip(icrs[:, 2] / np.maximum(d, 1e-30), -1, 1)))
+    return ra, dec, d
 
 
 # --------------------------------------------------------------------------- stars
@@ -209,11 +111,20 @@ def make_stars(rng, n_target):
     mag = M + 5 * np.log10(np.maximum(d, 1e-3) / 10.0)
     vis = mag < 20.0
     pos, M, col, mag = pos[vis], M[vis], col[vis], mag[vis]
-    rgb = blackbody_srgb(bp_rp_to_teff(col))
-    lum = np.clip(np.round((20.0 - M) * 10.0), 0, 255).astype(np.uint8)
+    d = np.linalg.norm(pos, axis=1)
+    # Gaia-like parallax error -> asymmetric 16/84 % distance range
+    plx = 1000.0 / np.maximum(d, 1e-3)  # mas
+    s_plx = 0.02 * 10 ** (0.2 * np.maximum(mag - 15.0, 0.0)) * rng.lognormal(0, 0.25, len(d))
+    lo = 1000.0 / (plx + s_plx)
+    hi = np.where(plx - s_plx > 0.05, 1000.0 / np.maximum(plx - s_plx, 1e-9), np.nan)  # no upper bound
     ids = rng.choice(2**62, len(pos), replace=False).astype(np.uint64)
     print(f"  stars generated in {time.time() - t0:.1f}s")
-    return pos, rgb, lum, ids, mag.astype(np.float32), col.astype(np.float32), lum.astype(float) + rng.random(len(pos))
+    ra, dec, dist = gal_to_radec(pos)
+    return {
+        "id": np.char.add("SYN-S ", ids.astype(str)), "source_id": ids, "ra": ra, "dec": dec,
+        "dist_pc": dist, "dist_lo_pc": lo, "dist_hi_pc": hi, "mag": mag.astype(np.float32),
+        "color": col.astype(np.float32), "kind": np.full(len(ids), "star"),
+    }
 
 
 # --------------------------------------------------------------------------- galaxies
@@ -326,12 +237,38 @@ def make_galaxies(rng, n_target):
     Mlim = rlim - 5 * np.log10(dl / 10.0)
     M = draw_M(Mlim)
     mag = M + 5 * np.log10(dl / 10.0)
-    zobs = z + rng.normal(0, 0.0002, len(z))
-    rgb = redshift_ramp(z)
-    lum = np.clip(np.round((-14.0 - M) * 20.0), 0, 255).astype(np.uint8)
+    zobs = z + rng.normal(0, 1e-4, len(z))
+    # distance range: 300 km/s peculiar velocity + 1e-4 redshift error, through dD/dz = c/H(z)
+    dz = np.hypot(300.0 / 299792.458, 1e-4)
+    lo = np.interp(np.maximum(z - dz, 0.0), zz, dc)
+    hi = np.interp(z + dz, zz, dc)
     ids = rng.choice(2**62, len(pos), replace=False).astype(np.uint64)
     print(f"  galaxies generated in {time.time() - t0:.1f}s ({len(edges):,} filaments)")
-    return pos, rgb, lum, ids, mag.astype(np.float32), zobs.astype(np.float32), -z
+    ra, dec, dist = gal_to_radec(pos)
+    return {
+        "id": np.char.add("SYN-G ", ids.astype(str)), "targetid": ids, "ra": ra, "dec": dec,
+        "dist_pc": dist, "dist_lo_pc": lo, "dist_hi_pc": hi, "mag": mag.astype(np.float32),
+        "color": np.full(len(ids), np.nan, np.float32), "kind": np.full(len(ids), "galaxy"),
+        "z": zobs.astype(np.float64),
+    }
+
+
+def write_raw(layer: str, cols: dict, note: str):
+    out = RAW / layer
+    out.mkdir(parents=True, exist_ok=True)
+    pq.write_table(pa.table(cols), out / "synthetic.parquet")
+    (out / "PROVENANCE.json").write_text(json.dumps({
+        "layer": layer, "synthetic": True, "generator": "web/scripts/make_synthetic_tiles.py",
+        "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "rows": int(len(cols["ra"])),
+        "note": note, "citation": "none (synthetic development data, not observations)",
+    }, indent=1))
+    print(f"  {layer}: {len(cols['ra']):,} rows -> {out / 'synthetic.parquet'}")
+
+
+def build(layer: str, *args: str):
+    cmd = [str(PY), str(REPO / "pipeline" / "build_tiles.py"), layer, *args]
+    print("  $", " ".join(cmd[1:]))
+    subprocess.run(cmd, check=True)
 
 
 def main():
@@ -339,17 +276,20 @@ def main():
     ap.add_argument("--stars", type=int, default=3_600_000)
     ap.add_argument("--galaxies", type=int, default=1_800_000)
     ap.add_argument("--seed", type=int, default=20261113)
+    ap.add_argument("--no-build", action="store_true", help="only write the raw Parquet")
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
     print("synthetic stars")
-    pos, rgb, lum, ids, mag, col, imp = make_stars(rng, a.stars)
-    write_layer("synthetic-stars", "Synthetic stars (dev data, not real)", pos, rgb, lum, ids, mag, col, imp,
-                1000.0, "SYN-S ", {"kind": "stars", "band": "G"})
+    write_raw("synthetic-stars", make_stars(rng, a.stars), "Gaia-like disc + clusters inside 1 kpc")
     print("synthetic galaxies")
-    pos, rgb, lum, ids, mag, zc, imp = make_galaxies(rng, a.galaxies)
-    write_layer("synthetic-galaxies", "Synthetic galaxies (dev data, not real)", pos, rgb, lum, ids, mag, zc, imp,
-                2.5e9, "SYN-G ", {"kind": "galaxies", "band": "r"})
+    write_raw("synthetic-galaxies", make_galaxies(rng, a.galaxies), "lattice cosmic web, flux-limited r < 19.5")
+    if a.no_build:
+        return
+    build("synthetic-stars", "--order", "lum", "--kind-model", "star",
+          "--title", "Synthetic stars (dev data, not real)", "--id-prefix", "SYN-S ")
+    build("synthetic-galaxies", "--order", "random", "--kind-model", "galaxy",
+          "--title", "Synthetic galaxies (dev data, not real)", "--id-prefix", "SYN-G ")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

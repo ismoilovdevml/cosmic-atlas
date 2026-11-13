@@ -1,10 +1,14 @@
 /**
  * Final pass (TSL, RenderPipeline): HDR point light -> display, plus the all-sky image.
  *
- * Points and the Milky Way model are summed additively into the scene pass's half-float target,
- * then compressed with an asinh stretch on luminance (Lupton et al. 1999, AJ 118, 1406; the SDSS
- * colour-image convention), which keeps faint diffuse light and bright stars legible together
- * without clipping colour.
+ * Colour pipeline (all linear light until the last step):
+ *   points / blobs / Milky Way model: sRGB bytes decoded to linear in their shaders, summed
+ *   additively in the scene pass's half-float target;
+ *   tone map: asinh stretch on luminance (Lupton et al. 1999, AJ 118, 1406), hue-preserving;
+ *   sky image: an sRGB JPEG, decoded to linear by the texture (SRGBColorSpace);
+ *   output: explicit IEC 61966-2-1 linear → sRGB encode, then ±0.5 LSB dither.
+ * The canvas is a non-sRGB 8-bit format on both backends and outputColorTransform is off, so this
+ * encode is the only one (checked by reading back the void colour, see README).
  *
  * The Gaia all-sky image is drawn in the same pass as an infinitely distant sphere centred on
  * the camera: each fragment's view direction (contract frame: +x -> l=0, +z -> NGP) -> Galactic
@@ -16,20 +20,28 @@
 
 import * as THREE from 'three/webgpu';
 import {
-  Fn, asinh, atan, clamp, cos, dot, float, fract, fwidth, length, log2, max, normalize, pass, screenCoordinate,
+  Fn, asinh, atan, clamp, cos, dot, float, fract, fwidth, length, log2, max, normalize, pass, pow, screenCoordinate,
   screenUV, select, sin, sqrt, texture, uniform, vec2, vec3, vec4, asin,
 } from 'three/tsl';
+import { srgbToLinear } from './brightness';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const linearToSrgbNode = (x: any): any =>
+  select(x.lessThanEqual(0.0031308), x.mul(12.92), pow(max(x, 0.0), 1.0 / 2.4).mul(1.055).sub(0.055));
+
+/** the page's void colour, sRGB bytes (also the CSS --void) */
+export const VOID_SRGB: [number, number, number] = [4, 6, 11];
 
 const SQRT2 = Math.SQRT2;
 
 export class PostPass {
   readonly pipeline: THREE.RenderPipeline;
   private readonly uSkyOn = uniform(0);
-  private readonly uSkyGain = uniform(0.42);
+  private readonly uSkyGain = uniform(0.5);
   private readonly uSkySize = uniform(new THREE.Vector2(4000, 2000));
   private readonly uCamRot = uniform(new THREE.Matrix3());
   private readonly uTanHalf = uniform(new THREE.Vector2(1, 1));
-  private readonly uQ = uniform(9);
+  readonly uQ = uniform(6);
   private readonly skyNode;
   private hasSky = false;
 
@@ -63,13 +75,14 @@ export class PostPass {
       const ang = length(fwidth(d));
       const lod = log2(max(ang.mul(this.uSkySize.x).mul(0.25), 1.0));
       const skyRaw = this.skyNode.sample(uvSky).level(lod).rgb;
-      // the image's floor is a faint grey haze; pull it toward black so the sky stays calm
-      const sky = max(skyRaw.sub(0.035), 0.0).mul(this.uSkyGain).mul(this.uSkyOn);
+      // (linear) the image's floor is a faint grey haze; pull it toward black so the sky stays calm
+      const sky = max(skyRaw.sub(0.003), 0.0).mul(this.uSkyGain).mul(this.uSkyOn);
 
-      const voidCol = vec3(4 / 255, 6 / 255, 11 / 255);
+      const voidLin = vec3(...VOID_SRGB.map((v) => srgbToLinear(v / 255)) as [number, number, number]);
+      const lin = voidLin.add(sky).add(c.mul(float(1.0).sub(sky.mul(0.5))));
+      const enc = vec3(linearToSrgbNode(lin.x), linearToSrgbNode(lin.y), linearToSrgbNode(lin.z));
       const dither = fract(sin(dot(screenCoordinate.xy, vec2(12.9898, 78.233))).mul(43758.5453)).sub(0.5).div(255.0);
-      const outc = voidCol.add(sky).add(c.mul(float(1.0).sub(sky.mul(0.5)))).add(dither);
-      return vec4(outc, 1.0);
+      return vec4(enc.add(dither), 1.0);
     })();
 
     this.pipeline = new THREE.RenderPipeline(renderer, out);

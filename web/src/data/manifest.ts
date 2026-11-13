@@ -50,9 +50,13 @@ export interface CatalogEntry {
   kind: string;
   ra?: number;
   dec?: number;
+  /** NaN / null when the catalogue has no distance */
   dist_pc: number;
+  dist_lo_pc?: number | null;
+  dist_hi_pc?: number | null;
   mag?: number | null;
-  xyz: Vec3;
+  /** null when there is no distance: only the direction (ra, dec) is known */
+  xyz: Vec3 | null;
   ref?: string;
   /** set by the loader: which file it came from */
   source?: string;
@@ -118,7 +122,11 @@ export async function loadCatalogs(urls: string[]): Promise<{ entries: CatalogEn
       continue;
     }
     for (const e of data) {
-      if (!e || !Array.isArray(e.xyz) || typeof e.name !== 'string') continue;
+      if (!e || typeof e.name !== 'string') continue;
+      const hasXyz = Array.isArray(e.xyz) && e.xyz.length === 3 && e.xyz.every(Number.isFinite);
+      const hasDir = Number.isFinite(e.ra) && Number.isFinite(e.dec);
+      if (!hasXyz && !hasDir) continue;
+      if (!hasXyz) e.xyz = null;
       // the same object can appear in several catalogues under different primary names
       // (e.g. 'Andromeda (M31)' and 'MESSIER031'): any shared name or alias makes it a duplicate
       const keys = [e.name, ...(e.alt ?? [])].map(catalogKey).filter(Boolean);

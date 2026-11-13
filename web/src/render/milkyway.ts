@@ -22,8 +22,9 @@
  */
 
 import * as THREE from 'three/webgpu';
-import { Discard, Fn, If, attribute, clamp, dot, exp, float, length, max, min, modelViewMatrix, select, smoothstep, uniform, uv, varying, vec4 } from 'three/tsl';
-import { QUAD } from './pointMaterial';
+import { Discard, Fn, If, attribute, clamp, dot, float, length, max, min, modelViewMatrix, select, smoothstep, uniform, uv, varying, vec4 } from 'three/tsl';
+import { QUAD, gaussProfile, kneeNode, srgbToLinearNode } from './pointMaterial';
+import { REF_PX_PER_RAD } from './brightness';
 import type { Vec3 } from '../math/frames';
 
 export const R0_PC = 8275;
@@ -177,12 +178,16 @@ export class MilkyWayModel {
     const mv = modelViewMatrix.mul(vec4(inst, 1.0));
     const r = max(length(mv.xyz), 1e-6);
     const size = auxA.x.div(r).mul(this.uPxPerRad).mul(2.0); // device px
-    // energy-conserving below 1.5 px; fade sprites that would cover the screen
-    const small = min(1.0, size.div(1.5).mul(size.div(1.5)));
+    // energy-conserving below 1.5 reference px (per solid angle, so canvas size does not matter);
+    // fade sprites that would cover the screen
+    const sizeRef = size.mul(REF_PX_PER_RAD).div(this.uPxPerRad);
+    const small = min(1.0, sizeRef.div(1.5).mul(sizeRef.div(1.5)));
     const I = this.uFade.mul(auxA.y).mul(0.03).mul(small).mul(float(1.0).sub(smoothstep(300.0, 900.0, size)));
     const keep = I.greaterThan(1e-5).and(mv.z.lessThan(0.0));
-    const vI = varying(I, 'vMwI');
-    const vC = varying(attribute('col', 'vec3'), 'vMwC');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vI: any = varying(I, 'vMwI');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vC: any = varying(srgbToLinearNode(attribute('col', 'vec3')), 'vMwC');
     this.material = new THREE.PointsNodeMaterial({
       transparent: true,
       depthTest: false,
@@ -198,7 +203,7 @@ export class MilkyWayModel {
       If(r2.greaterThan(1.0), () => {
         Discard();
       });
-      return vC.mul(vI).mul(exp(r2.mul(-3.5)).mul(float(1.0).sub(r2)));
+      return vC.mul(kneeNode(vI.mul(gaussProfile(r2))));
     })();
     this.material.opacityNode = float(1.0);
     this.points = new THREE.Mesh(g, this.material);

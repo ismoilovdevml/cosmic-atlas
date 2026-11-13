@@ -12,6 +12,9 @@
     <a class="skip" href="#search">Skip to search</a>
     <canvas id="view" tabindex="0" aria-label="3D map of the universe. Drag to orbit, scroll or pinch to zoom, W A S D to fly, click a point for details."></canvas>
     <div id="labels" class="labels"></div>
+    <svg id="errbar" class="errbar" aria-hidden="true">
+      <path id="eb-line" /><path id="eb-ticks" /><text id="eb-label"></text>
+    </svg>
     <div id="reticle" class="reticle" aria-hidden="true"></div>
 
     <header class="top">
@@ -48,6 +51,8 @@
             <input id="detail" type="range" min="60" max="400" step="10" value="140" />
           </label>
           <label class="check"><input id="labels-on" type="checkbox" checked /> Labels</label>
+          <label class="check" title="Stretch each point along the line of sight from its 16th to 84th percentile distance, for the most detailed nodes on screen">
+            <input id="unc-on" type="checkbox" /> Distance uncertainty</label>
           <label class="check"><input id="stats-on" type="checkbox" checked /> Performance overlay</label>
         </details>
       </div>

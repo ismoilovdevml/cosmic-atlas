@@ -29,10 +29,13 @@ for (const [name, hash] of VIEWS) {
     const s = await page.evaluate(() => window.__atlas.stats());
     if (i > 5 && s.inFlight === 0 && s.queued === 0) break;
   }
-  await page.waitForTimeout(1500); // let FPS window refresh
+  // measure FPS with continuous rendering (the app renders on demand and idles otherwise)
+  await page.evaluate(() => window.__atlas.setContinuous(true));
+  await page.waitForTimeout(2200);
   const s = await page.evaluate(() => window.__atlas.stats());
+  await page.evaluate(() => window.__atlas.setContinuous(false));
   await page.screenshot({ path: `${outdir}/${prefix}-${name}.png` });
-  console.log(name, JSON.stringify({ backend: s.backend, fps: +s.fps.toFixed(1), drawnPoints: s.drawnPoints, drawnNodes: s.drawnNodes, loadedNodes: s.loadedNodes, inFlight: s.inFlight, dist: s.view.dist }));
+  console.log(name, JSON.stringify({ backend: s.backend, fps: +s.fps.toFixed(1), drawnPoints: s.drawnPoints, drawnNodes: s.drawnNodes, loadedNodes: s.loadedNodes, blobs: s.blobs, light: Object.fromEntries(Object.entries(s.light).map(([k, v]) => [k, +v.toFixed(4)])), inFlight: s.inFlight, dist: s.view.dist }));
 }
 console.log('console/http problems:', logs.length ? logs : 'none');
 await browser.close();

@@ -14,15 +14,19 @@ to the URL to force the fallback.
 ```bash
 cd web
 npm ci
-npm run synth        # optional: synthetic dev tiles -> ../data/tiles/synthetic-{stars,galaxies}
+npm run synth        # optional: synthetic raw tables -> pipeline/build_tiles.py -> ../data/tiles/synthetic-*
 npm run dev          # http://localhost:5173
-npm test             # vitest: tile parser, ICRS->Galactic, Planck18, fly-to path, Sesame parsing
+npm test             # vitest: tile parser (16/24 B ext), blob light conservation, photometry, deep links,
+                     # tours, ICRS->Galactic, Planck18, fly-to path, Sesame parsing
 npm run build        # tsc --noEmit + vite build -> dist/
 npm run capture      # with the dev server up: screenshots at 1 pc / 300 pc / 30 kpc / 1 Gpc -> ../figures
 ```
 
-`npm run synth` uses the repo's `.venv` (numpy and astropy, no scipy). It writes about 2.5 M
-stars and 1.5 M galaxies. The data is synthetic and the viewer labels it that way.
+`npm run synth` uses the repo's `.venv` (numpy, astropy, pyarrow). It writes contract §2 Parquet
+(`data/raw/synthetic-{stars,galaxies}/synthetic.parquet` + `PROVENANCE.json`, including
+`dist_lo_pc`/`dist_hi_pc`), then runs `pipeline/build_tiles.py`, so there is one tile writer. It
+produces about 2.5 M stars and 1.5 M galaxies. The data is synthetic, and the viewer labels it that
+way. `synthetic-*` layers hide themselves once the real layer they stand in for (`fallbackFor`) exists.
 
 ### Tiles and the dev server
 
@@ -51,55 +55,103 @@ profile is drawn: crisp round PSF for stars, soft random-axis ellipse for galaxi
 ## Architecture
 
 ```
-main.ts ── App: renderer init (WebGPU → WebGL2), frame loop, picking, info card, search, tour, deep links
- ├─ tiles/format.ts      contract parser: meta.json validation, 16-byte render/pick records, child bits
- ├─ tiles/streamer.ts    octree LOD: one max-heap over all layers by projected node size (px),
- │                       global point budget, children only after parent loaded, ≤6 fetches,
- │                       LRU eviction above 1.6 × budget, additive LOD (parent + children drawn)
- ├─ render/pointMaterial.ts  TSL PointsNodeMaterial on instanced quads (attributes inst, rgbl)
- ├─ render/brightness.ts     appearance model (shared by shader and CPU picker)
- ├─ render/post.ts           TSL RenderPipeline: half-float HDR → asinh stretch + Gaia sky sphere
- ├─ render/milkyway.ts       procedural MW model (Reid et al. 2019 arms), TSL sprites
- ├─ render/labels.ts         DOM labels, per-kind scale windows, greedy declutter, UI occluders
- ├─ nav/controller.ts        float64 orbit camera, cursor-anchored log zoom, WASD/QE, touch, flyTo
- ├─ math/frames.ts           ICRS→Galactic matrix (astropy-derived), l/b, RA/Dec, Hammer-Aitoff uv
- ├─ math/cosmology.ts        Planck18 comoving distance, lookback time, inverse
- ├─ math/flyto.ts            van Wijk–Nuij zoom/pan path in log space
- ├─ math/units.ts            AU/pc/kpc/Mpc/Gpc, light-travel time, 1-2-5 scale bar
- ├─ data/manifest.ts         layers.json, tiles/_index.json, catalogue loading + de-duplication
- ├─ data/resolve.ts          local catalogue search, CDS Sesame (CORS-checked mirrors), view distances
- └─ ui/rail.ts               "powers of ten" rail (log scale slider, 0.04 AU – 30 Gpc)
+main.ts ── App: renderer init (WebGPU → WebGL2), on-demand frame loop with a frames-in-flight cap,
+ │          info card + error bar, search, tour runner, deep links
+ ├─ tiles/format.ts      contract parser: meta.json (incl. agg), 16-byte render records, pick records
+ │                       with stride = meta.extBytesPerPoint (16 v1 / 24 with dist_lo, dist_hi), path lookup
+ ├─ tiles/streamer.ts    octree cut: one max-heap over all layers by projected size, global point budget,
+ │                       ≤6 fetches, LRU; own/blob fade channels; subtree blobs; pick slots; unc attributes
+ ├─ tiles/blobs.ts       cut → blob frontier, own light = agg.L − Σ children (pure, unit-tested)
+ ├─ render/brightness.ts photometry constants + CPU twin (solid-angle peak, rim-zeroed Gaussian, knee, sRGB)
+ ├─ render/pointMaterial.ts  TSL: display / pick / uncertainty materials per layer + blob material
+ ├─ render/pick.ts       GPU picking: 1×1 cropped projection into RGBA32F, one pick in flight
+ ├─ render/post.ts       TSL RenderPipeline: linear HDR → asinh → explicit sRGB encode; Gaia sky sphere
+ ├─ render/milkyway.ts   procedural MW model (Reid et al. 2019 arms), TSL sprites
+ ├─ render/labels.ts     DOM labels: scale windows, padded measured-box declutter, 300 ms fades
+ ├─ state/hash.ts        deep-link format (view, layers, selection by stable id)
+ ├─ tour/tours.ts        tours as data; targets resolved at playback
+ ├─ nav/controller.ts    float64 orbit camera, cursor-anchored log zoom, WASD/QE, touch, flyTo
+ ├─ math/*               frames (ICRS→Galactic, Hammer-Aitoff), Planck18, van Wijk–Nuij path, units
+ ├─ data/manifest.ts     layers.json, tiles/_index.json, catalogues (dedup by name/alias, xyz may be null)
+ ├─ data/resolve.ts      local search, CDS Sesame (CORS-checked mirrors)
+ └─ ui/rail.ts           "powers of ten" rail
 ```
 
-### Rendering rules (contract section 5)
+### Rendering rules (contract section 5, plus what we took from skymap)
+
+Several techniques are adapted from skymap (github.com/rulkens/skymap, MIT, Copyright (c) 2026
+Alexander Rulkens). They are re-implemented in three.js/TSL, and no code is copied. See
+`../docs/skymap-lessons.md` for the references.
 
 - **Relative to eye.** The three.js camera stays at the origin and only rotates. The camera
-  position is float64 in JS (`NavController.camPos()`). Each node mesh gets
-  `position = centre − camPos` every frame, so `modelViewMatrix`, the per-node float32
-  uniform, holds a small translation for nearby nodes. Points stay float32 relative to their
-  node centre.
-- **Depth.** `logarithmicDepthBuffer: true` is supported on `WebGPURenderer`; NodeMaterial
-  writes `viewZToLogarithmicDepth`. Each frame `near` is set from the nearest drawn node
-  (`min(0.5 × nearest, 1e-3 × D)`) and `far` from the farthest. Points are additive and don't
-  depth-test, so log depth only matters for future opaque geometry.
-- **LOD.** A node is refined when its bounding sphere projects larger than `minNodePx`, which
-  the "Detail" slider sets. Nodes are taken in priority order until the point budget (default
-  4 M, slider 0.5 to 12 M) is used up.
-- **Brightness.** `M` comes from `lum`, then `m = M + 5 log10(r/10 pc)` from the camera, and
-  `flux = 10^(−0.4 (m − mRef))`. Sprite size grows as flux^0.25 and peak intensity is divided by
-  the area, so integrated light ∝ flux. Galaxies also get a physical radius (10 kpc at M = −21,
-  ∝ L^0.3), so nearby ones resolve into constant-surface-brightness discs.
-  `mRef = base + slope × log10(D)` is an auto-exposure (stars 6.0 + 0.9/decade, galaxies
-  −16.5 + 3.9/decade) plus the user's Exposure slider. Light accumulates in half float and is
-  compressed with an asinh stretch (Lupton et al. 1999).
-- **Sky.** The Gaia DR3 integrated-flux image (Galactic Hammer–Aitoff, l = 0 at centre, l
-  increasing to the left) is inverse-projected per fragment: direction → (l, b) → uv, with an
-  explicit mip level so the l = ±180° seam doesn't show. It fades out between 1.5 and 2.5 kpc
-  from the Sun. Credit: Gaia DR3 integrated flux (ESA/Gaia/DPAC).
-- **Milky Way model.** Reid et al. 2019 (ApJ 885, 131), Table 2 log-periodic arms with kinks,
-  extrapolated with a fade beyond the measured azimuth ranges. Also an exponential disc and a
-  long bar (Wegg+ 2015). R0 = 8.275 kpc (GRAVITY 2021). It fades in beyond 1.5 kpc from the
-  Sun. It is labelled as a model everywhere it appears.
+  position is float64 (`NavController.camPos()`). Each node mesh gets `position = centre − camPos`
+  every frame, so `modelViewMatrix`, the per-node float32 uniform, carries a small translation for
+  nearby nodes. Blob centroids are also subtracted in float64 and narrowed after.
+- **Depth.** `logarithmicDepthBuffer: true` (NodeMaterial writes `viewZToLogarithmicDepth`).
+  Near and far adapt to the nearest and farthest drawn node. Additive content does not depth-test.
+- **LOD and budget.** A node refines when its bounding sphere projects larger than `minNodePx` (the
+  Detail slider). Nodes are taken in priority order until the point budget (default 4 M, slider
+  0.5–12 M) is used up.
+- **Subtree blobs.** Every node that is not drawn, but whose parent is (or an undrawn root), is drawn
+  as one soft blob with its subtree's `agg` light, colour and centroid. Because
+  `agg.L(n) = own(n) + Σ agg.L(children)`, any cut draws the root's total light. The overlay shows
+  this live ("Light kept", 100.0 % at every scale), and `test/blobs.test.ts` checks it on the tiles
+  on disk, the real 15 M DESI tiles included.
+- **Fades.** Each node has an own-points channel and a blob channel, which walk linearly toward
+  their targets at one rate (0.35 s). During a split, the parent's blob fades out while its points
+  and its children's blobs fade in, so the light stays constant.
+- **Photometry.** `flux = 10^(−0.4 (m − mRef))`, where `m` is computed from the lum-code M and the
+  distance from the camera. Light is deposited **per unit solid angle**: the sprite radius is
+  converted to a reference of 935.3 px/rad before the peak is computed, so canvas size, pixel ratio
+  and field of view do not change brightness. The sprite is a rim-zeroed Gaussian
+  `(e^{−4u²} − e^{−4})/(1 − e^{−4})` with exact integral `K = 0.7268`. The glow grows as flux^¼,
+  only the drawn size is capped, and the peak comes from the uncapped size. A hue-preserving knee
+  `8(1 − e^{−I/8})` is applied before the colour tint. Galaxies also get a physical radius.
+  `mRef` = auto-exposure (stars 5.5 + 0.9/decade, galaxies −20.5 + 3.9/decade of camera distance)
+  + the Exposure slider.
+- **Colour pipeline.** sRGB bytes are decoded to linear in the shaders and summed in a half-float
+  target. That is tone-mapped with an asinh stretch (Lupton et al. 1999), then encoded explicitly
+  to sRGB, then dithered by ±½ LSB. The sky JPEG is decoded by the texture (`SRGBColorSpace`). The
+  canvas is a non-sRGB 8-bit format and `outputColorTransform` is off, so there is exactly one
+  encode. *Verified:* with every layer off, the canvas reads back (4, 6, 11), the CSS `--void`, on
+  both WebGPU and WebGL2. This is skymap's open "no sRGB encode" backlog item, closed for us.
+- **GPU picking.** `camera.setViewOffset(W, H, x, y, 1, 1)` rasterises only the cursor pixel into a
+  1×1 RGBA32F target holding (point index, node slot, layer code). Floats are exact below 2^24 and
+  avoid integer-target differences between backends. The brightest point wins through
+  depth = 1/(1+I). One pick is in flight at a time. The pick uses the same intensity as drawing, so
+  nothing invisible can be clicked. Minimum footprint is 3.5 px.
+- **Distance uncertainty.**
+  - The info card shows the median distance, its 16–84 % range and the fractional error, for tile
+    points (from the 24 B ext record) and catalogue entries that have `dist_lo_pc`/`dist_hi_pc`.
+  - The selected object gets a line-of-sight error bar from dist_lo to dist_hi. The bar is
+    projected from 3D each frame into an SVG overlay, and is dashed when there is no upper bound.
+  - Display → *Distance uncertainty* turns the points of the 32 most important drawn nodes (those
+    whose ext data is loaded) into quads stretched along the Sun→point line. Their peak is scaled
+    by w/(len+w) so their light is conserved.
+- **Frame hygiene.** The app renders on demand: the GPU is only used when the view, data, a fade, a
+  flight or a setting changes. Frames in flight are capped at 2 with
+  `device.queue.onSubmittedWorkDone()`, against skymap's measured 7-deep queue and 69 ms of
+  latency. DPR is capped at 2. The overlay's FPS reads "idle" when nothing renders; the capture
+  script measures FPS with `__atlas.setContinuous(true)`.
+- **Sky.** The Gaia DR3 integrated-flux image (Galactic Hammer–Aitoff) is inverse-projected per
+  fragment with an explicit mip level (`textureSampleLevel`-style, no seam). It fades out between
+  1.5 and 2.5 kpc from the Sun. Credit: Gaia DR3 integrated flux (ESA/Gaia/DPAC).
+- **Milky Way model.** Reid et al. 2019 Table 2 arms with R0 = 8.275 kpc (GRAVITY 2021), plus an
+  exponential disc and a long bar. It is labelled as a model wherever it appears.
+
+### WebGPU landmines (skymap-lessons §2) and what applies here
+
+| # | Landmine | Status |
+|---|---|---|
+| 1 | `writeBuffer` ordered against submit, not draws | Not hit: per-node data is in vertex buffers; the per-object uniforms (`onObjectUpdate`) get their own buffers from three.js; the blob buffer is written once per frame for one draw |
+| 2, 13 | Invalid WGSL silently drops frames | Partly: three.js reports pipeline errors to the console, and the capture scripts fail on any console error. No WebKit check |
+| 3 | Implicit-derivative sampling across seams | Avoided: the sky uses an explicit LOD |
+| 6, 11 | Reversed-Z far plane, clip-w band | Not used (standard log depth). Clip w spans ~1e-7…3e9, inside the band |
+| 15, 16 | Feature/limit requests, swap format | Handled by three.js |
+| 17 | No sRGB encode on a `bgra8unorm` swap chain | **Fixed** by the explicit encode, verified by readback |
+| 18 | Uncapped frames in flight | **Fixed**: cap of 2 |
+| 19, 20 | Slot pools evicting their working set; stale rows | Only nodes fully faded out (alpha 0) and outside the cut are evicted; pick slots are freed on unload |
+| 4, 5, 7–10, 12, 14 | Vertex-stage sampling, Adreno by-value structs, f32 cancellation, denormals, layout-auto bind groups, cubemaps, NaN bisects | Not applicable to our shaders, or handled by three.js's bind groups |
 
 ### Search
 
@@ -115,8 +167,19 @@ otherwise redshift via Planck18 comoving distance when z ≥ 0.003. Otherwise th
 
 ### Deep links
 
-`#v=x,y,z,D,yawDeg,pitchDeg` holds the focus (pc, Galactic), the camera–focus distance and the
-orientation. It updates 0.4 s after the view settles; editing the hash flies there.
+`#v=x,y,z,D,yawDeg,pitchDeg&l=<id>,~<hidden id>&sel=<layer>:<id>@x,y,z` (or `sel=cat:<name>`).
+The selection is stored as a **stable catalogue id** plus its position. On load, the viewer walks
+the octree path to that position, finds the id in those nodes' `.ext.bin` files and opens the card.
+A rebuilt tile set keeps working, unlike skymap's record-index links. Round-1 links (`#v=` only)
+still work.
+
+### Tours
+
+Tours are plain data (`src/tour/tours.ts`): beats with durable targets (the Sun, the Galactic
+Centre, catalogue names with a fallback position, or a point between two targets), a distance, a
+caption and a dwell time. Targets are resolved when the tour plays. The runner snapshots the camera,
+layer visibility and selection. A beat can turn on the layers it needs. Stop or the end of the tour
+restores the scene and flies back; any user input stops it without flying back.
 
 ### Controls
 
@@ -125,14 +188,19 @@ Drag to orbit. Right-drag or Shift-drag to pan. Wheel or pinch zooms toward the 
 for 4×. Arrow keys orbit; + and − zoom. Click shows the brightest visible point under the cursor
 (its `.ext.bin` is loaded on demand); double-click flies there. `/` focuses search.
 
-## Known limits
+## Known limits and next steps
 
-- The deep link stores only the camera, not layer visibility or the selection.
-- Picking runs on the CPU over drawn nodes inside the click ray, at a few ms for 1.6 M points.
-  A GPU id buffer would scale better.
-- With the dev data, labels from the real named-star catalogues don't coincide with synthetic
-  points. That resolves once `stars-gaia` exists.
-- The sky image also contains the stars inside 1 kpc that the point layer draws, so near the
-  Sun those stars are counted twice. Toggle either layer to compare.
-- The star colours in the synthetic generator use an approximate BP−RP → Teff → blackbody
-  mapping (the Tanner Helland fit), not a calibrated one.
+- **Next:** galaxy thumbnails (dot → ellipse → image ladder) through CDS hips2fits, which is
+  CORS-safe for DSS. We'd use a 128² atlas with LRU and idempotent ready/failed sets (lessons §3
+  #11). Not started.
+- Galaxy layers are ordered by a seeded shuffle (contract §3), so the root is a random sample. At
+  1 Gpc, most light comes from subtree blobs (soft glows) until the camera gets close enough to
+  refine.
+- Uncertainty streaks only appear for the 32 most important drawn nodes (ext data must be loaded),
+  as a cost cap.
+- Picking uses float encoding: point index < 2^24, node slots < 2^22. Leaf nodes above
+  `nodeCapacity` (build depth cap) are still within range.
+- Catalogue entries with `xyz: null` are searchable and turn the view toward their direction, but
+  have no label.
+- With the dev data, labels from the real named-star catalogues do not sit on synthetic points.
+- The sky image also contains the stars inside 1 kpc, so near the Sun those stars appear twice.

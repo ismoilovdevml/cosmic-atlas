@@ -1,12 +1,12 @@
 /**
- * DOM labels for named objects (catalogues + Milky Way model), decluttered on a screen grid.
+ * DOM labels for named objects (catalogues + Milky Way model).
  *
- * A label is shown when the object is in front of the camera, on screen, and either
- *   - it would be reasonably bright as seen from the camera (apparent mag below a limit), or
- *   - it lies within a few focus-distances of the camera (you are "at its scale").
- * Candidates are placed brightest first; one that overlaps an already placed label is skipped.
- * Star names are set in roman, galaxies in italic and model features in the model colour,
- * following star-atlas convention.
+ * A label is a candidate when the object is in front of the camera, on screen, inside its kind's
+ * scale window, and either bright as seen from the camera or near it. Candidates are ranked and
+ * accepted greedily when their MEASURED text box, padded by 8 px, overlaps no accepted box and no
+ * UI panel. Labels fade in and out over 300 ms (smoothstep envelope), so declutter changes never
+ * pop (both after skymap's label director, MIT, re-implemented).
+ * Star names are roman, galaxies italic, model features in the model colour (star-atlas convention).
  */
 
 import * as THREE from 'three/webgpu';
@@ -18,13 +18,14 @@ export interface LabelItem {
   kind: string;
   /** absolute magnitude if known */
   absMag: number | null;
-  /** min / max camera-focus distance at which the label may appear (pc) */
   minScale?: number;
   maxScale?: number;
   onClick?: () => void;
 }
 
 const MAX_LABELS = 28;
+const PAD = 8;
+const FADE_S = 0.3;
 
 /** camera-focus distances (pc) at which each kind of object is 'at scale' and may be labelled */
 export const SCALE_WINDOWS: Record<string, [number, number]> = {
@@ -37,47 +38,62 @@ export const SCALE_WINDOWS: Record<string, [number, number]> = {
   qso: [1e6, 1e10],
 };
 
+interface State {
+  el: HTMLButtonElement;
+  alpha: number;
+  w: number;
+  item: LabelItem;
+}
+
 export class LabelLayer {
   private items: LabelItem[] = [];
-  private pool: HTMLButtonElement[] = [];
+  private states = new Map<LabelItem, State>();
   private v = new THREE.Vector3();
   modelOpacity = 1;
   enabled = true;
+  /** true while any label is mid-fade */
+  animating = false;
 
   constructor(private root: HTMLElement) {}
 
   setItems(items: LabelItem[]) {
+    for (const s of this.states.values()) s.el.remove();
+    this.states.clear();
     this.items = items;
   }
 
-  private el(i: number): HTMLButtonElement {
-    let e = this.pool[i];
-    if (!e) {
-      e = document.createElement('button');
-      e.type = 'button';
-      e.className = 'label';
-      e.tabIndex = -1;
-      this.root.appendChild(e);
-      this.pool[i] = e;
+  private state(it: LabelItem): State {
+    let s = this.states.get(it);
+    if (!s) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'label';
+      el.tabIndex = -1;
+      el.textContent = it.name;
+      el.dataset.kind = it.kind.includes('galaxy') ? 'galaxy' : it.kind === 'model' ? 'model' : 'star';
+      el.style.opacity = '0';
+      if (it.onClick) el.onclick = it.onClick;
+      this.root.appendChild(el);
+      s = { el, alpha: 0, w: el.offsetWidth + 12, item: it };
+      this.states.set(it, s);
     }
-    return e;
+    return s;
   }
 
-  update(camera: THREE.PerspectiveCamera, camPos: Vec3, focusDist: number, width: number, height: number, occluders: DOMRect[] = []) {
+  update(camera: THREE.PerspectiveCamera, camPos: Vec3, focusDist: number, width: number, height: number, occluders: DOMRect[], dt: number) {
     type C = { it: LabelItem; x: number; y: number; rank: number };
     const cands: C[] = [];
     if (this.enabled) {
       for (const it of this.items) {
         if (it.kind === 'model' && this.modelOpacity < 0.15) continue;
         const win = SCALE_WINDOWS[it.kind] ?? [2e4, 2e8];
-        if (focusDist < (it.minScale ?? win[0])) continue;
-        if (focusDist > (it.maxScale ?? win[1])) continue;
+        if (focusDist < (it.minScale ?? win[0]) || focusDist > (it.maxScale ?? win[1])) continue;
         const dx = it.xyz[0] - camPos[0];
         const dy = it.xyz[1] - camPos[1];
         const dz = it.xyz[2] - camPos[2];
         const r = Math.hypot(dx, dy, dz);
         if (r < focusDist * 1e-3) continue; // we are sitting on it
-        if (it.kind !== 'model' && r > focusDist * (it.kind.includes('galaxy') ? 100 : 300)) continue; // far beyond the current scale
+        if (it.kind !== 'model' && r > focusDist * (it.kind.includes('galaxy') ? 100 : 300)) continue;
         this.v.set(dx, dy, dz).project(camera);
         if (this.v.z > 1 || this.v.z < -1) continue;
         const x = (this.v.x * 0.5 + 0.5) * width;
@@ -88,30 +104,49 @@ export class LabelLayer {
         const bright = app !== null && app < (it.kind.includes('galaxy') ? 11 : 4.5);
         const isModel = it.kind === 'model';
         if (!near && !bright && !isModel) continue;
-        // rank: lower is more important
         // model features are the context at their scale, so they go first
         const rank = isModel ? -20 : app !== null ? app - (near ? 6 : 0) : near ? 0 : 8;
         cands.push({ it, x, y, rank });
       }
     }
     cands.sort((a, b) => a.rank - b.rank);
-    // UI panels count as already-placed boxes, so labels never sit underneath them
-    const placed: { x0: number; x1: number; y0: number; y1: number }[] = occluders.map((r) => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }));
-    let n = 0;
-    for (const c of cands) {
-      if (n >= Math.min(MAX_LABELS, Math.round((width * height) / 26000))) break;
-      const w = c.it.name.length * 7.2 + 16;
-      const box = { x0: c.x + 6, x1: c.x + 6 + w, y0: c.y - 9, y1: c.y + 9 };
-      if (placed.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
-      placed.push(box);
-      const e = this.el(n++);
-      if (e.textContent !== c.it.name) e.textContent = c.it.name;
-      e.dataset.kind = c.it.kind.includes('galaxy') ? 'galaxy' : c.it.kind === 'model' ? 'model' : 'star';
-      e.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px)`;
-      e.style.opacity = c.it.kind === 'model' ? String(Math.min(1, this.modelOpacity)) : '';
-      e.hidden = false;
-      e.onclick = c.it.onClick ?? null;
+    // currently visible labels win ties, which keeps the layout stable while moving
+    const pos = new Map<LabelItem, C>();
+    for (const c of cands) pos.set(c.it, c);
+    const boxes = occluders.map((r) => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }));
+    const accepted = new Set<LabelItem>();
+    const limit = Math.min(MAX_LABELS, Math.round((width * height) / 26000));
+    const order = [...cands.filter((c) => (this.states.get(c.it)?.alpha ?? 0) > 0.5), ...cands];
+    for (const c of order) {
+      if (accepted.size >= limit) break;
+      if (accepted.has(c.it)) continue;
+      const w = this.state(c.it).w;
+      const box = { x0: c.x - PAD, x1: c.x + w + PAD, y0: c.y - 9 - PAD, y1: c.y + 9 + PAD };
+      if (boxes.some((p) => box.x0 < p.x1 && box.x1 > p.x0 && box.y0 < p.y1 && box.y1 > p.y0)) continue;
+      boxes.push(box);
+      accepted.add(c.it);
     }
-    for (let i = n; i < this.pool.length; i++) this.pool[i].hidden = true;
+    const step = dt / FADE_S;
+    let animating = false;
+    for (const [it, s] of this.states) {
+      const c = pos.get(it);
+      const target = accepted.has(it) ? 1 : 0;
+      s.alpha = c ? (s.alpha < target ? Math.min(target, s.alpha + step) : Math.max(target, s.alpha - step)) : 0;
+      if (s.alpha !== target && c) animating = true;
+      if (s.alpha <= 0) {
+        if (s.el.style.opacity !== '0') s.el.style.opacity = '0';
+        s.el.style.visibility = 'hidden';
+        if (!c && this.states.size > 400) {
+          s.el.remove();
+          this.states.delete(it);
+        }
+        continue;
+      }
+      const e = s.alpha * s.alpha * (3 - 2 * s.alpha);
+      s.el.style.visibility = 'visible';
+      s.el.style.opacity = String(e * (it.kind === 'model' ? Math.min(1, this.modelOpacity) : 1));
+      s.el.style.transform = `translate(${c!.x.toFixed(1)}px, ${c!.y.toFixed(1)}px)`;
+    }
+    this.animating = animating;
   }
 }

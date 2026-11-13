@@ -1,117 +1,243 @@
 /**
- * Point-cloud material for octree nodes, written in TSL so it compiles to WGSL (WebGPU) or
- * GLSL (three.js's WebGL2 fallback backend) from one source.
+ * Point materials (TSL → WGSL on WebGPU, GLSL on three.js's WebGL2 fallback), one set per layer:
  *
- * Each octree node is a Mesh whose InstancedBufferGeometry is a unit quad plus two per-instance
- * attributes: `inst` (xyz relative to the node centre, float32) and `rgbl` (r, g, b, lum as
- * normalised uint8). WebGPU has no sized points, so PointsNodeMaterial's sprite path expands
- * each instance into a screen-aligned quad of `sizeNode` CSS pixels.
+ *   material      display: instanced screen-aligned quads (PointsNodeMaterial sprite path)
+ *   pickMaterial  GPU picking: same geometry and visibility gate, writes (point index, node slot,
+ *                 layer code) as floats into a 1×1 RGBA32F target; brightest point wins via depth
+ *   uncMaterial   "distance uncertainty" mode: each point becomes a quad stretched along the
+ *                 Sun→point line of sight from dist_lo to dist_hi, dimmed so its light is conserved
  *
- * Relative-to-eye (contract section 5): the camera sits at the world origin and each node's
- * Object3D.position = node centre - camera position, computed in float64 on the CPU every frame;
- * modelViewMatrix therefore carries a small translation for nearby nodes.
+ * plus one blob material (subtree aggregates, see streamer.ts).
  *
- * The appearance model is documented in brightness.ts; keep the two in sync.
+ * Each octree node is a Mesh whose InstancedBufferGeometry is a unit quad plus per-instance
+ * attributes `inst` (xyz relative to the node centre, f32) and `rgbl` (sRGB r,g,b + lum, unorm8);
+ * `unc` (dist_lo/d, dist_hi/d) is added once the node's pick records are loaded.
+ *
+ * Relative-to-eye (contract section 5): the camera sits at the origin; each node's
+ * Object3D.position = centre − camera, computed in float64 on the CPU every frame.
+ *
+ * Colour is handled in LINEAR light: sRGB bytes are decoded here, summed in the half-float target,
+ * tone-mapped and sRGB-encoded once in post.ts. Photometry: see brightness.ts (CPU twin).
  */
 
 import * as THREE from 'three/webgpu';
 import {
-  Discard, Fn, If, attribute, dot, exp, float, fract, length, log, max, min, mix, modelViewMatrix, pow, select,
-  sin, smoothstep, uniform, uv, varying, vec2, vec3, vec4, cos,
+  Discard, Fn, If, attribute, cameraProjectionMatrix, cos, dot, exp, float, fract, instanceIndex, length, log, max,
+  min, mix, modelViewMatrix, positionGeometry, pow, select, sin, smoothstep, uniform, uv, varying, vec2,
+  vec3, vec4, viewportSize,
 } from 'three/tsl';
-import { BASE_PX, GAL_MAX_PX, STAR_MAX_PX, type PointKind } from './brightness';
+import { BASE_PX, E4, GAL_MAX_PX, K_GAUSS, KNEE, REF_PX_PER_RAD, STAR_MAX_PX, type PointKind } from './brightness';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type N = any; // TSL node (the bundled typings are too narrow for generic helpers)
 
 export interface PointUniforms {
   mRef: { value: number };
   pxPerRad: { value: number };
   dpr: { value: number };
   opacity: { value: number };
+  /** view-space position of the Sun (for line-of-sight elongation) */
+  sunView: { value: THREE.Vector3 };
 }
 
-export interface PointMaterial {
+export interface LayerMaterials {
   material: THREE.PointsNodeMaterial;
+  pickMaterial: THREE.PointsNodeMaterial;
+  uncMaterial: THREE.MeshBasicNodeMaterial;
   uniforms: PointUniforms;
 }
 
 const LOG10 = Math.LN10;
+/** visibility gate: below this peak (after per-node alpha) nothing is drawn */
+export const DRAW_GATE = 2e-4;
+/** a point must be at least this bright to take a click (same quantity as the draw gate) */
+export const PICK_GATE = 0.01;
+/** minimum pick footprint radius, CSS px */
+export const PICK_MIN_RADIUS_PX = 3.5;
 
-export function createPointMaterial(kind: PointKind): PointMaterial {
-  const mRef = uniform(0);
-  const pxPerRad = uniform(1000); // device px per radian
-  const dpr = uniform(1);
-  const opacity = uniform(1);
+/** sRGB → linear (exact piecewise IEC 61966-2-1) */
+export const srgbToLinearNode = (c: N): N =>
+  select(c.lessThanEqual(0.04045), c.div(12.92), pow(c.add(0.055).div(1.055), 2.4));
+
+/**
+ * TSL photometry; see brightness.ts appearance() for the CPU twin.
+ * Returns device-px drawn size, the linear peak (pre-knee) and the inside-a-galaxy fade.
+ */
+export function photometry(M: N, r: N, physRadiusPc: N | null, maxCssPx: number, u: PointUniforms) {
+  const U = u as unknown as Record<string, N>;
+  const m = M.add(log(r.div(10.0)).mul(5.0 / LOG10));
+  const flux = pow(float(10.0), m.sub(U.mRef).mul(-0.4));
+  const base = U.dpr.mul(BASE_PX);
+  // the glow grows freely with flux; only the drawn size is capped (peak from the pre-ceiling size)
+  const psf = base.mul(max(pow(flux, 0.25), 1.0));
+  const trueSize = physRadiusPc ? max(psf, physRadiusPc.mul(2.0).div(r).mul(U.pxPerRad)) : psf;
+  const rRef = trueSize.mul(0.5 * REF_PX_PER_RAD).div(U.pxPerRad);
+  const peak = flux.div(rRef.mul(rRef).mul(K_GAUSS));
+  const maxPx = U.dpr.mul(maxCssPx);
+  const fade = physRadiusPc ? float(1.0).sub(smoothstep(maxPx, maxPx.mul(4.0), trueSize)) : float(1.0);
+  return { size: min(trueSize, maxPx), peak, fade, flux };
+}
+
+/** rim-zeroed Gaussian of the squared normalised radius */
+export const gaussProfile = (u2: N): N => exp(u2.mul(-4.0)).sub(E4).div(1.0 - E4);
+/** hue-preserving knee, applied to the scalar before the colour tint */
+export const kneeNode = (I: N): N => float(KNEE).mul(float(1.0).sub(exp(I.div(-KNEE))));
+
+/** per-object uniforms read from Object3D.userData at draw time */
+export const objectAlpha = () => uniform(1).onObjectUpdate(({ object }: any) => object?.userData?.alpha ?? 1);
+const objectSlot = () => uniform(0).onObjectUpdate(({ object }: any) => object?.userData?.slot ?? 0);
+
+export function createLayerMaterials(kind: PointKind, layerCode: number): LayerMaterials {
+  const uniforms: PointUniforms = {
+    mRef: uniform(0) as unknown as { value: number },
+    pxPerRad: uniform(1000) as unknown as { value: number },
+    dpr: uniform(1) as unknown as { value: number },
+    opacity: uniform(1) as unknown as { value: number },
+    sunView: uniform(new THREE.Vector3()) as unknown as { value: THREE.Vector3 },
+  };
+  const U = uniforms as unknown as Record<string, N>;
   const isGal = kind === 'galaxy';
+  const alpha: N = objectAlpha();
+  const slot: N = objectSlot();
 
   const inst = attribute('inst', 'vec3');
   const rgbl = attribute('rgbl', 'vec4');
-
-  // ---- vertex stage: apparent magnitude -> size (device px) and peak intensity
   const mv = modelViewMatrix.mul(vec4(inst, 1.0));
   const r = max(length(mv.xyz), 1e-7);
   const code = rgbl.w.mul(255.0);
   const M = isGal ? float(-14.0).sub(code.div(20.0)) : float(20.0).sub(code.div(10.0));
-  const m = M.add(log(r.div(10.0)).mul(5.0 / LOG10));
-  const flux = pow(float(10.0), m.sub(mRef).mul(-0.4));
-  const base = dpr.mul(BASE_PX);
-  const grow = min(max(pow(flux, 0.25), 1.0), STAR_MAX_PX / BASE_PX);
-  const psfSize = base.mul(grow);
-  const phys = float(1e4).mul(pow(float(10.0), M.add(21.0).mul(-0.12))).div(r).mul(pxPerRad).mul(2.0);
-  const size = isGal ? max(psfSize, phys) : psfSize;
-  // inside / right next to a galaxy: fade it out instead of filling the screen
-  const fade = isGal ? float(1.0).sub(smoothstep(dpr.mul(GAL_MAX_PX), dpr.mul(GAL_MAX_PX * 4), size)) : float(1.0);
-  const ratio = base.div(size);
-  const intensity = min(flux.mul(ratio).mul(ratio), 4000.0).mul(fade).mul(opacity);
-  const maxPx = dpr.mul(isGal ? GAL_MAX_PX : STAR_MAX_PX);
-  const drawPx = min(size, maxPx);
-  // invisible or behind the camera: collapse the quad
-  const keep = intensity.greaterThan(2e-4).and(mv.z.lessThan(0.0));
-  const sizeCss = select(keep, drawPx.div(dpr), float(0.0));
+  const phys = isGal ? float(1e4).mul(pow(float(10.0), M.add(21.0).mul(-0.12))) : null;
+  const ph = photometry(M, r, phys, isGal ? GAL_MAX_PX : STAR_MAX_PX, uniforms);
+  const intensity: N = ph.peak.mul(ph.fade).mul(U.opacity).mul(alpha);
+  const inFront: N = mv.z.lessThan(0.0);
+  const drawKeep: N = intensity.greaterThan(DRAW_GATE).and(inFront);
 
-  const vColor = varying(rgbl.xyz, 'vColor');
-  const vI = varying(intensity, 'vI');
-  // galaxies: per-point ellipse orientation and axis ratio from a position hash
+  const vColor: N = varying(srgbToLinearNode(rgbl.xyz), 'vColor');
+  const vI: N = varying(intensity, 'vI');
+  // galaxies: ellipse orientation / axis ratio from a position hash; round below ~4 px (aliasing)
   const h1 = fract(sin(dot(inst, vec3(12.9898, 78.233, 37.719))).mul(43758.5453));
   const h2 = fract(sin(dot(inst.zxy, vec3(39.346, 11.135, 83.155))).mul(24634.6345));
-  // below ~4 px an ellipse only aliases into dashes, so small galaxies stay round
-  const axis = mix(1.0, mix(0.25, 1.0, h2), smoothstep(dpr.mul(3.0), dpr.mul(9.0), drawPx));
-  const vShape = varying(vec3(cos(h1.mul(6.2831853)), sin(h1.mul(6.2831853)), axis), 'vShape');
+  const axis = mix(1.0, mix(0.25, 1.0, h2), smoothstep(U.dpr.mul(3.0), U.dpr.mul(9.0), ph.size));
+  const vShape: N = varying(vec3(cos(h1.mul(6.2831853)), sin(h1.mul(6.2831853)), axis), 'vShape');
 
-  // ---- fragment stage: sprite profile
-  const colorNode = Fn(() => {
-    const p = uv().mul(2.0).sub(1.0);
-    let a;
-    if (!isGal) {
-      // star: Gaussian core + faint wide wing, peak 1
-      const r2 = dot(p, p);
-      If(r2.greaterThan(1.0), () => {
-        Discard();
-      });
-      a = exp(r2.mul(-6.0)).add(exp(r2.mul(-1.6)).mul(float(1.0).sub(r2)).mul(0.06));
-    } else {
-      // galaxy: exponential-disc ellipse
-      const q = vec2(dot(p, vShape.xy), dot(p, vec2(vShape.y.negate(), vShape.x)).div(vShape.z));
-      const rr = length(q);
-      If(rr.greaterThan(1.0), () => {
-        Discard();
-      });
-      a = exp(rr.mul(-4.2)).mul(float(1.0).sub(rr.mul(rr)));
-    }
-    return vColor.mul(vI).mul(a);
-  })();
+  const shapeU2 = (p: N): N => {
+    if (!isGal) return dot(p, p);
+    const q = vec2(dot(p, vShape.xy), dot(p, vec2(vShape.y.negate(), vShape.x)).div(vShape.z));
+    return dot(q, q);
+  };
 
+  // ---- display
   const material = new THREE.PointsNodeMaterial({
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    sizeAttenuation: false,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false,
   });
   material.positionNode = inst;
-  material.sizeNode = sizeCss;
-  material.colorNode = colorNode;
+  material.sizeNode = select(drawKeep, ph.size.div(U.dpr), float(0.0));
+  material.colorNode = Fn(() => {
+    const u2 = shapeU2(uv().mul(2.0).sub(1.0));
+    If(u2.greaterThan(1.0), () => {
+      Discard();
+    });
+    return vColor.mul(kneeNode(vI.mul(gaussProfile(u2))));
+  })();
   material.opacityNode = float(1.0);
   material.name = `points-${kind}`;
-  return { material, uniforms: { mRef, pxPerRad, dpr, opacity } as unknown as PointUniforms };
+
+  // ---- pick: same gate quantity, minimum footprint, brightest wins (depth = 1/(1+I))
+  const pickKeep: N = intensity.greaterThan(PICK_GATE).and(inFront);
+  const pickSize = max(ph.size, U.dpr.mul(2 * PICK_MIN_RADIUS_PX));
+  const vPickI: N = varying(intensity, 'vPickI');
+  const vIdx: N = varying(float(instanceIndex), 'vIdx');
+  const pickMaterial = new THREE.PointsNodeMaterial({
+    transparent: false, depthTest: true, depthWrite: true, blending: THREE.NoBlending, sizeAttenuation: false,
+  });
+  pickMaterial.positionNode = inst;
+  pickMaterial.sizeNode = select(pickKeep, pickSize.div(U.dpr), float(0.0));
+  pickMaterial.colorNode = Fn(() => {
+    const p = uv().mul(2.0).sub(1.0);
+    If(dot(p, p).greaterThan(1.0), () => {
+      Discard();
+    });
+    return vec3(vIdx, slot, float(layerCode));
+  })();
+  pickMaterial.opacityNode = float(1.0);
+  pickMaterial.depthNode = float(1.0).div(vPickI.add(1.0));
+  pickMaterial.name = `pick-${kind}`;
+
+  // ---- distance-uncertainty quads along the Sun→point line of sight
+  const unc = attribute('unc', 'vec2'); // dist_lo / d, dist_hi / d
+  const S = U.sunView;
+  const P = mv.xyz;
+  const pLo = S.add(P.sub(S).mul(unc.x));
+  const pHi = S.add(P.sub(S).mul(unc.y));
+  const clipP = cameraProjectionMatrix.mul(vec4(P, 1.0));
+  const clipLo = cameraProjectionMatrix.mul(vec4(pLo, 1.0));
+  const clipHi = cameraProjectionMatrix.mul(vec4(pHi, 1.0));
+  const halfVp = viewportSize.mul(0.5);
+  const ndcP = clipP.xy.div(clipP.w);
+  // endpoints behind the camera collapse onto the point
+  const sLo = select(clipLo.w.greaterThan(0.0), clipLo.xy.div(clipLo.w).sub(ndcP).mul(halfVp), vec2(0.0));
+  const sHi = select(clipHi.w.greaterThan(0.0), clipHi.xy.div(clipHi.w).sub(ndcP).mul(halfVp), vec2(0.0));
+  const seg = sHi.sub(sLo);
+  const segLen = length(seg);
+  const dir = select(segLen.greaterThan(1e-3), seg.div(segLen), vec2(1.0, 0.0));
+  const perp = vec2(dir.y.negate(), dir.x);
+  const w = ph.size; // device px
+  const along = positionGeometry.y.add(0.5); // 0 at the lo end, 1 at hi
+  const offPx = sLo.add(seg.mul(along)).add(dir.mul(positionGeometry.y.mul(w))).add(perp.mul(positionGeometry.x.mul(w)));
+  const uncKeep = drawKeep;
+  const uncMaterial = new THREE.MeshBasicNodeMaterial({
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  uncMaterial.vertexNode = select(
+    uncKeep,
+    vec4(ndcP.add(offPx.div(halfVp)).mul(clipP.w), clipP.z, clipP.w),
+    vec4(2.0, 2.0, 2.0, 1.0),
+  );
+  // light of the round sprite spread over the streak: peak × w / (len + w)
+  const vUncI: N = varying(intensity.mul(w.div(segLen.add(w))), 'vUncI');
+  const vUncC: N = varying(srgbToLinearNode(rgbl.xyz), 'vUncC');
+  uncMaterial.colorNode = Fn(() => {
+    const across = uv().x.mul(2.0).sub(1.0);
+    const v = uv().y; // 0..1 along
+    const ends = smoothstep(0.0, 0.18, v).mul(smoothstep(0.0, 0.18, float(1.0).sub(v)));
+    return vUncC.mul(kneeNode(vUncI.mul(gaussProfile(across.mul(across))).mul(ends)));
+  })();
+  uncMaterial.opacityNode = float(1.0);
+  uncMaterial.name = `unc-${kind}`;
+
+  return { material, pickMaterial, uncMaterial, uniforms };
+}
+
+/** Blob material for subtree aggregates: a soft extended glow of total luminosity L. */
+export function createBlobMaterial(u: PointUniforms): THREE.PointsNodeMaterial {
+  const binst = attribute('binst', 'vec3'); // centroid − camera (pc), rewritten every frame
+  const bcol = attribute('bcol', 'vec3'); // sRGB 0..1
+  const bdat = attribute('bdat', 'vec2'); // (L · blobAlpha, radius pc)
+  const U = u as unknown as Record<string, N>;
+  const mv = modelViewMatrix.mul(vec4(binst, 1.0));
+  const r = max(length(mv.xyz), 1e-6);
+  const M = float(-2.5).mul(log(max(bdat.x, 1e-30)).div(LOG10));
+  const ph = photometry(M, r, bdat.y, GAL_MAX_PX, u);
+  const I: N = ph.peak.mul(ph.fade).mul(U.opacity);
+  const keep: N = I.greaterThan(DRAW_GATE).and(mv.z.lessThan(0.0)).and(bdat.x.greaterThan(0.0));
+  const vI: N = varying(I, 'vBlobI');
+  const vC: N = varying(srgbToLinearNode(bcol), 'vBlobC');
+  const mat = new THREE.PointsNodeMaterial({
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false,
+  });
+  mat.positionNode = binst;
+  mat.sizeNode = select(keep, ph.size.div(U.dpr), float(0.0));
+  mat.colorNode = Fn(() => {
+    const p = uv().mul(2.0).sub(1.0);
+    const u2 = dot(p, p);
+    If(u2.greaterThan(1.0), () => {
+      Discard();
+    });
+    return vC.mul(kneeNode(vI.mul(gaussProfile(u2))));
+  })();
+  mat.opacityNode = float(1.0);
+  mat.name = 'blobs';
+  return mat;
 }
 
 /** unit quad shared by all point meshes (positions in [-0.5, 0.5], uv in [0, 1]) */
@@ -130,3 +256,4 @@ export function makeNodeGeometry(positions: Float32Array, rgbl: Uint8Array, coun
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
   return g;
 }
+
