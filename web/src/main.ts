@@ -789,7 +789,7 @@ class App {
       const ti = this.shapes.thumbInfo(g.name);
       const s = this.shapes.survey;
       const how = ti && 'via' in ti ? (ti.via === 'hips2fits' ? 'cutout from CDS hips2fits' : `HiPS tiles from ${new URL(ti.via).host}, reprojected in the browser (hips2fits unavailable)`)
-        : ti && 'error' in ti ? `not available (${ti.error}); the procedural disk is shown` : 'loaded when the galaxy is large on screen';
+        : ti && 'error' in ti ? `not available (${ti.error}); the procedural disk is shown` : this.shapes.thumbsEnabled ? 'loaded when the galaxy is large on screen' : 'image loading is off (?thumbs=off), the procedural disk is shown';
       note += `${note ? ' ' : ''}Image: ${s.title} HiPS, ${s.credit}; ${how}. The image is the view from Earth, shown on the disk plane oriented by PA and inclination, so it is approximate when seen from far from the Sun.`;
     }
     const fly = this.viewFor(e);
@@ -1220,12 +1220,15 @@ class App {
       setLayer: (id: string, on: boolean) => this.setLayerVisible(id, on),
       shapes: () => this.shapes.stats(),
       /** view of a catalogue galaxy from the Sun's side, its D25 major axis filling `fill` of the height */
-      galaxyView: (name: string, fill = 0.6) => {
+      galaxyView: (name: string, fill = 0.6, fromSun = false) => {
         const e = this.findEntry(name);
         const it = e ? this.shapes.itemFor(e) : null;
         if (!e || !e.xyz || !it) return null;
         const d = Math.hypot(...e.xyz);
         const s = e.xyz.map((v) => v / d);
+        // fromSun: camera at the Sun (the Earth view); the caller narrows the field with setFov(fovDeg)
+        const fovDeg = (2 * Math.atan(it.R / d / fill) * 180) / Math.PI;
+        if (fromSun) return { focus: e.xyz.slice(), dist: d * (1 - 1e-9), yaw: Math.atan2(-s[1], -s[0]), pitch: Math.asin(-s[2]), fovDeg };
         const dist = (2 * it.R) / (fill * 2 * Math.tan((this.camera.fov * Math.PI) / 360));
         return { focus: e.xyz.slice(), dist, yaw: Math.atan2(-s[1], -s[0]), pitch: Math.asin(-s[2]) };
       },
@@ -1236,6 +1239,12 @@ class App {
         const dec = e.dec + northArcmin / 60;
         const ra = e.ra + eastArcmin / 60 / Math.cos((e.dec * Math.PI) / 180);
         return this.project(radecDistToGal(ra, dec, e.dist_pc), this.nav.camPos());
+      },
+      /** vertical field of view in degrees (default 55); narrow fields show the Earth view of a galaxy */
+      setFov: (deg: number) => {
+        this.camera.fov = deg;
+        this.camera.updateProjectionMatrix();
+        this.dirty = true;
       },
       showEntry: (name: string) => {
         const e = this.findEntry(name);

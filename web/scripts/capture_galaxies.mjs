@@ -17,9 +17,13 @@ page.on('response', (r) => { if (r.status() >= 400) logs.push(`[http ${r.status(
 await page.goto(`${base}${query}#v=0,0,0,1e6,-150,20`);
 await page.waitForFunction(() => window.__atlas && window.__atlas.galaxyView, null, { timeout: 30000 });
 await page.waitForTimeout(1500);
+// the Gaia all-sky image is ~0.1 deg/px: hide it in the narrow Earth-view fields, where it shows as blocks
+if (process.env.EARTH) await page.evaluate(() => window.__atlas.setSky(false));
 for (const name of NAMES) {
-  const v = await page.evaluate((n) => window.__atlas.galaxyView(n, 0.6), name);
+  // EARTH=1: camera at the Sun with a narrow field (the view from Earth, for comparing with sky images)
+  const v = await page.evaluate(([n, e]) => window.__atlas.galaxyView(n, 0.6, e), [name, !!process.env.EARTH]);
   if (!v) { console.log(name, 'no view (not in catalogue or no shape)'); continue; }
+  await page.evaluate((fov) => window.__atlas.setFov(fov), v.fovDeg && process.env.EARTH ? v.fovDeg : 55);
   await page.evaluate((view) => window.__atlas.setView(view), v);
   let sh = [];
   for (let i = 0; i < 60; i++) {
@@ -38,11 +42,32 @@ for (const name of NAMES) {
     const ang = (p) => (Math.atan2(-(p.x - c.x), -(p.y - c.y)) * 180) / Math.PI; // screen angle from up, counter-clockwise (toward left)
     return { centre: c, northDeg: ang(N), eastDeg: ang(E) };
   }, name);
-  const slug = name.toLowerCase().replace(/\s+/g, '');
+  const slug = name.toLowerCase().replace(/\s+/g, '') + (process.env.EARTH ? '-earthview' : '');
   await page.screenshot({ path: `${outdir}/galaxy-${slug}.png` });
   const card = await page.evaluate(() => [...document.querySelectorAll('#info-rows dt')].map((d) => `${d.textContent}: ${d.nextElementSibling?.textContent}`).join(' | ') + ' || ' + document.getElementById('info-note')?.textContent);
   console.log(name, JSON.stringify({ view: { dist: +v.dist.toPrecision(4) }, top: sh.slice(0, 3), compass }));
   console.log('  card:', card);
+}
+// extra views of the first galaxy: the LOD ladder (D25 at 6 / 11 / 30 / 120 px) and an oblique view
+if (process.env.CAPTURE_EXTRA) {
+  const name = NAMES[0];
+  const slug = name.toLowerCase().replace(/\s+/g, '');
+  await page.evaluate(() => document.getElementById('info-close')?.click());
+  for (const px of [6, 11, 30, 120]) {
+    const v = await page.evaluate(([n, f]) => window.__atlas.galaxyView(n, f), [name, px / 900]);
+    await page.evaluate((view) => window.__atlas.setView(view), v);
+    await page.waitForTimeout(6000);
+    const sh = await page.evaluate(() => window.__atlas.shapes());
+    await page.screenshot({ path: `${outdir}/galaxy-${slug}-lod${px}px.png` });
+    console.log(`${name} lod ${px}px`, JSON.stringify(sh.find((x) => x.name === name) ?? null));
+  }
+  const v = await page.evaluate((n) => window.__atlas.galaxyView(n, 0.45), name);
+  for (const [tag, dyaw, dpitch] of [['oblique', 55, 25]]) {
+    await page.evaluate(([view, dy, dp]) => window.__atlas.setView({ ...view, yaw: view.yaw + (dy * Math.PI) / 180, pitch: view.pitch + (dp * Math.PI) / 180 }), [v, dyaw, dpitch]);
+    await page.waitForTimeout(5000);
+    await page.screenshot({ path: `${outdir}/galaxy-${slug}-${tag}.png` });
+    console.log(`${name} ${tag}`, JSON.stringify((await page.evaluate(() => window.__atlas.shapes()))[0]));
+  }
 }
 console.log('console/http problems:', logs.length ? logs : 'none');
 await browser.close();

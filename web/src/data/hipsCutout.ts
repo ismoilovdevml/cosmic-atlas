@@ -166,16 +166,24 @@ export async function reprojectFromTiles(base: string, s: HipsSurvey, ra: number
   return out;
 }
 
+/** after a hips2fits failure, go straight to the mirrors for this long (no request storm, no console spam) */
+const HIPS2FITS_BACKOFF_MS = 10 * 60 * 1000;
+let hips2fitsDownUntil = 0;
+
 /** hips2fits first, then in-browser reprojection from each mirror; throws when all fail */
 export async function fetchCutout(s: HipsSurvey, ra: number, dec: number, fovDeg: number, size: number,
   signal?: AbortSignal): Promise<Cutout> {
   const errors: string[] = [];
-  try {
-    const blob = await fetchImage(hips2fitsUrl(s, ra, dec, fovDeg, size), signal);
-    return { rgba: await decode(blob, size), size, via: 'hips2fits' };
-  } catch (e) {
-    errors.push(`hips2fits: ${(e as Error).message}`);
-  }
+  if (Date.now() >= hips2fitsDownUntil) {
+    try {
+      const blob = await fetchImage(hips2fitsUrl(s, ra, dec, fovDeg, size), signal);
+      return { rgba: await decode(blob, size), size, via: 'hips2fits' };
+    } catch (e) {
+      // a CORS block surfaces as a TypeError from fetch, an outage as an HTTP error
+      hips2fitsDownUntil = Date.now() + HIPS2FITS_BACKOFF_MS;
+      errors.push(`hips2fits: ${(e as Error).message}`);
+    }
+  } else errors.push('hips2fits: skipped after a recent failure');
   for (const m of s.mirrors) {
     try {
       return { rgba: await reprojectFromTiles(m, s, ra, dec, fovDeg, size, signal), size, via: m };
