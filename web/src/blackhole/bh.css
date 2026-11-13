@@ -1,0 +1,44 @@
+/* ---------- black holes up close (src/blackhole) ---------- */
+.bh-hud {
+  position: fixed; left: 16px; bottom: 96px; z-index: 13;
+  width: min(330px, calc(100vw - 32px)); padding: 12px 14px 12px;
+  max-height: calc(100vh - 200px); overflow-y: auto; overscroll-behavior: contain;
+}
+.bh-hud[hidden] { display: none; }
+.bh-hud .kind { margin: 0 0 2px; font-size: 12px; color: var(--ink-dim); }
+.bh-hud h2 { font: 500 18px/1.2 var(--serif); }
+.bh-hud .rows { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 10px 0 0; font-size: 13px; }
+.bh-hud .rows dt { color: var(--ink-dim); }
+.bh-hud .rows dd { margin: 0; text-align: right; color: var(--ink); }
+.bh-hud .rows dd.danger { color: var(--danger); font-weight: 600; }
+.bh-warn { margin: 8px 0 0; padding: 6px 9px; font-size: 12.5px; color: #1a0d0a; background: var(--danger); border-radius: var(--r-ctl); font-weight: 500; }
+.bh-warn[hidden], .bh-floor[hidden] { display: none; }
+.bh-floor { margin: 8px 0 0; padding: 7px 9px; font-size: 12.5px; line-height: 1.45; border: 1px solid var(--brass-dim); border-radius: var(--r-ctl); color: var(--brass-bright); background: rgba(201, 166, 107, 0.1); }
+.bh-clocks { display: flex; gap: 14px; margin-top: 10px; }
+.bh-clocks figure { margin: 0; display: flex; align-items: center; gap: 8px; flex: 1; }
+.bh-clocks figcaption { display: flex; flex-direction: column; font-size: 11.5px; color: var(--ink-dim); line-height: 1.3; }
+.bh-clocks figcaption b { font: 500 15px/1.2 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.bh-dial { width: 40px; height: 40px; flex: none; }
+.bh-dial circle { fill: rgba(4, 6, 11, 0.6); stroke: var(--hairline-strong); stroke-width: 1; }
+.bh-dial .tk { stroke: var(--ink-dim); stroke-width: 1; }
+.bh-dial .mn { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.bh-dial .sc { stroke: var(--brass-bright); stroke-width: 1.2; stroke-linecap: round; }
+.bh-dial.far .sc { stroke: var(--model); }
+.bh-dial .hub { fill: var(--brass-bright); stroke: none; }
+.bh-ratio { margin-top: 4px; }
+.bh-ctl { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 13px; }
+.bh-ctl .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.bh-q { display: inline-flex; align-items: center; gap: 6px; }
+.bh-q select { background: var(--glass-strong); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-ctl); padding: 2px 4px; font: inherit; }
+.bh-note { margin-top: 6px; line-height: 1.45; font-size: 11.5px; }
+.bh-about { margin-top: 8px; font-size: 12px; color: var(--ink-dim); }
+.bh-about summary { cursor: pointer; }
+.bh-webgl { margin: 8px 0 0; font-size: 12px; color: var(--danger); }
+.bh-webgl[hidden] { display: none; }
+.bh-flamm { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+.bh-flamm path { fill: none; stroke: #8fb2cf; stroke-width: 0.8; stroke-opacity: 0.4; }
+.bh-flamm path.throat { stroke: #e59a8a; stroke-width: 1.4; stroke-opacity: 0.8; }
+.bh-flamm text { fill: #8fb2cf; font: italic 12px var(--serif); text-anchor: middle; paint-order: stroke; stroke: rgba(4, 6, 11, 0.8); stroke-width: 3px; }
+@media (max-width: 640px) {
+  .bh-hud { bottom: 120px; max-height: 46vh; }
+}

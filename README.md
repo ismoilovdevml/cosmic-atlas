@@ -21,7 +21,12 @@ number on screen comes with the catalogue it came from.
 - **See the uncertainty.** Distances are measurements, and the atlas shows each object's 16–84 %
   range.
 - **Watch the Solar System move** in real time, or run time forward ×10⁴ or ×10⁶.
-- **Share a view.** The URL stores the camera, the layers and the selected object.
+- **Show me**: fly from the cosmic web down to the place where you are. Your location stays in
+  the browser and is never sent or stored.
+- **Visit a black hole.** The light around Sgr A*, M87* and Gaia BH3 is ray-traced in general
+  relativity, and a live readout shows how time slows and tides grow as you approach.
+- **Read about anything.** Every object links to a short article, in Uzbek, English or Russian.
+- **Share a view.** The link names the object you are looking at, e.g. `#at=Saturn`.
 
 ## What's in it
 
@@ -46,6 +51,8 @@ number on screen comes with the catalogue it came from.
 | **Earth**, with day and night at the current time | **Jupiter** and its moons on their real orbits |
 | ![M81 drawn as an oriented disk with its DSS image](docs/images/m81.jpg) | ![The DESI cosmic web in a thin slab](docs/images/cosmic-web-200mpc.jpg) |
 | **M81**, with size and tilt from HyperLEDA | **The cosmic web**: DESI galaxies in a 50 Mpc slice |
+| ![Sgr A* with its accretion disk bent over and under the shadow](docs/images/blackhole-sgra.jpg) | ![Gaia BH3 bending the real Gaia sky into an Einstein ring](docs/images/blackhole-gaia-bh3.jpg) |
+| **Sgr A\***: the far side of the disk is bent over the shadow | **Gaia BH3** bends the real Milky Way around it |
 
 ![Left: Andromeda in the atlas, seen from the Sun. Right: an independent reprojection of the DSS image](docs/images/m31-vs-dss.jpg)
 *Accuracy check: Andromeda in the atlas (left) next to an independent reprojection of the

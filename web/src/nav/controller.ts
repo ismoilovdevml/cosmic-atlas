@@ -61,6 +61,8 @@ export class NavController {
   /** the last gesture that started on a label moved or pinched, so its click must not fire */
   private swallowClick = false;
   onClick: (x: number, y: number) => void = () => {};
+  /** lower bound on the distance (pc); the black hole module lowers it to 1.5 r_s near a stellar-mass hole */
+  minDist = MIN_DIST;
   /** extra lower bound on the distance (pc), e.g. a followed planet's radius; 0 = none */
   distFloor = 0;
   onDoubleClick: (x: number, y: number) => void = () => {};
@@ -125,7 +127,7 @@ export class NavController {
     this.cancelFlight();
     this.distFloor = 0; // an explicit view wins; a followed body sets its floor again next frame
     Object.assign(this.view, v);
-    this.view.dist = Math.min(MAX_DIST, Math.max(MIN_DIST, this.view.dist));
+    this.view.dist = Math.min(MAX_DIST, Math.max(this.minDist, this.view.dist));
     this.view.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.view.pitch));
     this.targetLogDist = Math.log(this.view.dist);
     this.zoomAnchor = null;
@@ -138,7 +140,7 @@ export class NavController {
     const from: View = { ...this.view, focus: [...this.view.focus] as Vec3 };
     const target: View = {
       focus: (to.focus ?? from.focus).slice() as Vec3,
-      dist: Math.min(MAX_DIST, Math.max(MIN_DIST, to.dist ?? from.dist)),
+      dist: Math.min(MAX_DIST, Math.max(this.minDist, to.dist ?? from.dist)),
       yaw: to.yaw ?? from.yaw,
       pitch: Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, to.pitch ?? from.pitch)),
     };
@@ -242,7 +244,7 @@ export class NavController {
 
   /** multiply the target distance (smoothly applied) */
   zoomBy(factor: number, anchor: Vec3 | null = null) {
-    this.targetLogDist = Math.min(Math.log(MAX_DIST), Math.max(Math.log(Math.max(MIN_DIST, this.distFloor)), this.targetLogDist + Math.log(factor)));
+    this.targetLogDist = Math.min(Math.log(MAX_DIST), Math.max(Math.log(Math.max(this.minDist, this.distFloor)), this.targetLogDist + Math.log(factor)));
     this.zoomAnchor = anchor;
   }
 
@@ -327,7 +329,7 @@ export class NavController {
       const now = this.pinchState();
       if (now.span > 0 && this.pinch.span > 0) {
         const k = this.pinch.span / now.span;
-        this.view.dist = Math.min(MAX_DIST, Math.max(MIN_DIST, this.distFloor, this.view.dist * k));
+        this.view.dist = Math.min(MAX_DIST, Math.max(this.minDist, this.distFloor, this.view.dist * k));
         this.targetLogDist = Math.log(this.view.dist);
       }
       this.pan(now.mid.x - this.pinch.mid.x, now.mid.y - this.pinch.mid.y);

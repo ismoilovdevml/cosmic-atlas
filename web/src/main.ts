@@ -41,6 +41,8 @@ import { SCALE_TOUR, SHOW_ME_TOUR, needsHere, resolveBeat, resolveTarget, type B
 import { ScaleRail } from './ui/rail';
 // --- Solar System hook (web/src/solar): live planets, time control, probes
 import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, observerGalacticXyz, solarInfo, tr as solarTr, type SolarEntry } from './solar';
+// --- Black hole hook (web/src/blackhole): lensing post pass, disk, HUD, approach to 1.5 r_s
+import { BlackHoleFeature } from './blackhole';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -98,6 +100,7 @@ class App {
   private lastExposureT = 0;
   private densityInfo = { p98: 0, k: 0 };
   private renders = 0;
+  private totalRenders = 0;
   private fpsT0 = performance.now();
   private lastT = performance.now();
   private dpr = 1;
@@ -127,6 +130,8 @@ class App {
   private timebar!: TimeBar;
   private solarSel: SolarEntry | null = null;
   private solarInfoT = 0;
+  // --- Black hole hook
+  bh = new BlackHoleFeature();
 
   async start() {
     initLang();
@@ -148,6 +153,8 @@ class App {
         logarithmicDepthBuffer: true,
         powerPreference: 'high-performance',
         forceWebGL,
+        // ?gputime: GPU timestamp queries for the perf hooks below (capture scripts)
+        trackTimestamp: new URLSearchParams(location.search).has('gputime'),
       });
       await this.renderer.init();
     } catch (e) {
@@ -180,6 +187,13 @@ class App {
       this.dirty = true;
     };
     this.solar.onSelect = (e) => this.showSolar(e);
+    // --- Black hole hook: lens pipeline, HUD; flights and re-renders go through the app
+    this.bh.attach(this.post, this.backend);
+    this.bh.onChange = () => (this.dirty = true);
+    this.bh.onFly = (v) => {
+      this.stopTour(false);
+      return this.nav.flyTo(v);
+    };
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
@@ -430,6 +444,7 @@ class App {
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
     this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
+    this.bh.setCatalog(this.catalog); // --- Black hole hook
     this.buildLabels();
   }
 
@@ -533,6 +548,8 @@ class App {
       if (earth) earth.label.hidden = this.solar.followId === 'earth' && this.nav.view.dist < 3e-10;
     }
     this.nav.applyToCamera();
+    // --- Black hole hook: lens uniforms, HUD, keep the camera outside 1.5 r_s (may move the focus)
+    if (this.bh.update({ nav: this.nav, camera: this.camera, pxPerRad: this.pxPerRad(), dt, width: window.innerWidth, height: window.innerHeight })) this.dirty = true;
     const cam = this.nav.camPos();
     const D = this.nav.view.dist;
     // --- Solar System hook: positions at the simulation time; re-render when something moved on screen
@@ -605,8 +622,11 @@ class App {
     const skyFade = 1 - smoothstep(1500, 2500, camFromSun);
     this.skyAmount = this.sky.visible && this.sky.loaded ? this.sky.opacity * skyFade : 0;
 
-    this.post.render(this.camera, this.skyAmount);
+    // --- Black hole hook: environment cube for rays bent out of the frame, then the lensed pipeline
+    this.bh.captureEnv(this.renderer, this.scene, (px, dpr) => this.setSpritePx(cam, px, dpr), () => this.setSpritePx(cam, pxPerRad, this.dpr));
+    this.post.render(this.camera, this.skyAmount, this.bh.lensActive);
     this.renders++;
+    this.totalRenders++;
     // frames-in-flight cap (WebGPU): count submitted work until the queue reports it done
     if (this.backend === 'WebGPU') {
       const dev = (this.renderer as unknown as { backend: { device?: GPUDevice } }).backend.device;
@@ -615,6 +635,15 @@ class App {
         dev.queue.onSubmittedWorkDone().then(() => (this.inFlight = Math.max(0, this.inFlight - 1)));
       }
     }
+  }
+
+  /** --- Black hole hook: sprite scale of the point layers and the Milky Way model for one render */
+  private setSpritePx(cam: Vec3, pxPerRad: number, dpr: number) {
+    for (const L of this.layers) {
+      L.uniforms.pxPerRad.value = pxPerRad;
+      L.uniforms.dpr.value = dpr;
+    }
+    this.mw.update(cam, pxPerRad, dpr);
   }
 
   /** 98th-percentile screen density of the drawn galaxies → density-mode exposure (4 Hz) */
@@ -977,6 +1006,7 @@ class App {
       links.appendChild(a);
     }
     $('info-fly').onclick = () => void this.nav.flyTo(o.fly);
+    this.bh.infoFor(o.title, $('info-fly').parentElement!, this.nav); // --- Black hole hook: "Experience it" button
     $('info').hidden = false;
     document.body.classList.add('has-info');
     this.scheduleHash();
@@ -1751,6 +1781,31 @@ class App {
           this.solar.attach('earth');
         },
       },
+      // --- Black hole hook (captures / tests)
+      bh: { ...this.bh.debugApi(), experience: (name: string) => {
+        const h = this.bh.find(name);
+        return h ? this.bh.experience(h, this.nav) : Promise.resolve(false);
+      }, setView: (v: Partial<View>) => {
+        this.nav.minDist = 1e-14; // the black hole hook sets the real floor (1.5 r_s) on the next frame
+        this.nav.setView(v);
+      },
+      /** mean GPU time per rendered frame (ms) over `ms` of continuous rendering; needs ?gputime (timestamp queries) */
+      gpuMs: async (ms = 3000) => {
+        // three resolves the GPU duration of the most recent frame: sample it once per frame
+        this.continuous = true;
+        const t0 = performance.now();
+        const r0 = this.totalRenders;
+        const v: number[] = [];
+        while (performance.now() - t0 < ms) {
+          await new Promise((res) => requestAnimationFrame(res));
+          const d = await this.renderer.resolveTimestampsAsync('render');
+          if (typeof d === 'number' && d > 0) v.push(d);
+        }
+        this.continuous = false;
+        v.sort((a, b) => a - b);
+        const q = (p: number) => (v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : null);
+        return { medianMs: q(0.5), p90Ms: q(0.9), samples: v.length, frames: this.totalRenders - r0, wallMs: performance.now() - t0 };
+      } },
       setUncertainty: (on: boolean) => {
         this.streamer.uncertainty = on;
         ($('unc-on') as HTMLInputElement).checked = on;

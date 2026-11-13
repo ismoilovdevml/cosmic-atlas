@@ -34,6 +34,9 @@ export const VOID_SRGB: [number, number, number] = [4, 6, 11];
 
 const SQRT2 = Math.SQRT2;
 
+/** a lens: scene HDR texture + sky sampler -> HDR light and linear sky along bent rays (src/blackhole/lens.ts) */
+export type LensFn = (ctx: { hdrTex: any; skyAt: (d: any, lod: any) => any; skyWidth: any }) => { hdr: any; sky: any };
+
 export class PostPass {
   readonly pipeline: THREE.RenderPipeline;
   private readonly uSkyOn = uniform(0);
@@ -42,10 +45,12 @@ export class PostPass {
   private readonly uCamRot = uniform(new THREE.Matrix3());
   private readonly uTanHalf = uniform(new THREE.Vector2(1, 1));
   readonly uQ = uniform(6);
+  private lensPipeline: THREE.RenderPipeline | null = null;
+  private makeLensOutput!: (lens: LensFn) => any;
   private readonly skyNode;
   private hasSky = false;
 
-  constructor(renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+  constructor(private readonly renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     const scenePass = pass(scene, camera);
     const hdrTex = scenePass.getTextureNode('output');
     // only opaque Solar System bodies write depth; the sky must not show through them
@@ -61,18 +66,8 @@ export class PostPass {
     placeholder.needsUpdate = true;
     this.skyNode = texture(placeholder);
 
-    const out = Fn(() => {
-      const hdr = hdrTex.rgb;
-      const L = max(max(hdr.r, hdr.g), hdr.b);
-      const q = this.uQ;
-      const f = select(L.greaterThan(1e-6), asinh(q.mul(L)).div(asinh(q).mul(L)), q.div(asinh(q)));
-      const c0 = hdr.mul(f);
-      const mx = max(max(c0.r, c0.g), c0.b);
-      const c = c0.div(max(mx, 1.0));
-
-      // sky: view direction -> (l, b) -> Hammer-Aitoff uv
-      const ndc = vec2(screenUV.x.mul(2.0).sub(1.0), float(1.0).sub(screenUV.y.mul(2.0)));
-      const d = normalize(this.uCamRot.mul(vec3(ndc.mul(this.uTanHalf), -1.0)));
+    // linear Gaia sky for a world direction at an explicit mip level (also used along bent rays)
+    const skyAt = (d: any, lod: any) => {
       const l = atan(d.y, d.x);
       const b = asin(clamp(d.z, -1.0, 1.0));
       const den = sqrt(float(1.0).add(cos(b).mul(cos(l.mul(0.5)))));
@@ -81,22 +76,51 @@ export class PostPass {
       const col = float(2.0 * SQRT2).sub(x).div(4.0 * SQRT2).mul(this.uSkySize.x.sub(1.0));
       const row = float(SQRT2).sub(y).div(2.0 * SQRT2).mul(this.uSkySize.y.sub(1.0));
       const uvSky = vec2(col.add(0.5).div(this.uSkySize.x), float(1.0).sub(row.add(0.5).div(this.uSkySize.y)));
-      const ang = length(fwidth(d));
-      const lod = log2(max(ang.mul(this.uSkySize.x).mul(0.25), 1.0));
       const skyRaw = this.skyNode.sample(uvSky).level(lod).rgb;
       // (linear) the image's floor is a faint grey haze; pull it toward black so the sky stays calm
-      const clearDepth = select(sceneDepth.x.greaterThanEqual(0.9999999), float(1.0), float(0.0));
-      const sky = max(skyRaw.sub(0.003), 0.0).mul(this.uSkyGain).mul(this.uSkyOn).mul(clearDepth);
-
+      return max(skyRaw.sub(0.003), 0.0).mul(this.uSkyGain).mul(this.uSkyOn);
+    };
+    // HDR scene light + linear sky -> display (tone map, encode, dither)
+    const compose = (hdr: any, sky: any) => {
+      const L = max(max(hdr.r, hdr.g), hdr.b);
+      const q = this.uQ;
+      const f = select(L.greaterThan(1e-6), asinh(q.mul(L)).div(asinh(q).mul(L)), q.div(asinh(q)));
+      const c0 = hdr.mul(f);
+      const mx = max(max(c0.r, c0.g), c0.b);
+      const c = c0.div(max(mx, 1.0));
       const voidLin = vec3(...VOID_SRGB.map((v) => srgbToLinear(v / 255)) as [number, number, number]);
       const lin = voidLin.add(sky).add(c.mul(float(1.0).sub(sky.mul(0.5))));
       const enc = vec3(linearToSrgbNode(lin.x), linearToSrgbNode(lin.y), linearToSrgbNode(lin.z));
       const dither = fract(sin(dot(screenCoordinate.xy, vec2(12.9898, 78.233))).mul(43758.5453)).sub(0.5).div(255.0);
       return vec4(enc.add(dither), 1.0);
+    };
+    this.makeLensOutput = (lens) => Fn(() => {
+      const r = lens({ hdrTex, skyAt, skyWidth: this.uSkySize.x });
+      return compose(r.hdr, r.sky);
+    })();
+
+    const out = Fn(() => {
+      // sky: view direction -> (l, b) -> Hammer-Aitoff uv
+      const ndc = vec2(screenUV.x.mul(2.0).sub(1.0), float(1.0).sub(screenUV.y.mul(2.0)));
+      const d = normalize(this.uCamRot.mul(vec3(ndc.mul(this.uTanHalf), -1.0)));
+      const ang = length(fwidth(d));
+      const lod = log2(max(ang.mul(this.uSkySize.x).mul(0.25), 1.0));
+      const clearDepth = select(sceneDepth.x.greaterThanEqual(0.9999999), float(1.0), float(0.0));
+      return compose(hdrTex.rgb, skyAt(d, lod).mul(clearDepth));
     })();
 
     this.pipeline = new THREE.RenderPipeline(renderer, out);
     this.pipeline.outputColorTransform = false;
+  }
+
+  /**
+   * Black hole lens hook (src/blackhole): a second pipeline whose scene light and sky come from a
+   * lens function (rays bent around the hole). Built once; render(..., true) uses it.
+   */
+  enableLens(lens: LensFn) {
+    if (this.lensPipeline) return;
+    this.lensPipeline = new THREE.RenderPipeline(this.renderer, this.makeLensOutput(lens));
+    this.lensPipeline.outputColorTransform = false;
   }
 
   setSky(tex: THREE.Texture, w: number, h: number) {
@@ -106,11 +130,11 @@ export class PostPass {
   }
 
   /** skyAmount: 0..1 (layer opacity x distance fade) */
-  render(camera: THREE.PerspectiveCamera, skyAmount: number) {
+  render(camera: THREE.PerspectiveCamera, skyAmount: number, lens = false) {
     this.uSkyOn.value = this.hasSky ? skyAmount : 0;
     this.uCamRot.value.setFromMatrix4(camera.matrixWorld);
     const t = Math.tan((camera.fov * Math.PI) / 360);
     this.uTanHalf.value.set(t * camera.aspect, t);
-    this.pipeline.render();
+    (lens && this.lensPipeline ? this.lensPipeline : this.pipeline).render();
   }
 }

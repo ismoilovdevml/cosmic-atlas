@@ -28,6 +28,8 @@ node scripts/qa_engines.mjs chromium|firefox|webkit <outdir> <prefix> ['?backend
 node scripts/qa_compare.mjs a.png b.png ...    # pixel diff of screenshot pairs
 node scripts/qa_mobile.mjs <outdir> <prefix> <url>   # 390x844 + 360x740 touch: layout, 44 px targets, contrast, gestures
 node scripts/perf_budget.mjs 4,12 '' '#v=0,0,0,1e9,-150,28' <url> [--uncapped] [--detail=N]
+node scripts/capture_blackholes.mjs ../figures 'http://localhost:5173/?gputime' 1  # black holes -> figures/bh-*.png, GPU ms
+../.venv/bin/python -I scripts/measure_blackholes.py ../figures        # shadow radius vs Synge, disk asymmetry PA
 ```
 
 ### Solar System (`src/solar/`)
@@ -62,6 +64,60 @@ node scripts/perf_budget.mjs 4,12 '' '#v=0,0,0,1e9,-150,28' <url> [--uncapped] [
 - **For "Show me":** `observerGalacticXyz(lat, lon, h, date)` and `flyTargetForLatLon(lat, lon,
   date?, altitudeKm?)` in `src/solar/ephemeris.ts`. Tashkent matches astropy
   `EarthLocation→GCRS→Galactic` to 20 m.
+
+### Black holes up close (`src/blackhole/`)
+
+Fly toward any hole in `black-holes.json` (or press **Experience it** on its info card: a flight to
+the Earth-side line of sight at 25 r_s with a disk, 40 r_s without) and the sky bends around it.
+
+- **Scale.** r_s = 2GM/c² from the catalogue mass (IAU nominal GM☉): Sgr A* 1.269×10⁷ km, M87*
+  1.92×10¹⁰ km, Gaia BH3 96.6 km. Near a hole the navigation floor drops to 1.5 r_s (it was 300 km);
+  the camera stops there, on the photon sphere, with a message about the horizon. Camera–hole
+  offsets are taken as (focus − hole) + offset in float64, so 1e-12 pc steps at 590 pc do not cancel.
+- **Lensing** (`lens.ts`, `geodesic.ts` is its tested CPU twin). Per pixel, the orbit equation
+  d²u/dφ² = −u + (3/2) r_s u² is integrated by RK4 in φ, starting from the static observer's
+  u'(0) = −u₀√(1 − u₀) cot ψ (aberration included). Rays end captured (u = 1, or inward inside the
+  photon sphere), on the disk, or escaped; outgoing rays beyond 10 r_s finish with an analytic
+  tail (second order in u³/(w² − u²)), rays that never come within 200 r_s use the first-order
+  orbit. The bent direction samples the Gaia sky image, the rendered frame where it lands inside
+  it, and otherwise an environment cube of the scene captured from the hole (once a second).
+  Background light is boosted by the static observer's blueshift g⁴ = (1 − r_s/r)⁻²; its colour
+  is not shifted (the RGB images carry no spectra).
+- **Disk** (on for Sgr A* and M87*, off for the dormant ones; HUD toggle). Thin, optically thick,
+  from the ISCO (3 r_s) to 12 r_s, Novikov–Thorne flux (Page & Thorne 1974) → T ∝ F^¼, peak
+  6500 K. Each hit gets g = √(1 − 1.5 r_s/r) / (√(1 − r_s/r_obs)(1 − Ω b_z)) (Luminet 1979; James
+  et al. 2015) and is drawn as a blackbody at g·T (CIE 1931 → linear sRGB), which is exactly the
+  redshifted spectrum, so I_bol ∝ g⁴. Orientation: M87* from its jet (i = 163°, PA 108° of the
+  angular momentum; Walker et al. 2018, EHT 2019), Sgr A* from GRAVITY flare orbits (i = 154.9°,
+  PA 177.3°; GRAVITY 2023). While the disk is on, the rest of the image is exposed ×0.15.
+- **HUD**: distance in r_s and km; your clock and a far-away clock ticking at 1 : 1/√(1 − r_s/r);
+  local escape speed c√(r_s/r); tidal stretch over 2 m, c² r_s L / r³ (= 2GML/r³), with a
+  spaghettification warning above 10 g; thrust to hover GM/(r²√(1 − r_s/r)). **Flamm's paraboloid**
+  z = 2√(r_s(r − r_s)) is drawn as an SVG overlay (a diagram, not lensed) inside ~200 r_s.
+- **Quality / cost.** The lens runs only while a hole's Einstein radius √(2r_s/D) exceeds 2 device
+  px. Ray steps per turn of φ: Low 48, Medium 96, High 160; on DPR ≥ 1.5 Low and Medium trace one
+  ray per 2×2 device px and the compose stage filters the deflection with a status-masked bilinear
+  (anti-aliased rims). GPU time per frame (timestamp queries, `?gputime`, M4 Pro, Sgr A* at
+  10 r_s with the disk, whole frame): 1440×900 DPR 1: 6.75 ms without the lens, 7.62 ms Medium,
+  8.45 ms High; DPR 2 (2880×1800): 9.60 ms without, 10.95 ms Medium, 17.29 ms High.
+  WebGL 2 runs the same TSL shader compiled to GLSL (Low by default; checked on ANGLE/Metal only).
+  `?bhlens=off` turns the lens off, `?bhq=low|medium|high` sets the quality.
+- **Checks.** `test/blackhole.test.ts`: weak-field deflection vs 2r_s/b + (15π/16)(r_s/b)², the
+  critical impact parameter (3√3/2) r_s, Darwin's strong-deflection limit, Synge's shadow radius
+  from 1.2 to 50 r_s, the exit tail and far-ray shortcut vs fine integration, the disk image at
+  80° vs a fine reference, NT flux, g at the ISCO, blackbody colours, and the shadow seen from
+  Earth vs the EHT rings (Sgr A* 53.3 vs 51.8 ± 2.3 µas, M87* 39.7 vs 42 ± 3 µas).
+  `scripts/capture_blackholes.mjs` writes `figures/bh-*.png`; `scripts/measure_blackholes.py`
+  measures them: shadow radius 220.0 px vs Synge 219.8 px at 10 r_s, 55.8 vs 55.6 px at 40 r_s;
+  M87* disk seen from Earth brightest at PA 195° (south; EHT 2017 images are brighter in the
+  south), max/min 2.2.
+- **Not modelled.** Kerr spin (Sgr A* and M87* spin; the shadow would shift and flatten by a few %),
+  disk thickness and limb darkening, the real hot thick flows (EHT sees 230 GHz synchrotron, not a
+  thin optical disk: the disk is illustrative, its temperature scale a display choice), light travel
+  time, more than one lens at a time, the observer's own motion (you hover), lensing of labels and
+  of the Flamm overlay. Points of the tile layers outside the main view are missing from the
+  environment cube (the streamer culls by the main frustum). The camera cannot roll, so disks are
+  not always horizontal on screen.
 
 `npm run synth` uses the repo's `.venv` (numpy, astropy, pyarrow). It writes contract §2 Parquet
 (`data/raw/synthetic-{stars,galaxies}/synthetic.parquet` + `PROVENANCE.json`, including
@@ -124,8 +180,11 @@ main.ts ── App: renderer init (WebGPU → WebGL2), on-demand frame loop with
  ├─ data/manifest.ts     layers.json, tiles/_index.json, catalogues (dedup by name/alias, xyz may be null)
  ├─ data/resolve.ts      local search, CDS Sesame (CORS-checked mirrors)
  ├─ ui/rail.ts           "powers of ten" rail
- └─ solar/*              Solar System: ephemeris (astronomy-engine → contract frame), layer (bodies,
-                         rings, orbits, probes), clock + time bar, info card rows, strings (tr)
+ ├─ solar/*              Solar System: ephemeris (astronomy-engine → contract frame), layer (bodies,
+ │                       rings, orbits, probes), clock + time bar, info card rows, strings (tr)
+ └─ blackhole/*          black holes up close: geodesic (CPU twin), lens (TSL trace RTT + compose in
+                         PostPass), physics, blackbody table, catalogue → r_s and disk axis, HUD +
+                         Flamm overlay, strings (tr, bh.*)
 ```
 
 ### Rendering rules (contract section 5, plus what we took from skymap)
