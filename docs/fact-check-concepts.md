@@ -93,3 +93,12 @@ See the end of this file for the sources re-opened after writing.
 | units | 1 arcsec = coin (≈2 cm) at ≈4 km | 4,000 m × 4.848e-6 rad = 1.9 cm | computed |
 | units | rail range | ≈0.04 au to 30 Gpc (> 20 decades) | web/src/ui/rail.ts |
 | units | Sirius, Pleiades, M31 | 2.64 pc, 134.8 pc, 0.783 Mpc | atlas named-stars.json (Hipparcos 2007), messier-ngc.json |
+| parallax | Earth orbit baseline | ≈300 million km (2 au) | computed from 1 au |
+| parallax | first parallaxes | 1830s; Bessel 61 Cygni 1838; Henderson α Cen; von Struve Vega | Reid & Menten 2020 (arXiv:2009.11913) text |
+| parallax | Struve Vega 0.125″ then doubled; two dimensions combined by luck | — | Reid & Menten 2020 abstract |
+| parallax | Gaia DR3 parallaxes | 1,467,744,818 sources | ESA Gaia DR3 page |
+| parallax | Gaia DR3 precision | 0.02–0.03 mas (G<15), 0.07 (G=17), 0.5 (G=20), 1.3 (G=21) | ESA Gaia DR3 page |
+| parallax | Bailer-Jones distances | 1.47 billion geometric, 1.35 billion photogeometric | Bailer-Jones et al. 2021 abstract |
+| parallax | atlas Gaia cut | parallax/error > 10, RUWE < 1.4, d < 1 kpc | scripts/fetch_gaia.py (CHOSEN_WHERE, MAX_DIST_PC) |
+| parallax | Barnard's Star, Deneb | 1.83 pc (Gaia DR3), 433 pc (Hipparcos 2007) | atlas named-stars.json |
+| parallax | Gaia bright limit | G ≈ 3 | ESA Gaia DR3 page; README (stars-bright layer) |
