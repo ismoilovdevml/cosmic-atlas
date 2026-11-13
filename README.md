@@ -45,6 +45,13 @@ automatically on browsers without WebGPU.
 | Milky Way model | spiral arms, bar, disc | Reid et al. 2019; R0 = 8275 pc (GRAVITY 2021) | a model, labelled as one |
 | sky sphere | Gaia DR3 integrated flux | ESA/Gaia/DPAC | background beyond 1 kpc |
 
+## Live
+
+- Cloudflare Pages: https://cosmic-atlas-axd.pages.dev (galaxy layers; Gaia stars added when the download finishes)
+- GitHub Pages mirror: https://ismoilovdevml.github.io/cosmic-atlas/
+
+Redeploy with `deploy/cloudflare_pages.sh`.
+
 ## Reproduce
 
 ```bash
