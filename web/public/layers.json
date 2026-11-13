@@ -4,7 +4,12 @@
     "tiles/catalogs/named-stars.json",
     "tiles/catalogs/local-group.json",
     "tiles/catalogs/local-volume.json",
+    "tiles/catalogs/nebulae-snr.json",
     "tiles/catalogs/messier-ngc.json",
+    "tiles/catalogs/black-holes.json",
+    "tiles/catalogs/exoplanets.json",
+    "tiles/catalogs/pulsars.json",
+    "tiles/catalogs/seti.json",
     "tiles/catalogs/dev-placeholder.json"
   ],
   "layers": [
