@@ -229,6 +229,11 @@ The code is MIT-licensed (see [LICENSE](LICENSE)). Survey data and images keep t
 - DESI DR1: DESI Collaboration 2025 (arXiv:2503.14745), **CC BY 4.0**.
 - 2MRS, Cosmicflows-4, McConnachie, UNGC, Hipparcos, OpenNGC, SIMBAD: see each layer's
   `PROVENANCE.json` for the citation and DOI.
+- Solar System: positions from astronomy-engine 2.1.19 (MIT, Don Cross); probe tracks from JPL
+  Horizons (`scripts/build_spacecraft.py`). Planet, Sun, Moon and Saturn-ring textures:
+  Solar System Scope (solarsystemscope.com/textures), **CC BY 4.0**, resized to 1024 px. Earth:
+  NASA Blue Marble Next Generation (July 2004, topography + bathymetry), NASA Earth Observatory,
+  not subject to US copyright; credit NASA. Pluto and the Galilean moons are coloured procedurally.
 - Several rendering techniques (subtree light blobs, solid-angle photometry, the brightness knee,
   1×1 GPU picking, label culling) were learned from reading skymap's source
   (MIT, © 2026 Alexander Rulkens). They were re-implemented, not copied.
