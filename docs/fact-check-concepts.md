@@ -153,6 +153,11 @@ See the end of this file for the sources re-opened after writing.
 | desi-survey | four samples BGS, LRG, ELG, QSO | — | arXiv:2503.14745 Fig. 1 caption |
 | desi-survey | DR1 > 2× all previous 3D surveys; SDSS 9 M objects in ≈25 yr; > 100,000 galaxies a night; 270 TB | — | Fermilab DR1 press release |
 | desi-survey | planned survey completed | April 2026; > 47 M galaxies+QSOs vs target 34 M; continues through 2028 | IFAE news 15 Apr 2026 |
+| quasar | 3C 273: 1962 lunar occultations at Parkes; 13th-mag counterpart photographed by 1887; Schmidt's 200-inch spectrum; z = 0.158 (1963); acceptance not universal for decades | — | Kellermann 2013 abstract |
+| quasar | J0313−1806 | z = 7.642; L_bol = 3.6 × 10^13 L☉ (36 trillion); BH 1.6 × 10^9 M☉; ≈670 Myr after Big Bang; challenges BH growth models | Wang et al. 2021 abstract |
+| quasar | M87* 6.5 × 10^9 M☉; SMBHs as central engines of AGN | — | EHT 2019 Paper I abstract |
+| quasar | atlas QSOs | 1,583,866; every object with z > 2 is a QSO; galaxies max z = 1.70; QSO max z = 6.80 (lookback 13.0 Gyr) | computed from data/raw/galaxies-desi parquet; astropy Planck18 |
+| quasar | QSO colour pale cyan (150, 230, 255) | — | pipeline/build_tiles.py galaxy_rgb |
 | white-dwarf | new WD temperature; typical mass; size; density; surface gravity; Chandrasekhar limit; Sun's fate | > 100,000 K; ≈0.5 M☉; slightly larger than Earth; 10^9 kg/m³ (≈200,000 × Earth); ≈100,000 g; 1.4 M☉ | NASA Imagine, White dwarf stars |
 | white-dwarf | teaspoon mass | 5 ml × 10^9 kg/m³ = 5 t | computed |
 | white-dwarf | Sirius B | seen 1862; 98 % M☉; ≈12,000 km; mass from gravitational redshift (Hubble 2005) | ESA/Hubble heic0516 |
