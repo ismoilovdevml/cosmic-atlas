@@ -217,6 +217,8 @@ export class GalaxyShapes {
   readonly group = new THREE.Group();
   items: ShapeItem[] = [];
   survey: HipsSurvey = DSS2_COLOR;
+  /** false: never fetch images (procedural disks only; ?thumbs=off) */
+  thumbsEnabled = true;
   doc: GalaxyShapesDoc | null = null;
   private byKey = new Map<string, GalaxyShape>();
   private slots: Slot[] = [];
@@ -393,6 +395,7 @@ export class GalaxyShapes {
   }
 
   private requestThumbs(shown: ShapeItem[]) {
+    if (!this.thumbsEnabled) return;
     const want = shown.filter((it) => it.px >= THUMB_REQUEST_PX).slice(0, 6);
     for (const it of want) {
       const key = it.shape.name;

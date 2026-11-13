@@ -132,6 +132,7 @@ class App {
     this.scene.add(this.mw.points);
     this.scene.add(this.shapes.group);
     this.shapes.onChange = () => (this.dirty = true);
+    this.shapes.thumbsEnabled = new URLSearchParams(location.search).get('thumbs') !== 'off';
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
