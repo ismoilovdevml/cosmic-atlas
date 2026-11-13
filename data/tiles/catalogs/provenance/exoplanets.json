@@ -1,0 +1,40 @@
+{
+  "catalog": "data/tiles/catalogs/exoplanets.json",
+  "bytes": 1993122,
+  "started_utc": "2026-11-13T18:30:18Z",
+  "finished_utc": "2026-11-13T18:30:32Z",
+  "service": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync",
+  "query": "SELECT pl_name, hostname, discoverymethod, disc_year, ra, dec, sy_vmag, sy_pnum, pl_orbper, pl_orbpererr1, pl_orbpererr2, pl_rade, pl_radeerr1, pl_radeerr2, pl_bmassj, pl_bmassjerr1, pl_bmassjerr2, pl_bmassprov, pl_eqt, pl_eqterr1, pl_eqterr2, sy_dist, sy_disterr1, sy_disterr2 FROM pscomppars WHERE sy_dist IS NOT NULL",
+  "counts": {
+    "pscomppars_rows": 6470,
+    "planets_with_sy_dist": 6442,
+    "dropped_no_distance": 28,
+    "host_systems": 4834,
+    "masses_omitted_mr_relation": 3021,
+    "multi_planet_systems": 1073,
+    "by_method": {
+      "Transit": 4784,
+      "Radial Velocity": 1203,
+      "Microlensing": 292,
+      "Imaging": 92,
+      "Transit Timing Variations": 29,
+      "Eclipse Timing Variations": 16,
+      "Orbital Brightness Modulation": 9,
+      "Astrometry": 8,
+      "Pulsar Timing": 6,
+      "Pulsation Timing Variations": 2,
+      "Disk Kinematics": 1
+    }
+  },
+  "fields": "planets[]: pl_name, discoverymethod, disc_year, pl_orbper [d], pl_rade [R_earth], pl_bmassj [M_jup], pl_eqt [K, value only]; other numbers are value, [value, err] (symmetric) or [value, err1, err2] as in the archive (err1 >= 0, err2 <= 0); pl_bmassprov = 'Msini' marks minimum masses; masses from the archive's mass-radius relation are omitted.",
+  "citations": [
+    {
+      "ref": "NASA Exoplanet Archive, Planetary Systems Composite Data (pscomppars)",
+      "doi": "10.26133/NEA13"
+    },
+    {
+      "ref": "Akeson et al. 2013, PASP 125, 989 (NASA Exoplanet Archive)",
+      "doi": "10.1086/672273"
+    }
+  ]
+}
