@@ -37,8 +37,9 @@ ICRS_TO_GAL = np.array([
 
 RENDER_DTYPE = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4"),
                          ("r", "u1"), ("g", "u1"), ("b", "u1"), ("lum", "u1")])
-EXT_DTYPE = np.dtype([("id", "<u8"), ("mag", "<f4"), ("color", "<f4")])
-assert RENDER_DTYPE.itemsize == 16 and EXT_DTYPE.itemsize == 16
+EXT_DTYPE = np.dtype([("id", "<u8"), ("mag", "<f4"), ("color", "<f4"),
+                      ("dist_lo", "<f4"), ("dist_hi", "<f4")])
+assert RENDER_DTYPE.itemsize == 16 and EXT_DTYPE.itemsize == 24
 
 MAX_DEPTH = 24
 
@@ -118,10 +119,19 @@ def galaxy_rgb(z: np.ndarray, kind: np.ndarray) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- brightness code
-def lum_code(mag, dist_pc, model: str) -> np.ndarray:
-    mag = np.asarray(mag, dtype=np.float64)
-    dm = 5.0 * np.log10(np.maximum(np.asarray(dist_pc, dtype=np.float64), 1e-6) / 10.0)
-    m_abs = mag - dm
+def abs_mag(mag, dist_pc, z=None) -> np.ndarray:
+    """Display absolute magnitude. Stars: M = m - DM(d). Galaxies: the distance modulus uses the
+    luminosity distance d_L = (1+z) d_C (d_C = comoving dist_pc); no K-correction, no extinction,
+    so this is a rendering proxy, not a science-grade absolute magnitude."""
+    d = np.maximum(np.asarray(dist_pc, dtype=np.float64), 1e-6)
+    if z is not None:
+        zz = np.asarray(z, dtype=np.float64)
+        d = d * np.where(np.isfinite(zz) & (zz > 0), 1.0 + zz, 1.0)
+    return np.asarray(mag, dtype=np.float64) - 5.0 * np.log10(d / 10.0)
+
+
+def lum_code(mag, dist_pc, model: str, z=None) -> np.ndarray:
+    m_abs = abs_mag(mag, dist_pc, z if model == "galaxy" else None)
     if model == "star":  # no extinction correction (display only)
         code = (20.0 - m_abs) * 10.0
         default = (20.0 - 5.0) * 10.0
@@ -185,9 +195,38 @@ def build_octree(xyz: np.ndarray, capacity: int):
     return nodes
 
 
+def subtree_aggregates(nodes, xyz, rgb, lin_l) -> dict:
+    """Per node, summed light of the node and ALL its descendants: point count n, total luminosity L
+    (units of an M=0 source), light-weighted centroid c (pc, relative to the node centre), and
+    light-weighted mean colour rgb. Lets the renderer draw one 'blob' for an unloaded subtree so
+    distant views keep their total brightness (idea from skymap, MIT, cut.wesl)."""
+    own = {}
+    for name, center, half, idx in nodes:
+        w = lin_l[idx]
+        own[name] = (len(idx), w.sum(), (xyz[idx] * w[:, None]).sum(0), (rgb[idx].astype(np.float64) * w[:, None]).sum(0), center)
+    acc = {}
+    for name in sorted(own, key=len, reverse=True):
+        n, L, wx, wc, center = own[name]
+        for c in range(8):
+            ch = acc.get(name + str(c))
+            if ch:
+                n, L, wx, wc = n + ch[0], L + ch[1], wx + ch[2], wc + ch[3]
+        acc[name] = (n, L, wx, wc, center)
+    out = {}
+    for name, (n, L, wx, wc, center) in acc.items():
+        if L > 0:
+            cen, col = wx / L - center, wc / L
+        else:
+            cen, col = np.zeros(3), np.array([255.0, 255.0, 255.0])
+        out[name] = {"n": int(n), "L": float(f"{L:.6g}"), "c": [round(float(v), 4) for v in cen],
+                     "rgb": [int(round(v)) for v in col]}
+    return out
+
+
 # --------------------------------------------------------------------------- main
 def load_layer(layer: str, files: list[Path]):
-    cols_wanted = ["id", "ra", "dec", "dist_pc", "mag", "color", "kind", "source_id", "targetid", "z"]
+    cols_wanted = ["id", "ra", "dec", "dist_pc", "dist_lo_pc", "dist_hi_pc", "mag", "color", "kind",
+                   "source_id", "targetid", "z"]
     parts = []
     for f in files:
         schema = pq.read_schema(f)
@@ -236,7 +275,10 @@ def main(argv=None):
     xyz = radec_dist_to_galactic_xyz(cols["ra"], cols["dec"], dist)
     mag = np.asarray(cols.get("mag", np.full(n, np.nan)), dtype=np.float64)
     kind = np.asarray(cols.get("kind", np.full(n, a.kind_model)), dtype=object).astype(str)
-    lum = lum_code(mag, dist, a.kind_model)
+    zcol = np.asarray(cols["z"], dtype=np.float64) if "z" in cols else None
+    lum = lum_code(mag, dist, a.kind_model, zcol)
+    dlo = np.asarray(cols.get("dist_lo_pc", np.full(n, np.nan)), dtype=np.float64)
+    dhi = np.asarray(cols.get("dist_hi_pc", np.full(n, np.nan)), dtype=np.float64)
     if a.kind_model == "star":
         color = np.asarray(cols.get("color", np.full(n, np.nan)), dtype=np.float64)
         rgb = star_rgb(color)
@@ -254,11 +296,16 @@ def main(argv=None):
     else:
         order = rng.permutation(n)
     xyz, rgb, lum, ids, mag, ext_color = xyz[order], rgb[order], lum[order], ids[order], mag[order], ext_color[order]
+    dlo, dhi = dlo[order], dhi[order]
+    # linear luminosity (units of an M=0 source) recovered from the lum code, for subtree aggregates
+    m_from_code = (20.0 - lum / 10.0) if a.kind_model == "star" else (-14.0 - lum / 20.0)
+    lin_l = 10.0 ** (-0.4 * m_from_code)
     print(f"[{a.layer}] colours/ordering done ({time.time()-t0:.1f}s)")
 
     nodes = build_octree(xyz, a.capacity)
     print(f"[{a.layer}] octree: {len(nodes)} nodes, max depth {max(len(nm) for nm, *_ in nodes) - 1} ({time.time()-t0:.1f}s)")
 
+    agg = subtree_aggregates(nodes, xyz, rgb, lin_l)
     if out.exists():
         shutil.rmtree(out)
     (out / "n").mkdir(parents=True)
@@ -273,10 +320,12 @@ def main(argv=None):
         rec.tofile(out / "n" / f"{name}.bin")
         ext = np.empty(len(idx), dtype=EXT_DTYPE)
         ext["id"], ext["mag"], ext["color"] = ids[idx], mag[idx].astype(np.float32), ext_color[idx].astype(np.float32)
+        ext["dist_lo"], ext["dist_hi"] = dlo[idx].astype(np.float32), dhi[idx].astype(np.float32)
         ext.tofile(out / "n" / f"{name}.ext.bin")
         mask = sum(1 << c for c in range(8) if f"{name}{c}" in names)
         meta_nodes.append({"name": name, "center": [round(float(v), 6) for v in center],
-                           "half": float(half), "count": int(len(idx)), "children": mask})
+                           "half": float(half), "count": int(len(idx)), "children": mask,
+                           "agg": agg[name]})
         total += len(idx)
     assert total == n, (total, n)
 
@@ -284,7 +333,7 @@ def main(argv=None):
         "layer": a.layer, "title": a.title or a.layer, "unit": "pc", "frame": "galactic-helio",
         "count": int(n), "nodeCapacity": a.capacity,
         "record": "xyz_f32_rgb_u8_lum_u8", "bytesPerPoint": 16,
-        "extRecord": "id_u64_mag_f32_color_f32", "extBytesPerPoint": 16,
+        "extRecord": "id_u64_mag_f32_color_f32_distlo_f32_disthi_f32", "extBytesPerPoint": 24,
         "idPrefix": a.id_prefix, "lumModel": a.kind_model, "order": a.order,
         "extColorField": "bp_rp" if a.kind_model == "star" else "z",
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

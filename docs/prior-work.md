@@ -109,7 +109,7 @@ shows a curated subset of a few million points or fewer:
 
 | | Stars in the cross-scale browser app | DESI DR1 in the cross-scale browser app |
 |---|---|---|
-| skymap | 16.8 M (Gaia DR3). The README's future work lists "spatial chunking to get past the few-million-point ceiling". | DR1 LSS cones/slices only, off by default |
+| skymap | 16.8 M (Gaia DR3, G < 14, d < 12 kpc). Stars already stream from a chunked octree (SKOI/SKOC, docs/DATA.md:29,187); the README's "spatial chunking" future-work item refers to galaxies, which are still whole-file tiers (see docs/skymap-lessons.md). | DR1 LSS cones/slices only, off by default |
 | Space Time | about 2.5 M | 631k |
 | Lightcone | 328k | 1.9 M |
 | **Full catalogue** | **1.47 B** with Bailer-Jones distances (1.81 B rows in DR3); **about 2.0 B** in DR4 `gaia_source` | **18.7 M** (13.1 M galaxies, 1.6 M QSO, 4.1 M stars) |
@@ -139,7 +139,7 @@ No surveyed browser app shows distance uncertainty. OpenSpace's 0.20.1 changelog
    A "Milky Way" drawn from 1.47 B stars partly redraws the prior. The yage.ai Gaia essay found the
    same thing: no spiral arms, because parallaxes are reliable only to a few thousand light years.
    Gaia Sky ships "fidelity" (393.7 M) and "RUWE" (957.8 M) cuts for this reason.
-2. **skymap is open source and moving fast**, and spatial chunking is already on its roadmap. If it
+2. **skymap is open source and moving fast**; its stars are already chunked and galaxy chunking is on its roadmap. If it
    adds chunking, most of this niche closes. Two options are worth weighing: (a) contribute an
    out-of-core star/galaxy tiler to skymap, or (b) build our own and differentiate on completeness,
    uncertainty, DR4 at launch and the open tile format plus pipeline.
@@ -177,8 +177,9 @@ No surveyed browser app shows distance uncertainty. OpenSpace's 0.20.1 changelog
 - For bulk extraction, which is needed for the 1.47 B tiles, use the async endpoint with a login or
   the bulk files at https://cdn.gea.esac.esa.int/Gaia/ (bulk files *not* checked this session).
 - **Licence:** the Gaia archive says the data are "open and free to use, provided credit is given to
-  'ESA/Gaia/DPAC'". ESA's pages and media carry CC BY-SA 3.0 IGO. skymap's README calls its Gaia
-  stars "CC BY-NC", which I could not reconcile (*unverified*). DESI DR1 is CC BY 4.0.
+  'ESA/Gaia/DPAC'". The licence page (https://www.cosmos.esa.int/web/gaia-users/license, checked
+  2026-11-13) states: "Gaia data are distributed under the CC BY-NC 3.0 IGO license"; commercial use
+  goes through the ESA Terms and Conditions. So this project stays non-commercial. DESI DR1 is CC BY 4.0.
 
 ## 5. Rendering technology
 

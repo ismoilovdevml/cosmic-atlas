@@ -68,6 +68,7 @@ def test_roundtrip(tmp_path, order, model):
         rec = np.fromfile(out / "n" / f"{nd['name']}.bin", dtype=bt.RENDER_DTYPE)
         ext = np.fromfile(out / "n" / f"{nd['name']}.ext.bin", dtype=bt.EXT_DTYPE)
         assert len(rec) == len(ext) == nd["count"] <= 1000
+        assert nd["agg"]["n"] >= nd["count"]
         rel = np.stack([rec["x"], rec["y"], rec["z"]], 1)
         assert np.all(np.abs(rel) <= nd["half"] * 1.0001)  # inside its cube
         for c in range(8):
@@ -90,3 +91,26 @@ def test_roundtrip(tmp_path, order, model):
         deep = [nd for nd in meta["nodes"] if len(nd["name"]) > 2]
         deep_lum = np.fromfile(out / "n" / f"{deep[0]['name']}.bin", dtype=bt.RENDER_DTYPE)["lum"].astype(int)
         assert root_lum.min() >= deep_lum.max() - 1
+
+
+def test_galaxy_abs_mag_uses_luminosity_distance():
+    # same comoving distance, z=1 -> d_L = 2 d_C -> 5 log10(2) = 1.505 mag brighter
+    m0 = bt.abs_mag([20.0], [1e9])[0]
+    m1 = bt.abs_mag([20.0], [1e9], z=[1.0])[0]
+    assert abs((m0 - m1) - 5 * np.log10(2)) < 1e-9
+
+
+def test_root_aggregate_counts_everything(tmp_path):
+    rng = np.random.default_rng(3)
+    n = 5000
+    pd.DataFrame({"id": [f"S {i}" for i in range(n)], "source_id": np.arange(n, dtype=np.int64),
+                  "ra": rng.uniform(0, 360, n), "dec": rng.uniform(-60, 60, n),
+                  "dist_pc": rng.uniform(1, 100, n), "dist_lo_pc": 0.9, "dist_hi_pc": 1.1,
+                  "mag": rng.uniform(0, 15, n), "color": 1.0, "kind": "star"}).to_parquet(tmp_path / "a.parquet")
+    out = tmp_path / "t"
+    bt.main(["s", "--src", str(tmp_path), "--out", str(out), "--capacity", "300"])
+    meta = json.loads((out / "meta.json").read_text())
+    root = next(nd for nd in meta["nodes"] if nd["name"] == "r")
+    assert root["agg"]["n"] == n
+    ext = np.fromfile(out / "n" / "r.ext.bin", dtype=bt.EXT_DTYPE)
+    assert np.allclose(ext["dist_lo"], 0.9) and np.allclose(ext["dist_hi"], 1.1)

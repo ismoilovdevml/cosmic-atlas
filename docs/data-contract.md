@@ -57,17 +57,22 @@ cosmic web) — and deeper nodes add the rest: rendering a node never requires i
   "nodeCapacity": 20000,
   "record": "xyz_f32_rgb_u8_lum_u8",
   "bytesPerPoint": 16,
-  "extRecord": "id_u64_mag_f32_color_f32",
-  "extBytesPerPoint": 16,
+  "extRecord": "id_u64_mag_f32_color_f32_distlo_f32_disthi_f32",
+  "extBytesPerPoint": 24,
   "idPrefix": "Gaia DR3 ",
   "nodes": [
-    {"name": "r", "center": [0,0,0], "half": 1000.0, "count": 20000, "children": 255}
+    {"name": "r", "center": [0,0,0], "half": 1000.0, "count": 20000, "children": 255,
+     "agg": {"n": 12345678, "L": 3.1e7, "c": [12.0, -3.5, 1.2], "rgb": [255, 236, 214]}}
   ]
 }
 ```
 
 - `center` is float64 (JSON number) in pc, `half` = half edge length of the cube.
 - `children` = 8-bit mask of existing children.
+- `agg` = summed light of the node **and all its descendants**: point count `n`, total luminosity `L`
+  (units of an M=0 source, recovered from the `lum` codes), light-weighted centroid `c` (pc, relative to
+  `center`) and light-weighted mean `rgb`. The renderer draws one soft "blob" per unloaded subtree so
+  distant views keep their total light (technique from skymap, MIT).
 
 ### `.bin` render record — 16 bytes, little endian
 
@@ -75,15 +80,17 @@ cosmic web) — and deeper nodes add the rest: rendering a node never requires i
 |---|---|---|
 | 0 | float32 ×3 | x, y, z **relative to node center**, pc |
 | 12 | uint8 ×3 | r, g, b (sRGB, from BP-RP via blackbody/Teff map for stars; redshift ramp for galaxies) |
-| 15 | uint8 | `lum` = brightness code: `clamp(round((20 - M_abs) * 10), 0, 255)` for stars (M_abs in band G), `clamp(round((-14 - M_abs) * 20), 0, 255)` for galaxies |
+| 15 | uint8 | `lum` = brightness code: `clamp(round((20 - M) * 10), 0, 255)` for stars (M = G - DM(d), no extinction), `clamp(round((-14 - M) * 20), 0, 255)` for galaxies with M = m - DM(d_L), d_L = (1+z) d_C, no K-correction. A rendering proxy, never shown as a science absolute magnitude. |
 
-### `.ext.bin` pick record — 16 bytes, little endian, same point order
+### `.ext.bin` pick record — 24 bytes, little endian, same point order
 
 | offset | type | field |
 |---|---|---|
 | 0 | uint64 | numeric catalogue id (Gaia `source_id`, DESI `targetid`); string id = `idPrefix + id` |
 | 8 | float32 | apparent `mag` |
 | 12 | float32 | `color` (BP-RP) or redshift `z` for galaxies |
+| 16 | float32 | `dist_lo` — 16th percentile distance, pc (NaN if unknown) |
+| 20 | float32 | `dist_hi` — 84th percentile distance, pc (NaN if unknown) |
 
 ## 4. Small catalogues (`data/tiles/catalogs/*.json`, committed when < 2 MB)
 
