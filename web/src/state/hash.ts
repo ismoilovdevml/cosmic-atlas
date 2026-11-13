@@ -1,8 +1,12 @@
 /**
  * Deep-link state in the URL hash:
  *
+ *   #at=<url-encoded name>&d=<D>,<yawDeg>,<pitchDeg> camera anchored on a named object (short, and
+ *                                                   right for moving Solar System bodies); written
+ *                                                   instead of v= whenever the focus is on one
  *   #v=<fx>,<fy>,<fz>,<D>,<yawDeg>,<pitchDeg>      camera (focus pc, Galactic; camera–focus distance)
- *   &l=<layerId>,~<layerId>,...                     layer visibility (~ = hidden)
+ *   &l=<layerId>,~<layerId>,...                     layer visibility (~ = hidden); only layers that
+ *                                                   differ from their default are written
  *   &sel=<layerId>:<numericId>@<x>,<y>,<z>          a tile point, by its STABLE catalogue id plus
  *                                                   position (to find the node), never a record index
  *   &sel=cat:<url-encoded name>                     a named catalogue entry
@@ -24,8 +28,17 @@ export interface HashView {
 
 export type SelRef = { type: 'point'; layer: string; id: string; xyz: Vec3 } | { type: 'cat'; name: string };
 
+export interface HashLook {
+  dist: number;
+  yawDeg: number;
+  pitchDeg: number;
+}
+
 export interface HashState {
   view?: HashView;
+  /** named anchor: the camera focus sits on this object; `look` holds distance and angles */
+  at?: string;
+  look?: HashLook;
   layers?: Record<string, boolean>;
   sel?: SelRef;
   /** thin-slab half-thickness, Mpc (absent = off) */
@@ -42,7 +55,10 @@ const num = (x: number, p = 9) => String(+x.toPrecision(p));
 
 export function formatHash(s: HashState): string {
   const parts: string[] = [];
-  if (s.view) {
+  if (s.at && s.look) {
+    const k = s.look;
+    parts.push(`at=${encodeURIComponent(s.at)}`, `d=${num(k.dist, 4)},${k.yawDeg.toFixed(1)},${k.pitchDeg.toFixed(1)}`);
+  } else if (s.view) {
     const v = s.view;
     parts.push(`v=${v.focus.map((x) => num(x)).join(',')},${num(v.dist, 6)},${v.yawDeg.toFixed(2)},${v.pitchDeg.toFixed(2)}`);
   }
@@ -73,6 +89,16 @@ export function parseHash(hash: string): HashState {
       const n = val.split(',').map(Number);
       if (n.length === 6 && n.every(Number.isFinite) && n[3] > 0)
         out.view = { focus: [n[0], n[1], n[2]], dist: n[3], yawDeg: n[4], pitchDeg: n[5] };
+    } else if (key === 'at') {
+      try {
+        const name = decodeURIComponent(val).trim();
+        if (name) out.at = name;
+      } catch {
+        /* malformed escape: ignore */
+      }
+    } else if (key === 'd') {
+      const n = val.split(',').map(Number);
+      if (n.length === 3 && n.every(Number.isFinite) && n[0] > 0) out.look = { dist: n[0], yawDeg: n[1], pitchDeg: n[2] };
     } else if (key === 'l') {
       out.layers = {};
       for (const tok of val.split(',').filter(Boolean)) {

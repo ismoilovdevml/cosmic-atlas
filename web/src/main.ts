@@ -217,6 +217,7 @@ class App {
     if (this.pendingSel) void this.restoreSelection(this.pendingSel);
     if (h.layer) await this.showLayer(h.layer);
     if (h.focus) this.focusByName(h.focus);
+    else if (h.at) this.goToAnchor(h.at, h.look);
     if (h.layer || h.focus) this.writeHash(); // drop the one-shot params
   }
 
@@ -1528,14 +1529,57 @@ class App {
   private writeHash() {
     const v = this.nav.view;
     if (this.nav.flying || this.tourAbort) return;
+    const at = this.hashAnchor();
     const h = formatHash({
       view: { focus: v.focus, dist: v.dist, yawDeg: v.yaw * DEG, pitchDeg: v.pitch * DEG },
-      layers: this.layers.length ? this.layerVisibility() : undefined,
-      sel: this.selection?.ref ?? undefined,
+      at: at ?? undefined,
+      look: at ? { dist: v.dist, yawDeg: v.yaw * DEG, pitchDeg: v.pitch * DEG } : undefined,
+      layers: this.layers.length ? this.layerDiff() : undefined,
+      // the anchor already selects its object, so sel=cat:<same name> would only repeat it
+      sel: at && this.selection?.ref?.type === 'cat' && this.selection.ref.name === at ? undefined : this.selection?.ref ?? undefined,
       slab: this.slabMpc > 0 ? this.slabMpc : undefined,
       doc: this.docs.current ?? undefined,
     });
     if (location.hash !== h) history.replaceState(null, '', h);
+  }
+
+  /** name of the object the camera focus sits on (followed Solar System body, or the selected
+   *  catalogue entry when the focus is on it); the URL then stores the name, not raw coordinates */
+  private hashAnchor(): string | null {
+    const fid = this.solar.followId;
+    if (fid) {
+      const e = this.solar.entries.find((x) => this.solar.bodyIdOf(x) === fid);
+      if (e) return e.name;
+    }
+    const sel = this.selection;
+    if (sel?.ref?.type === 'cat' && sel.xyz) {
+      const f = this.nav.view.focus;
+      const off = Math.hypot(f[0] - sel.xyz[0], f[1] - sel.xyz[1], f[2] - sel.xyz[2]);
+      if (off <= this.nav.view.dist * 1e-3) return sel.ref.name;
+    }
+    return null;
+  }
+
+  /** layer visibility that differs from each layer's default (keeps shared URLs short) */
+  private layerDiff(): Record<string, boolean> {
+    const def: Record<string, boolean> = {};
+    for (const L of this.layers) def[L.cfg.id] = L.cfg.visible;
+    if (this.mwCfg) def[this.mwCfg.id] = this.mwCfg.visible;
+    if (this.skyCfg) def[this.skyCfg.id] = this.skyCfg.visible;
+    def.solar = true;
+    const out: Record<string, boolean> = {};
+    for (const [id, on] of Object.entries(this.layerVisibility())) if (def[id] !== on) out[id] = on;
+    return out;
+  }
+
+  /** go to a named anchor (at=) and, once the flight settles, apply the stored distance and angles */
+  private goToAnchor(name: string, look?: { dist: number; yawDeg: number; pitchDeg: number }) {
+    if (!this.focusByName(name) || !look) return;
+    const apply = () => {
+      if (this.nav.flying) return void requestAnimationFrame(apply);
+      this.nav.setView({ dist: look.dist, yaw: look.yawDeg / DEG, pitch: look.pitchDeg / DEG });
+    };
+    requestAnimationFrame(apply);
   }
 
   private applyHashView(hv: NonNullable<ReturnType<typeof parseHash>['view']>, animate: boolean) {
@@ -1556,6 +1600,7 @@ class App {
     await this.layersReady;
     if (h.layer) await this.showLayer(h.layer);
     if (h.focus) this.focusByName(h.focus);
+    else if (h.at && h.at !== this.hashAnchor()) this.goToAnchor(h.at, h.look);
     if (h.focus || h.layer) {
       this.writeHash(); // drop the one-shot focus= from the URL
     }
