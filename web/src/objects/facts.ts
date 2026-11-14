@@ -36,6 +36,13 @@ const UNITS: [string, string][] = [
   ['_mpc', 'Mpc'],
   ['_mpc3', 'Mpc³'],
   ['_deg2', 'deg²'],
+  ['_deg', '°'],
+  ['_jy_ms', 'Jy ms'],
+  ['_uk', 'µK'],
+  ['_kyr', 'kyr'],
+  ['_gpc', 'Gpc'],
+  ['_tev', 'TeV'],
+  ['_pev', 'PeV'],
   ['_per_yr', 'yr⁻¹'],
 ];
 

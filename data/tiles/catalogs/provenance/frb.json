@@ -1,0 +1,29 @@
+{
+  "built": "2026-11-14T07:09:17Z",
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/FRBs/FRB/main/frb/data/Galaxies/public_hosts.csv",
+      "licence": "BSD-3-Clause"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/FRBs/FRB/main/frb/data/FRBs/FRBs_base.csv",
+      "licence": "BSD-3-Clause"
+    },
+    {
+      "url": "https://assets.chime-frb.ca/catalogs/catalog2/releases/20251231/data/chimefrbcat2.csv",
+      "licence": "none stated; cite arXiv:2601.09399 / DOI 10.11570/25.0066"
+    }
+  ],
+  "counts": {
+    "localised_rows": 183,
+    "hosts_with_z_3d": 101,
+    "localised_without_z_sky": 82,
+    "chime_bursts": 5045,
+    "chime_sources": 3641,
+    "chime_repeaters": 83,
+    "chime_sources_already_localised": 36,
+    "chime_sources_without_position": 26,
+    "chime_sky": 3579
+  },
+  "rules": "3D only with a host redshift (Planck18 comoving distance); all others direction-only."
+}

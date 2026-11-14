@@ -70,6 +70,11 @@ export const LAYER_VIEWS: Record<string, NamedView> = {
   'star-clusters': { target: { sun: true }, dist: 1500, pitchDeg: 35 },
   // GWTC events reach ~3.5 Gpc comoving; 4 Gpc of camera distance shows them all
   'gw-volumes': { target: { sun: true }, dist: 4e9, pitchDeg: 25 },
+  // multi-messenger layers (src/messengers): the CMB shell whole from the zoom limit; FRB hosts
+  // reach z ~ 1 (3.4 Gpc); neutrino alerts are sky regions, so look at the sky from the Sun
+  cmb: { target: { sun: true }, dist: 3e10, pitchDeg: 20 },
+  frb: { target: { sun: true }, dist: 6e9, pitchDeg: 25 },
+  neutrinos: { target: { sun: true }, dist: 1, pitchDeg: 10 },
 };
 
 export const LAYER_ID = /^[A-Za-z0-9_.-]{1,64}$/;

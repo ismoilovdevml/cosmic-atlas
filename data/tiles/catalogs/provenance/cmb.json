@@ -1,0 +1,56 @@
+{
+  "built": "2026-11-14T07:11:38Z",
+  "sources": [
+    {
+      "url": "https://irsa.ipac.caltech.edu/data/Planck/release_3/all-sky-maps/maps/component-maps/cmb/COM_CMB_IQU-smica_2048_R3.00_full.fits",
+      "bytes": 2013312960,
+      "column": "I_STOKES_INP"
+    }
+  ],
+  "texture": "web/public/sky/planck_smica_cmb.jpg",
+  "meta": {
+    "source": "https://irsa.ipac.caltech.edu/data/Planck/release_3/all-sky-maps/maps/component-maps/cmb/COM_CMB_IQU-smica_2048_R3.00_full.fits",
+    "column": "I_STOKES_INP",
+    "release": "Planck PR3 (2018) SMICA",
+    "projection": "equirectangular Galactic; u = 0.5 - l/360 (l in -180..180, increasing to the left), v = 0.5 + b/180",
+    "width": 4096,
+    "height": 2048,
+    "range_uK": [
+      -300.0,
+      300.0
+    ],
+    "clipped_fraction": 0.004479,
+    "colormap": "Moreland 2009 smooth cool-warm (Msh), (59,76,192) -> white -> (180,4,38), 256 steps, linear in µK",
+    "colormap_anchors": {
+      "-": [
+        59,
+        76,
+        192
+      ],
+      "0": [
+        221,
+        220,
+        220
+      ],
+      "+": [
+        180,
+        4,
+        38
+      ]
+    },
+    "monopole_removed_uK": 0.1557,
+    "dipole_removed_uK": 3.4987,
+    "rms_outside_mask_uK": 106.76,
+    "inpainted_fraction": 0.01508,
+    "tmask_fraction": 0.84241,
+    "z": 1090.0,
+    "comoving_distance_pc_astropy_planck18": 13884420658.31242,
+    "age_at_z_kyr_astropy_planck18": 372.2,
+    "jpeg_bytes": 2937105,
+    "built": "2026-11-14T07:11:38Z",
+    "acknowledgement": "Based on observations obtained with Planck (http://www.esa.int/Planck), an ESA science mission with instruments and contributions directly funded by ESA Member States, NASA, and Canada.",
+    "ref": "Planck Collaboration 2020, A&A 641, A4 (Planck 2018 results IV, diffuse component separation; SMICA)",
+    "doi": "10.1051/0004-6361/201833881"
+  },
+  "licence": "Based on observations obtained with Planck (http://www.esa.int/Planck), an ESA science mission with instruments and contributions directly funded by ESA Member States, NASA, and Canada."
+}

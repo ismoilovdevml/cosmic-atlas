@@ -227,6 +227,35 @@ The notes column opens with **Embeddable** (in a public non-commercial site): ye
 | Gaia DR3 density (CDS/P/DM/I/355/gaiadr3) | Star-density map | order 7 | 287 GB | "ESA/Gaia mission/DPAC" | alasky only (down) | 404 | no | P2 | We already have our own |
 | Mellinger colour | Pretty optical Milky Way | order 4 | 36.7 MB | "Copyright 2000-2017 Axel Mellinger. All rights reserved"; educational use "will require payment of a license fee" | alasky only (down) | 404 | no | P2 | **Embeddable: no** (needs a licence) |
 
+### Built 2026-11-14 (CMB, sky backgrounds, FRBs, neutrinos)
+
+What the multi-messenger phase actually used, with what was measured while building it:
+
+- **Planck PR3 SMICA** (IRSA, `COM_CMB_IQU-smica_2048_R3.00_full.fits`, 2,013,312,960 B, size
+  matched): column `I_STOKES_INP`; residual monopole 0.16 µK and dipole 3.5 µK removed; inpainted
+  area 1.5 % of the sky; rms 106.8 µK outside TMASK. Baked by `scripts/build_cmb.py` into a
+  4096 × 2048 equirectangular texture (2.9 MB, ±300 µK, Moreland cool-warm). IRSA serves ~0.36 MB/s
+  per connection; 16 ranged connections gave ~3 MB/s. PR4 was not used (see the row above).
+- **eROSITA eRASS1 RGB HiPS**: order 2 (192 tiles, none missing), ACAO `*` re-checked. No licence is
+  named; the DR1 acknowledgement text is reproduced in the credits. Baked to the Gaia image's
+  Hammer-Aitoff grid (1.2 MB).
+- **Planck HFI 857 GHz HiPS** on the ESA mirror (`skies.esac.esa.int/pla/HFI_SkyMap_857_2048_R3_00_full_HiPS/`,
+  galactic, order 3, 256 px PNG, ACAO `*`, hips_copyright "ESA"): this replaces the alasky-only
+  "Planck HFI colour" row above for a dust background (0.5 MB).
+- **AllWISE colour** (ESA mirror) was baked at orders 2 and 3 and **left out**: Moon-contamination
+  streaks, moiré rings and tile-to-tile background jumps over much of the sky at those orders.
+- HiPS tile pixel order (calibrated against our Gaia image, `build_sky_backgrounds.py --calibrate`):
+  column = odd bits, row = even bits of the in-tile NESTED index.
+- **FRB hosts** (`public_hosts.csv` + `FRBs_base.csv`, BSD-3-Clause): 101 hosts with z in 3D.
+  **CHIME/FRB Catalog 2**: 5,045 CSV rows = 4,539 bursts (sub-bursts are separate rows), 3,641
+  sources, 83 repeaters; 36 sources already in the localised list; 26 sidelobe sources have no
+  position and are dropped; 3,579 CHIME + 82 localised-without-z = 3,661 sky directions.
+- **IceCat-1** v4 (CC0): 348 tracks, RA/Dec errors are asymmetric 90 % rectangles (README).
+  KM3-230213A (RA 94.3°, Dec −7.8°, r90 2.2°, 220 +570/−110 PeV) added from the KM3NeT papers.
+- TXS 0506+056: SIMBAD (Harvard) 77.358185, +5.693148 = NED to < 0.001″; z = 0.3365, Planck18
+  D_C 1,369.31 Mpc. NGC 1068: SIMBAD 40.669622, −0.013294 vs NED 40.6696, −0.0132865 (0.08″);
+  distance 14.4 Mpc as used by IceCube 2022.
+
 ## 6. Names and cross-IDs
 
 | dataset (release/version) | what it adds to the map | rows/objects or resolution | download/tile size | licence (exact) | access method (endpoint) | browser CORS | 3D-capable? | priority | notes |

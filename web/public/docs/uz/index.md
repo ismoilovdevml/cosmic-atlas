@@ -42,6 +42,13 @@ updated: 2026-11-13
 - [Galaktika](doc:galaxy): koinot boʻylab sochilgan yulduz orollari.
 - [Kvazar](doc:quasar): qora tuynuklar quvvat beradigan eng yorqin mayoqlar.
 
+## Boshqa xabarchilar va eng qadimgi yorugʻlik
+
+- [Rentgen osmoni](doc:x-ray-sky): eROSITA koʻrgan qaynoq gaz, portlagan yulduzlar va toʻdalar.
+- [Tez radio chaqnash](doc:fast-radio-burst): boshqa galaktikalardan keladigan millisekundlik radio chaqnashlar.
+- [Yuqori energiyali neytrinolar](doc:neutrino): kosmik tezlatkichlardan keladigan «arvoh» zarralar.
+- [Kosmik mikrotoʻlqinli fon](doc:cmb): Katta portlashdan 380 000 yil keyingi eng qadimgi yorugʻlik.
+
 ## Quyosh tizimi
 
 - [Quyosh tizimi](doc:solar-system): Quyosh va uning atrofida aylanadigan hamma narsa.

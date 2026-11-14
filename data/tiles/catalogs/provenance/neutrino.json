@@ -1,0 +1,27 @@
+{
+  "built": "2026-11-14T06:58:04Z",
+  "sources": [
+    {
+      "url": "https://dataverse.harvard.edu/api/access/datafile/7502710",
+      "licence": "CC0 1.0",
+      "dataset": "doi:10.7910/DVN/SCRUCD v4.0"
+    },
+    {
+      "what": "TXS 0506+056 / NGC 1068 positions",
+      "simbad": "https://simbad.harvard.edu/simbad/sim-tap/sync",
+      "ned": "https://ned.ipac.caltech.edu/srs/ObjectLookup"
+    },
+    {
+      "what": "KM3-230213A",
+      "ref": "KM3NeT Collaboration 2025, Nature 638, 376; arXiv:2502.08173; arXiv:2509.25422"
+    }
+  ],
+  "counts": {
+    "icecat_tracks": 348,
+    "sky_rows": 349,
+    "sources_3d": 2,
+    "gold": 126,
+    "cr_veto": 8
+  },
+  "txs_comoving_mpc": 1369.31
+}

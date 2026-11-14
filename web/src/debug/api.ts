@@ -63,6 +63,36 @@ export function installDebugApi(app: App) {
       return !!e;
     },
     setSky: (on: boolean) => app.setLayerVisible(app.skyCfg?.id ?? 'gaia-sky', on),
+    // --- Messengers hook (captures / tests): CMB shell, sky background, FRB and neutrino markers
+    messengers: {
+      state: () => app.msg.debug(),
+      /** sky background chooser: 'gaia' | 'erosita' | 'planck857'; resolves once the image is shown */
+      setBackground: (id: string) => app.msg.bg?.set(id) ?? Promise.resolve(false),
+      /** wait for the CMB texture (it loads lazily, once the camera nears the shell) */
+      loadCmb: () => app.msg.cmb?.load() ?? Promise.resolve(),
+      /** a catalogue entry's position (pc), for views centred on it */
+      entryXyz: (name: string) => app.findEntry(name)?.xyz?.slice() ?? null,
+      /** CSS-px screen position of a catalogue entry or sky-marker entry (direction-only ones at infinity) */
+      screenOf: (name: string) => {
+        const e = app.findEntry(name);
+        if (!e) return null;
+        const cam = app.nav.camPos();
+        if (e.xyz) return app.project(e.xyz, cam);
+        if (e.ra === undefined || e.dec === undefined) return null;
+        const d = radecDistToGal(e.ra, e.dec, 1e10);
+        return app.project([cam[0] + d[0], cam[1] + d[1], cam[2] + d[2]], cam);
+      },
+      /**
+       * the sky in direction (ra, dec) as seen from 1 pc out along it (past the Solar System, the
+       * Sun behind the camera; parallax of the sky markers is nil), vertical field fovDeg
+       */
+      lookAt: (ra: number, dec: number, fovDeg = 55) => {
+        const d = radecDistToGal(ra, dec, 1);
+        app.camera.fov = fovDeg;
+        app.camera.updateProjectionMatrix();
+        app.nav.setView({ focus: [2 * d[0], 2 * d[1], 2 * d[2]], dist: 1, yaw: Math.atan2(-d[1], -d[0]), pitch: Math.asin(-d[2]) });
+      },
+    },
     // --- Solar System hook (captures / tests)
     solar: {
       entries: () => app.solar.entries.map((e) => ({ name: e.name, alt: e.alt, kind: e.kind, distAU: e.dist_pc / 4.84813681109536e-6 })),

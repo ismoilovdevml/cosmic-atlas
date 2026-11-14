@@ -42,6 +42,13 @@ updated: 2026-11-13
 - [Galaxy](doc:galaxy): islands of stars across the universe.
 - [Quasar](doc:quasar): the brightest beacons, powered by black holes.
 
+## Other messengers and the oldest light
+
+- [The X-ray sky](doc:x-ray-sky): hot gas, exploded stars and clusters seen by eROSITA.
+- [Fast radio burst](doc:fast-radio-burst): millisecond radio flashes from other galaxies.
+- [High-energy neutrinos](doc:neutrino): ghostly particles from cosmic accelerators.
+- [Cosmic microwave background](doc:cmb): the oldest light, from 380,000 years after the Big Bang.
+
 ## The Solar System
 
 - [Solar System](doc:solar-system): the Sun and everything that orbits it.

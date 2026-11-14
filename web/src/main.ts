@@ -50,6 +50,8 @@ import { GwVolumes } from './render/gwVolumes';
 import { clusterPointCard, gwLinks, gwNote, nearestEntry } from './objects/gw';
 // --- Dust hook (web/src/dust): Edenhofer et al. 2024 3D dust, ray-marched in the post pass
 import { DustFeature } from './dust';
+// --- Messengers hook (web/src/messengers): CMB shell, sky background chooser, FRBs, neutrinos
+import { MessengerFeature } from './messengers';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -151,6 +153,8 @@ export class App {
   gwCfg: LayerConfig | null = null;
   // --- Dust hook
   dust = new DustFeature();
+  // --- Messengers hook (created with the post pass)
+  msg!: MessengerFeature;
 
   async start() {
     initLang();
@@ -187,6 +191,10 @@ export class App {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer.setPixelRatio(this.dpr);
     this.post = new PostPass(this.renderer, this.scene, this.camera);
+    this.msg = new MessengerFeature({ // --- Messengers hook
+      post: this.post, scene: this.scene, tileBase: () => this.tileBase, dirty: () => (this.dirty = true),
+      rebuildLabels: () => this.labels && this.buildLabels(), renderPanel: () => this.manifest && this.renderLayerPanel(),
+    });
     this.picker = new GpuPicker(this.renderer, this.camera);
     this.nav = new NavController(canvas, this.camera);
     this.labels = new LabelLayer($('labels'));
@@ -289,8 +297,11 @@ export class App {
       } else if (cfg.type === 'milky-way-model') {
         this.mwCfg = cfg;
         this.mw.visible = vis ?? cfg.visible;
+      } else if (this.msg.claims(cfg)) {
+        this.msg.addLayer(cfg, vis); // --- Messengers hook
       } else if (cfg.type === 'sky') {
         this.skyCfg = cfg;
+        this.msg.setSkyConfig(cfg); // --- Messengers hook: background chooser
         this.sky.visible = vis ?? cfg.visible;
         // progressive: the small preview first (~200 KB), the full image once metas and catalogues are in
         if (cfg.preview) this.loadSky([cfg.preview], 1);
@@ -381,6 +392,7 @@ export class App {
     if (this.gwCfg) out[this.gwCfg.id] = this.gw.visible; // --- GW hook
     out.solar = this.solar.visible; // --- Solar System hook
     if (this.dust.cfg && this.dust.status === 'ready') out[this.dust.cfg.id] = this.dust.visible; // --- Dust hook
+    Object.assign(out, this.msg.visibility()); // --- Messengers hook
     return out;
   }
 
@@ -394,6 +406,7 @@ export class App {
     else if (this.gwCfg?.id === id) this.gw.visible = on; // --- GW hook
     else if (id === 'solar') this.solar.visible = on; // --- Solar System hook
     else if (this.dust.cfg?.id === id) this.dust.visible = on; // --- Dust hook
+    else this.msg.setVisible(id, on); // --- Messengers hook
     const cb = document.getElementById(`lyr-${id}`) as HTMLInputElement | null;
     if (cb && cb.checked !== on) {
       cb.checked = on;
@@ -507,7 +520,7 @@ export class App {
     if (this.skyCfg) {
       row({
         id: this.skyCfg.id, title: title(this.skyCfg), swatch: 'sky',
-        meta: this.skyCfg.credit ?? '', checked: this.sky.visible, opacity: this.sky.opacity,
+        meta: this.msg.skyCredit(this.skyCfg.credit ?? ''), checked: this.sky.visible, opacity: this.sky.opacity,
         onOpacity: (v) => (this.sky.opacity = v),
       });
     }
@@ -530,6 +543,7 @@ export class App {
         li.dataset.dustCtl = '1';
       }
     } else if (dc && (this.dust.status === 'missing' || this.dust.status === 'error')) missing.push(title(dc));
+    for (const r of this.msg.panelRows()) row(r); // --- Messengers hook: CMB, FRB and neutrino rows
     // --- Solar System hook: its row in the layers panel
     row({
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
@@ -539,14 +553,16 @@ export class App {
     want.forEach((li, i) => {
       if (list.children[i] !== li) list.insertBefore(li, list.children[i] ?? null);
     });
+    this.msg.decoratePanel(list); // --- Messengers hook: sky background chooser
     $('layer-missing').textContent = missing.length ? t('layers.notBuilt', { list: missing.join(', ') }) : '';
     $('credits').innerHTML = '';
     const credits = [
       ...this.layers.filter((L) => L.status === 'ready' && !L.superseded).map((L) => `${title(L.cfg)}: ${L.cfg.credit ?? (L.cfg.dev ? t('layers.syntheticCredit') : L.meta?.title ?? '')}`),
       this.mwCfg ? `${title(this.mwCfg)}: ${this.mwCfg.credit}` : '',
-      this.skyCfg ? `${title(this.skyCfg)}: ${this.skyCfg.credit}` : '',
+      this.skyCfg && !this.msg.bg ? `${title(this.skyCfg)}: ${this.skyCfg.credit}` : '',
       this.gwCfg && this.gw.events.length ? `${title(this.gwCfg)}: ${this.gwCfg.credit}` : '', // --- GW hook
       dc && this.dust.status === 'ready' ? `${title(dc)}: ${dc.credit}` : '', // --- Dust hook
+      ...this.msg.credits(), // --- Messengers hook: every sky background, CMB, FRB, neutrino survey
       solarTr('solar.credit'), // --- Solar System hook
       t('credits.sesame'),
       t('credits.skymap'),
@@ -577,6 +593,7 @@ export class App {
     this.gw.setEntries(this.catalog); // --- GW hook
     if (this.gw.events.length) this.renderLayerPanel(); // --- GW hook: its row needs the events
     this.buildLabels();
+    void this.msg.attachCatalog(this.catalog); // --- Messengers hook: 3D markers now, sky directions join the search later
     void this.loadBlackHoles(); // --- Black hole hook
   }
 
@@ -612,7 +629,7 @@ export class App {
     for (const it of this.solar.featureLabels) it.name = it.names[getLang()]; // --- Surface hook: feature labels
     items.push(...this.solar.featureLabels);
     for (const e of entries) {
-      if (!e.xyz) continue;
+      if (!e.xyz || this.msg.hidesKind(e.kind)) continue; // --- Messengers hook: a switched-off layer hides its labels
       const d = e.dist_pc;
       const absMag = e.mag !== null && e.mag !== undefined && d > 0 ? e.mag - 5 * Math.log10(d / 10) : null;
       const isMw = /^milky way/i.test(e.name);
@@ -791,10 +808,11 @@ export class App {
     const camFromSun = Math.hypot(cam[0], cam[1], cam[2]);
     const skyFade = 1 - smoothstep(1500, 2500, camFromSun);
     this.skyAmount = this.sky.visible && this.sky.loaded ? this.sky.opacity * skyFade : 0;
+    const cmb = this.msg.frame(cam, this.camera, skyFade); // --- Messengers hook: markers, CMB shell
 
     // --- Black hole hook: environment cube for rays bent out of the frame, then the lensed pipeline
     this.bh?.captureEnv(this.renderer, this.scene, (px, dpr) => this.setSpritePx(cam, px, dpr), () => this.setSpritePx(cam, pxPerRad, this.dpr));
-    this.post.render(this.camera, this.skyAmount, this.bh?.lensActive ?? false, this.dust.update(cam, D)); // --- Dust hook: uniforms + on/off
+    this.post.render(this.camera, this.skyAmount, this.bh?.lensActive ?? false, this.dust.update(cam, D), cmb); // --- Dust + Messengers hooks
     this.renders++;
     this.totalRenders++;
     // frames-in-flight cap (WebGPU): count submitted work until the queue reports it done
@@ -993,6 +1011,13 @@ export class App {
     if (se) {
       this.showSolar(se);
       if (fly) this.flySolar(se);
+      return;
+    }
+    // --- Messengers hook: FRB / neutrino markers (sky directions and 3D hosts) are picked on the CPU
+    const me = this.msg.pickAt(cx, cy, this.nav.camPos(), this.camera, window.innerWidth, window.innerHeight);
+    if (me) {
+      this.showCatalogEntry(me);
+      if (fly) void this.nav.flyTo(this.viewFor(me));
       return;
     }
     const hit = await this.picker.pick(cx, cy);
@@ -1226,6 +1251,8 @@ export class App {
   /** flight target for a catalogue entry; direction-only entries turn the view from the Sun */
   private viewFor(e: CatalogEntry): Partial<View> {
     if ((e as unknown as SolarEntry).solar) return this.solar.viewFor(e as unknown as SolarEntry); // --- Solar System hook
+    const mv = this.msg.viewFor(e); // --- Messengers hook: the CMB shell is seen whole, from outside
+    if (mv) return mv;
     if (e.xyz) return { focus: e.xyz.slice() as Vec3, dist: viewDistanceFor(e.kind, e.dist_pc) };
     const d = radecDistToGal(e.ra ?? 0, e.dec ?? 0, 1);
     return { focus: [0, 0, 0], dist: 1e-3, yaw: Math.atan2(-d[1], -d[0]), pitch: Math.asin(-d[2]) };
@@ -1703,7 +1730,7 @@ export class App {
     }
     if (!vis[id]) this.setLayerVisible(id, true);
     const L = this.layers.find((l) => l.cfg.id === id);
-    const cfg = L?.cfg ?? (this.mwCfg?.id === id ? this.mwCfg : this.skyCfg);
+    const cfg = L?.cfg ?? this.msg.config(id) ?? (this.mwCfg?.id === id ? this.mwCfg : this.skyCfg); // --- Messengers hook
     const v = LAYER_VIEWS[id];
     if (v && cfg) this.flyToNamedView({ ...v, ref: cfg.credit }, () => layerTitle(cfg));
     this.scheduleHash();
@@ -1952,6 +1979,7 @@ export class App {
     if (this.mwCfg) def[this.mwCfg.id] = this.mwCfg.visible;
     if (this.skyCfg) def[this.skyCfg.id] = this.skyCfg.visible;
     def.solar = true;
+    Object.assign(def, this.msg.defaults()); // --- Messengers hook
     const out: Record<string, boolean> = {};
     for (const [id, on] of Object.entries(this.layerVisibility())) if (def[id] !== on) out[id] = on;
     return out;
@@ -2015,9 +2043,9 @@ function layerTitle(c: LayerConfig): string {
   return tOr(`layer.${c.id}`, c.title);
 }
 
-/** catalogue names stay as catalogued, except the Sun, which is translated (contract §1) */
+/** catalogue names stay as catalogued, except the Sun and the CMB shell (--- Messengers hook), which are translated (contract §1) */
 function displayName(name: string): string {
-  return name === 'Sun' ? t('body.sun') : name;
+  return name === 'Sun' ? t('body.sun') : name === 'CMB' ? t('cmb.label') : name;
 }
 
 /** English names of the Solar System labels, kept so a language switch can rename them again */
@@ -2057,7 +2085,7 @@ function catalogLinks(e: CatalogEntry): [string, string][] {
   const out: [string, string][] = [];
   if (e.kind === 'exoplanet') out.push([t('link.exoplanetArchive'), `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(e.name)}`]);
   else if (e.kind === 'gw_event') out.push(...gwLinks(e)); // --- GW hook: GWOSC page and host galaxy, no SIMBAD
-  else if (e.name !== 'Sun' && e.kind !== 'message' && e.kind !== 'seti_signal')
+  else if (e.name !== 'Sun' && e.kind !== 'message' && e.kind !== 'seti_signal' && e.kind !== 'cmb')
     out.push([t('link.simbad'), `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]);
   if (e.doi) out.push([t('link.doi'), `https://doi.org/${e.doi}`]);
   return out;

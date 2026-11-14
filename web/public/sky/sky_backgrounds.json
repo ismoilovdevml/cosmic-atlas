@@ -1,0 +1,120 @@
+{
+ "surveys": {
+  "erosita": {
+   "title": "eROSITA-DE DR1 eRASS1 X-ray (0.2-2.0 keV RGB rate)",
+   "source": "https://erosita.mpe.mpg.de/erodat/static/hips/eRASS1_RGB_Rate_c010/",
+   "order": 2,
+   "tile_width": 512,
+   "frame": "equatorial",
+   "tiles": 192,
+   "missing_tiles": 0,
+   "image": "sky/erosita_hammer.jpg",
+   "width": 4000,
+   "height": 2000,
+   "bytes": 1265989,
+   "stretch_pct_lo_pct_hi_gamma": [
+    40,
+    99.95,
+    0.9
+   ],
+   "built": "2026-11-14T06:56:22Z"
+  },
+  "planck857": {
+   "title": "Planck HFI 857 GHz (dust)",
+   "source": "https://skies.esac.esa.int/pla/HFI_SkyMap_857_2048_R3_00_full_HiPS/",
+   "order": 3,
+   "tile_width": 256,
+   "frame": "galactic",
+   "tiles": 768,
+   "missing_tiles": 0,
+   "image": "sky/planck857_hammer.jpg",
+   "width": 4000,
+   "height": 2000,
+   "bytes": 508266,
+   "stretch_pct_lo_pct_hi_gamma": [
+    3,
+    99.9,
+    1.6
+   ],
+   "built": "2026-11-14T06:56:37Z"
+  }
+ },
+ "orientation": {
+  "transpose_flipcol_fliprow": [
+   1,
+   0,
+   0
+  ],
+  "method": "Gaia DR3 RGB HiPS order 2 vs gaia_dr3_sky_l9.jpg, log-luminance correlation",
+  "scores": [
+   [
+    [
+     1,
+     0,
+     0
+    ],
+    0.0217
+   ],
+   [
+    [
+     0,
+     0,
+     1
+    ],
+    0.0055
+   ],
+   [
+    [
+     1,
+     1,
+     0
+    ],
+    0.0051
+   ],
+   [
+    [
+     0,
+     0,
+     0
+    ],
+    0.0044
+   ],
+   [
+    [
+     0,
+     1,
+     0
+    ],
+    0.0043
+   ],
+   [
+    [
+     1,
+     1,
+     1
+    ],
+    0.0042
+   ],
+   [
+    [
+     0,
+     1,
+     1
+    ],
+    0.0042
+   ],
+   [
+    [
+     1,
+     0,
+     1
+    ],
+    0.0041
+   ]
+  ],
+  "date": "2026-11-14T06:53:01Z"
+ },
+ "excluded": {
+  "wise": "AllWISE colour HiPS (skies.esac.esa.int/AllWISEColor) baked at orders 2 and 3: Moon-contamination streaks, moire rings and tile background jumps; not shipped"
+ }
+}

@@ -12,6 +12,9 @@
     "tiles/catalogs/pulsars.json",
     "tiles/catalogs/seti.json",
     "tiles/catalogs/gw-events.json",
+    "tiles/catalogs/cmb.json",
+    "tiles/catalogs/frb-hosts.json",
+    "tiles/catalogs/neutrino-sources.json",
     "tiles/catalogs/dev-placeholder.json"
   ],
   "layers": [
@@ -116,7 +119,31 @@
       "image": "sky/gaia_dr3_sky_l9.jpg",
       "imageWebp": "sky/gaia_dr3_sky_l9.webp",
       "preview": "sky/gaia_dr3_sky_l9_lo.jpg",
-      "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)"
+      "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)",
+      "backgrounds": [
+        {
+          "id": "gaia",
+          "title": "Gaia DR3 (visible light)",
+          "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC), CC BY-NC 3.0 IGO",
+          "short": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)"
+        },
+        {
+          "id": "erosita",
+          "title": "eROSITA X-ray (western Galactic half)",
+          "image": "sky/erosita_hammer.jpg",
+          "gain": 0.55,
+          "credit": "eROSITA-DE DR1 eRASS1 0.2-2.0 keV RGB rate HiPS (J. Sanders, MPE; Merloni et al. 2024, A&A 682, A34). This work is based on data from eROSITA, the soft X-ray instrument aboard SRG, a joint Russian-German science mission supported by the Russian Space Agency (Roskosmos), in the interests of the Russian Academy of Sciences represented by its Space Research Institute (IKI), and the Deutsches Zentrum für Luft- und Raumfahrt (DLR). The SRG spacecraft was built by Lavochkin Association (NPOL) and its subcontractors, and is operated by NPOL with support from the Max Planck Institute for Extraterrestrial Physics (MPE). The development and construction of the eROSITA X-ray instrument was led by MPE, with contributions from the Dr. Karl Remeis Observatory Bamberg & ECAP (FAU Erlangen-Nuernberg), the University of Hamburg Observatory, the Leibniz Institute for Astrophysics Potsdam (AIP), and the Institute for Astronomy and Astrophysics of the University of Tübingen, with the support of DLR and the Max Planck Society. The Argelander Institute for Astronomy of the University of Bonn and the Ludwig Maximilians Universität Munich also participated in the science preparation for eROSITA.",
+          "short": "eROSITA-DE DR1, SRG/eROSITA (MPE, IKI); western Galactic half (l > 180°) only"
+        },
+        {
+          "id": "planck857",
+          "title": "Planck 857 GHz (dust)",
+          "image": "sky/planck857_hammer.jpg",
+          "gain": 0.5,
+          "credit": "Planck HFI 857 GHz PR3 map, ESA ESDC HiPS (ESA / Planck Collaboration 2020, A&A 641, A3). Based on observations obtained with Planck, an ESA science mission with instruments and contributions directly funded by ESA Member States, NASA, and Canada.",
+          "short": "ESA / Planck HFI 857 GHz"
+        }
+      ]
     },
     {
       "id": "star-clusters",
@@ -134,6 +161,32 @@
       "title": "Gravitational-wave localisations",
       "visible": true,
       "credit": "LIGO/Virgo/KAGRA GWTC via GWOSC and Zenodo (CC BY 4.0); 90 % credible volumes, Planck18 comoving"
+    },
+    {
+      "id": "cmb",
+      "type": "cmb",
+      "title": "Cosmic microwave background (Planck)",
+      "visible": true,
+      "image": "sky/planck_smica_cmb.jpg",
+      "credit": "Planck PR3 SMICA, inpainted, ±300 µK (Planck Collaboration 2020, A&A 641, A4). Based on observations obtained with Planck, an ESA science mission with instruments and contributions directly funded by ESA Member States, NASA, and Canada."
+    },
+    {
+      "id": "frb",
+      "type": "markers",
+      "kind": "frb",
+      "title": "Fast radio bursts",
+      "visible": true,
+      "data": "frb-sky.json",
+      "credit": "CHIME/FRB Catalog 2 (CHIME/FRB Collaboration 2026, arXiv:2601.09399); localised FRBs and hosts from the FRBs/FRB repository (BSD-3-Clause)"
+    },
+    {
+      "id": "neutrinos",
+      "type": "markers",
+      "kind": "neutrino",
+      "title": "High-energy neutrinos",
+      "visible": true,
+      "data": "neutrino-sky.json",
+      "credit": "IceCat-1 (IceCube Collaboration 2023, ApJS 269, 25; CC0); KM3-230213A (KM3NeT Collaboration 2025, Nature 638, 376)"
     }
   ]
 }

@@ -180,6 +180,8 @@ export function viewDistanceFor(kind: string, distPc: number): number {
       return 40_000;
     case 'galaxy':
     case 'qso':
+    case 'frb': // FRB hosts and identified neutrino sources are galaxies
+    case 'neutrino':
       return 150_000;
     case 'exoplanet':
     case 'message':

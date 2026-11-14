@@ -52,13 +52,13 @@ export const SOLAR_KINDS = new Set(['sun', 'planet', 'dwarf_planet', 'moon', 'sp
 
 /** labels per kind family in one view (at 1440 x 900; scaled with sqrt of the viewport area) */
 export const KIND_CAPS: Record<string, number> = {
-  pulsar: 4, snr: 5, nebula: 5, cluster: 5, exoplanet: 4, black_hole: 4, message: 3, seti_signal: 3,
+  pulsar: 4, snr: 5, nebula: 5, cluster: 5, exoplanet: 4, black_hole: 4, message: 3, seti_signal: 3, frb: 5, neutrino: 3, cmb: 1,
   star: 14, wd: 6, galaxy: 14, lg_galaxy: 10, qso: 6,
 };
 /** base importance (0..1) per family before brightness / notability */
 const BASE_IMPORTANCE: Record<string, number> = {
   pulsar: 0.15, exoplanet: 0.2, snr: 0.3, nebula: 0.3, message: 0.3, seti_signal: 0.3, cluster: 0.35, qso: 0.35,
-  wd: 0.35, star: 0.45, galaxy: 0.45, lg_galaxy: 0.5, black_hole: 0.55,
+  wd: 0.35, star: 0.45, galaxy: 0.45, lg_galaxy: 0.5, black_hole: 0.55, frb: 0.35, neutrino: 0.6, cmb: 1,
 };
 /** minimum distance (px) between label anchors at importance 0; falls linearly to 0 at importance 1 */
 export const SPACING_MAX_PX = 96;

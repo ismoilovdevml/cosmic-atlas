@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comovingDistancePc, lookbackTimeGyr, redshiftFromComoving, DH_PC, TH_GYR } from '../src/math/cosmology';
+import { comovingDistancePc, lookbackTimeGyr, redshiftFromComoving, DH_PC, TH_GYR, Z_CMB } from '../src/math/cosmology';
 
 // astropy Planck18 values: DH, tH from astropy; distances by numpy-integrating Planck18.inv_efunc
 // (200 001-point trapezoid; scipy is not installed in the .venv).
@@ -25,4 +25,12 @@ describe('Planck18 cosmology', () => {
       expect(Math.abs(redshiftFromComoving(dc) - z) / z).toBeLessThan(2e-4);
     });
   }
+});
+
+describe('Planck18 at the last scattering surface (CMB shell radius)', () => {
+  // astropy 8.0.2: Planck18.comoving_distance(1090) = 13884.420658312 Mpc, lookback_time(1090) = 13.786513101 Gyr
+  it('comoving distance and lookback time to z = 1090 match astropy within 1e-5', () => {
+    expect(Math.abs(comovingDistancePc(Z_CMB) / 13884420658.31242 - 1)).toBeLessThan(1e-5);
+    expect(Math.abs(lookbackTimeGyr(Z_CMB) / 13.786513101289533 - 1)).toBeLessThan(1e-5);
+  });
 });

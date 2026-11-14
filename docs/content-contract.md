@@ -57,6 +57,13 @@ Every searchable or clickable thing has a `kind`. The registry is `web/src/objec
 | `seti_signal` | candidate signal (Wow! 1977) | literature | `seti` |
 | `model` | Milky Way model features | Reid et al. 2019 | `milky-way` |
 | `gw_event` | gravitational-wave merger; drawn as its 90 % localisation volume, not a point (GW170817 at its host NGC 4993) | GWOSC GWTC list + LVK sky maps (`gw-events.json`) | `gravitational-waves` |
+| `frb` | fast radio burst: host galaxy with a redshift in 3D, all others sky directions only | FRBs/FRB repo hosts, CHIME/FRB Catalog 2 | `fast-radio-burst` |
+| `neutrino` | high-energy neutrino: alert directions + 90 % regions; identified sources (TXS 0506+056, NGC 1068) in 3D | IceCat-1, KM3NeT, IceCube papers | `neutrino` |
+| `cmb` | the last scattering surface (one entry; drawn as a shell, src/messengers/cmb.ts) | Planck PR3 SMICA | `cmb` |
+
+Kinds `frb` and `neutrino` also have direction-only entries (`xyz: null`) that the viewer loads from
+`frb-sky.json` / `neutrino-sky.json` (column tables) after the catalogues; they join the search and the
+info card but get no label and no distance (see src/messengers/data.ts).
 
 ## 3. Catalogue entries (`data/tiles/catalogs/*.json`)
 
@@ -75,7 +82,8 @@ Same shape as data-contract §4, plus:
   `arecibo-message`, `wow-signal`) wins when it exists.
 - `facts`: numbers as `value`, `[value, error]` or `[value, err_minus, err_plus]` (both >= 0), or text
   for limits and ranges (`"≥4.4"`, `"6.9–8.2"`); keys end in their unit (`_msun`, `_mjup`, `_rearth`,
-  `_days`, `_s`, `_ms`, `_k`, `_kpc`, `_pc_cm3`, `_ly`, `_mhz`, `_jy`, `_arcmin`). The info card renders
+  `_days`, `_s`, `_ms`, `_k`, `_kpc`, `_pc_cm3`, `_ly`, `_mhz`, `_jy`, `_arcmin`, `_deg`, `_jy_ms`, `_uk`, `_kyr`, `_gpc`,
+  `_tev`, `_pev`, `_per_yr`). The info card renders
   them with translated labels (`facts.<key>`, falling back to the key; `web/src/objects/facts.ts`).
 - Every fact has a citation through `ref`/`doi` (entry-level) or `facts_ref` (per key).
 - `exoplanets.json` has one entry per host star with a `planets` array (NASA Exoplanet Archive column
@@ -128,7 +136,8 @@ Concepts: `index`, `how-to-use`, `units` (AU, light-year, parsec), `parallax`, `
 `lookback-time`, `distance-uncertainty`, `gaia-mission`, `desi-survey`, `cosmic-web`.
 Kinds: `star`, `white-dwarf`, `galaxy`, `quasar`, `local-group`, `milky-way`, `star-cluster`, `nebula`,
 `supernova-remnant`, `pulsar`, `neutron-star`, `black-hole`, `exoplanet`, `spacecraft`,
-`interstellar-message`, `seti`, `gravitational-waves`.
+`interstellar-message`, `seti`, `gravitational-waves`, `fast-radio-burst`, `neutrino`.
+Sky and the early universe: `x-ray-sky`, `cmb`.
 Solar System: `solar-system`, `sun`, `mercury`, `venus`, `earth`, `moon`, `mars`, `jupiter`, `saturn`,
 `uranus`, `neptune`, `pluto`, `asteroid-belt`.
 Highlights: `sgr-a-star`, `m87-black-hole`, `gaia-bh3`, `crab-nebula`, `proxima-b`, `trappist-1`,

@@ -41,6 +41,10 @@ export const KINDS: Record<string, KindInfo> = {
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },
   // gravitational-wave mergers: 40 Mpc to ~3.5 Gpc comoving; the label marks a localisation volume, not a point
   gw_event:     { doc: 'gravitational-waves',   label: 'kind.gw_event',     color: '#8fb8ff', minScale: 1e6, maxScale: 3e10 },
+  // multi-messenger (src/messengers): hosts and sources out to ~3.4 Gpc; the CMB only from beyond the cosmic web
+  frb:          { doc: 'fast-radio-burst',      label: 'kind.frb',          color: '#ff9ad8', minScale: 1e6, maxScale: 2e10 },
+  neutrino:     { doc: 'neutrino',              label: 'kind.neutrino',     color: '#8ff3ff', minScale: 1e6, maxScale: 2e10 },
+  cmb:          { doc: 'cmb',                   label: 'kind.cmb',          color: '#f2c9a0', minScale: 6e9 },
   // the viewer's own place on Earth (Show me); only drawn within ~0.1 AU
   here:         { doc: 'earth',                 label: 'kind.here',         color: '#ffd27a', minScale: 0, maxScale: 5e-7 },
 };
@@ -83,6 +87,7 @@ export function kindFromOtype(otype: string | undefined, fallback: string): stri
   if (/^(OpC|GlC|Cl\*|As\*|C\?\*|Gl\?)$/.test(o)) return 'cluster';
   if (/^(BH|BH\?|XB\*|HXB|LXB)$/.test(o)) return 'black_hole';  if (/^(Pl|Pl\?)$/.test(o)) return 'exoplanet';
   if (/^(ClG|GrG|CGG|SCG|PCG)$/.test(o)) return 'galaxy';
+  if (o === 'FRB') return 'frb';
   return fallback;
 }
 
