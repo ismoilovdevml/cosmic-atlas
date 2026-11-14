@@ -36,6 +36,8 @@ export const KINDS: Record<string, KindInfo> = {
   message:      { doc: 'interstellar-message',  label: 'kind.message',      color: '#ffd1f0', minScale: 0, maxScale: 1000 },
   seti_signal:  { doc: 'seti',                  label: 'kind.seti_signal',  color: '#ffd1f0', minScale: 0, maxScale: 1e4 },
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },
+  // gravitational-wave mergers: 40 Mpc to ~3.5 Gpc comoving; the label marks a localisation volume, not a point
+  gw_event:     { doc: 'gravitational-waves',   label: 'kind.gw_event',     color: '#8fb8ff', minScale: 1e6, maxScale: 3e10 },
   // the viewer's own place on Earth (Show me); only drawn within ~0.1 AU
   here:         { doc: 'earth',                 label: 'kind.here',         color: '#ffd27a', minScale: 0, maxScale: 5e-7 },
 };
@@ -76,8 +78,7 @@ export function kindFromOtype(otype: string | undefined, fallback: string): stri
   if (/^(SNR|SR\?)$/.test(o)) return 'snr';
   if (/^(PN|PN\?|HII|RNe|EmO|ISM|MoC|GNe|DNe|BNe|SFR)$/.test(o)) return 'nebula';
   if (/^(OpC|GlC|Cl\*|As\*|C\?\*|Gl\?)$/.test(o)) return 'cluster';
-  if (/^(BH|BH\?|XB\*|HXB|LXB)$/.test(o)) return 'black_hole';
-  if (/^(Pl|Pl\?)$/.test(o)) return 'exoplanet';
+  if (/^(BH|BH\?|XB\*|HXB|LXB)$/.test(o)) return 'black_hole';  if (/^(Pl|Pl\?)$/.test(o)) return 'exoplanet';
   if (/^(ClG|GrG|CGG|SCG|PCG)$/.test(o)) return 'galaxy';
   return fallback;
 }

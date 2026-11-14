@@ -32,7 +32,17 @@ const UNITS: [string, string][] = [
   ['_jy', 'Jy'],
   ['_uas', 'µas'],
   ['_arcmin', '′'],
+  ['_myr', 'Myr'],
+  ['_mpc', 'Mpc'],
+  ['_mpc3', 'Mpc³'],
+  ['_deg2', 'deg²'],
+  ['_per_yr', 'yr⁻¹'],
 ];
+
+/** i18n key of a text fact value ('open cluster' → facts.val.open_cluster) */
+export function factValueKey(v: string): string {
+  return `facts.val.${v.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}`;
+}
 
 export function unitFor(key: string, L?: FactLocale): string {
   let best = '';
@@ -94,7 +104,13 @@ export function formatFact(key: string, v: FactValue, L?: FactLocale): string {
   const u = unit ? ` ${unit}` : '';
   if (v === null || v === undefined) return '—';
   if (typeof v === 'boolean') return v ? '✓' : '✗';
-  if (typeof v === 'string') return (/^[≥≤<>~]?\s*\d[\d.]*$/.test(v) ? dec(v, L) : v) + (unit && /\d$/.test(v) ? u : '');
+  if (typeof v === 'string') {
+    // a known text value (type names, 'uncertain' ...) in the UI language; other text as catalogued
+    const tk = L ? factValueKey(v) : '';
+    const tv = tk ? L!.t(tk) : '';
+    if (tv && tv !== tk) return tv;
+    return (/^[≥≤<>~]?\s*\d[\d.]*$/.test(v) ? dec(v, L) : v) + (unit && /\d$/.test(v) ? u : '');
+  }
   if (typeof v === 'number') return dec(Number.isInteger(v) && Math.abs(v) < 1e5 ? String(v) : fmtSig(v, 6), L) + u;
   const [val, e1, e2] = v;
   if (val === null || val === undefined) return '—';

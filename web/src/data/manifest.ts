@@ -27,7 +27,7 @@ export interface PointLayerConfig {
 
 export interface ModelLayerConfig {
   id: string;
-  type: 'milky-way-model' | 'sky';
+  type: 'milky-way-model' | 'sky' | 'gw-volumes';
   title: string;
   visible: boolean;
   credit?: string;

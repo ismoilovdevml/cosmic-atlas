@@ -5,11 +5,13 @@
     "tiles/catalogs/local-group.json",
     "tiles/catalogs/local-volume.json",
     "tiles/catalogs/nebulae-snr.json",
+    "tiles/catalogs/clusters.json",
     "tiles/catalogs/messier-ngc.json",
     "tiles/catalogs/black-holes.json",
     "tiles/catalogs/exoplanets.json",
     "tiles/catalogs/pulsars.json",
     "tiles/catalogs/seti.json",
+    "tiles/catalogs/gw-events.json",
     "tiles/catalogs/dev-placeholder.json"
   ],
   "layers": [
@@ -77,7 +79,10 @@
       "visible": true,
       "colorMode": "star",
       "dev": true,
-      "fallbackFor": ["stars-gaia", "stars-gaia-preview"]
+      "fallbackFor": [
+        "stars-gaia",
+        "stars-gaia-preview"
+      ]
     },
     {
       "id": "synthetic-galaxies",
@@ -104,6 +109,23 @@
       "imageWebp": "sky/gaia_dr3_sky_l9.webp",
       "preview": "sky/gaia_dr3_sky_l9_lo.jpg",
       "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)"
+    },
+    {
+      "id": "star-clusters",
+      "title": "Star clusters",
+      "path": "tiles/star-clusters",
+      "visible": true,
+      "colorMode": "star",
+      "kind": "cluster",
+      "magOffset": 2.5,
+      "credit": "Hunt & Reffert 2023, 2024; Baumgardt & Vasiliev 2021. Brightness from mass, colour from age (display only)"
+    },
+    {
+      "id": "gw-volumes",
+      "type": "gw-volumes",
+      "title": "Gravitational-wave localisations",
+      "visible": true,
+      "credit": "LIGO/Virgo/KAGRA GWTC via GWOSC and Zenodo (CC BY 4.0); 90 % credible volumes, Planck18 comoving"
     }
   ]
 }

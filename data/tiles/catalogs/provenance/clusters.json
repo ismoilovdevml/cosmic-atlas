@@ -1,0 +1,2090 @@
+{
+  "catalog": "data/tiles/catalogs/clusters.json",
+  "bytes": 1930903,
+  "started_utc": "2026-11-14T06:32:47Z",
+  "finished_utc": "2026-11-14T06:32:52Z",
+  "service": {
+    "vizier": {
+      "hr23": "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=J%2FA%2BA%2F673%2FA114%2Fclusters&-out.max=unlimited&-oc.form=dec&-out.add=_RAJ&-out.add=_DEJ&-out=Name&-out=ID&-out=AllNames&-out=Type&-out=N&-out=RA_ICRS&-out=DE_ICRS&-out=r50pc&-out=dist16&-out=dist50&-out=dist84&-out=logAge16&-out=logAge50&-out=logAge84",
+      "hr24": "https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=J%2FA%2BA%2F686%2FA42%2Fclusters&-out.max=unlimited&-oc.form=dec&-out.add=_RAJ&-out.add=_DEJ&-out=Name&-out=ID&-out=Type&-out=MassTot&-out=e_MassTot&-out=X&-out=Y&-out=Z"
+    },
+    "baumgardt": "https://people.smp.uq.edu.au/HolgerBaumgardt/globular/combined_table.txt"
+  },
+  "selection": "all Hunt & Reffert 2023 clusters except the 17 that Hunt & Reffert 2024 reject (Type r); all clusters of the Baumgardt combined table. All of them go to the point layer data/raw/star-clusters; this JSON keeps every entry except unnamed moving groups farther than 250 pc (all clusters with full facts would be ~2.3 MB, over the 2 MB limit).",
+  "point_layer": {
+    "layer": "star-clusters",
+    "rows": 7181,
+    "raw": "data/raw/star-clusters/clusters.parquet"
+  },
+  "facts_keys": {
+    "type": "Hunt & Reffert 2024 Type (o open cluster, m moving group, g globular; d -> 2023 Type); 'globular cluster' for Baumgardt entries",
+    "age_myr": "10^logAge50 / 1e6 with 16th/84th percentile errors [value, minus, plus] (Hunt & Reffert 2023); not given for globulars",
+    "n_members": "N, Gaia DR3 members (Hunt & Reffert 2023)",
+    "r50_pc": "r50pc, radius holding half the members within the tidal radius (Hunt & Reffert 2023)",
+    "mass_msun": "MassTot +- e_MassTot, total observed mass (Hunt & Reffert 2024); Baumgardt Mass +- DM for globulars",
+    "rh_light_pc": "rh,l projected half-light radius (Baumgardt database), globulars only"
+  },
+  "distance": "Hunt & Reffert dist50 (16/84 percentiles as dist_lo/hi); globulars Baumgardt & Vasiliev 2021 R_Sun +- DRSun. Position _RAJ2000/_DEJ2000 (VizieR, propagated to J2000).",
+  "counts": {
+    "hr23_rows": 7167,
+    "hr24_rows": 7167,
+    "join_name_mismatches": 68,
+    "hr24_type_counts": {
+      "o": 5647,
+      "m": 1309,
+      "g": 132,
+      "d": 62,
+      "r": 17
+    },
+    "hr_rejected_type_r": 17,
+    "baumgardt_gcs": 167,
+    "baumgardt_matched_to_hr": 132,
+    "hr_globulars_folded_into_baumgardt": 136,
+    "hr_globulars_kept": 3,
+    "entries_all": 7181,
+    "entries_json": 6023,
+    "types_json": {
+      "open cluster": 5645,
+      "moving group": 208,
+      "globular cluster": 170
+    },
+    "merged_with_messier_ngc_by_name": 341,
+    "merged_with_messier_ngc_by_position": 3,
+    "messier_ngc_cluster_entries_not_matched": 50,
+    "aliases_dropped_shared_inside_catalogue": 757,
+    "aliases_dropped_shared_with_other_catalogues": 10,
+    "primary_names_shared_with_other_catalogues": 34
+  },
+  "xyz_check_vs_hr24_XYZ": {
+    "frame": "astropy Galactocentric() defaults",
+    "median_pc": 0.00046872340622995266,
+    "p99_pc": 0.004701512897033159,
+    "max_pc": 0.07267359195527175
+  },
+  "merged_with_messier_ngc": [
+    [
+      "M2",
+      "NGC 7089",
+      0.0
+    ],
+    [
+      "M3",
+      "NGC 5272",
+      0.0
+    ],
+    [
+      "M4",
+      "NGC 6121",
+      0.0
+    ],
+    [
+      "M5",
+      "NGC 5904",
+      0.0
+    ],
+    [
+      "M6",
+      "NGC 6405",
+      0.84
+    ],
+    [
+      "M7",
+      "NGC 6475",
+      1.62
+    ],
+    [
+      "M9",
+      "NGC 6333",
+      0.0
+    ],
+    [
+      "M10",
+      "NGC 6254",
+      0.0
+    ],
+    [
+      "M11",
+      "NGC 6705",
+      0.2
+    ],
+    [
+      "M12",
+      "NGC 6218",
+      0.0
+    ],
+    [
+      "M13",
+      "NGC 6205",
+      0.12
+    ],
+    [
+      "M14",
+      "NGC 6402",
+      0.0
+    ],
+    [
+      "M15",
+      "NGC 7078",
+      0.0
+    ],
+    [
+      "M18",
+      "NGC 6613",
+      0.24
+    ],
+    [
+      "M19",
+      "NGC 6273",
+      0.03
+    ],
+    [
+      "M21",
+      "NGC 6531",
+      0.48
+    ],
+    [
+      "M22",
+      "NGC 6656",
+      0.0
+    ],
+    [
+      "M23",
+      "NGC 6494",
+      0.78
+    ],
+    [
+      "M25",
+      "IC 4725",
+      1.06
+    ],
+    [
+      "M26",
+      "NGC 6694",
+      0.13
+    ],
+    [
+      "M28",
+      "NGC 6626",
+      0.0
+    ],
+    [
+      "M29",
+      "NGC 6913",
+      0.97
+    ],
+    [
+      "M30",
+      "NGC 7099",
+      0.0
+    ],
+    [
+      "M34",
+      "NGC 1039",
+      0.77
+    ],
+    [
+      "M35",
+      "NGC 2168",
+      0.87
+    ],
+    [
+      "M36",
+      "NGC 1960",
+      0.07
+    ],
+    [
+      "M37",
+      "NGC 2099",
+      0.39
+    ],
+    [
+      "M38",
+      "NGC 1912",
+      0.19
+    ],
+    [
+      "M39",
+      "Theia 517",
+      6.57
+    ],
+    [
+      "M41",
+      "NGC 2287",
+      0.82
+    ],
+    [
+      "M44",
+      "NGC 2632",
+      3.31
+    ],
+    [
+      "M45",
+      "Melotte 22",
+      4.33
+    ],
+    [
+      "M46",
+      "NGC 2437",
+      1.06
+    ],
+    [
+      "M47",
+      "NGC 2422",
+      1.3
+    ],
+    [
+      "M48",
+      "NGC 2548",
+      3.65
+    ],
+    [
+      "M50",
+      "NGC 2323",
+      1.36
+    ],
+    [
+      "M52",
+      "NGC 7654",
+      0.58
+    ],
+    [
+      "M53",
+      "NGC 5024",
+      0.0
+    ],
+    [
+      "M54",
+      "NGC 6715",
+      0.0
+    ],
+    [
+      "M55",
+      "NGC 6809",
+      0.0
+    ],
+    [
+      "M56",
+      "NGC 6779",
+      0.0
+    ],
+    [
+      "M62",
+      "NGC 6266",
+      0.1
+    ],
+    [
+      "M67",
+      "NGC 2682",
+      0.32
+    ],
+    [
+      "M68",
+      "NGC 4590",
+      0.0
+    ],
+    [
+      "M69",
+      "NGC 6637",
+      0.0
+    ],
+    [
+      "M70",
+      "NGC 6681",
+      0.0
+    ],
+    [
+      "M71",
+      "NGC 6838",
+      0.0
+    ],
+    [
+      "M72",
+      "NGC 6981",
+      0.0
+    ],
+    [
+      "M75",
+      "NGC 6864",
+      0.07
+    ],
+    [
+      "M79",
+      "NGC 1904",
+      0.09
+    ],
+    [
+      "M80",
+      "NGC 6093",
+      0.0
+    ],
+    [
+      "M92",
+      "NGC 6341",
+      0.0
+    ],
+    [
+      "M93",
+      "NGC 2447",
+      0.42
+    ],
+    [
+      "M103",
+      "NGC 581",
+      0.64
+    ],
+    [
+      "M107",
+      "NGC 6171",
+      0.0
+    ],
+    [
+      "IC 1442",
+      "UBC 164",
+      0.23
+    ],
+    [
+      "IC 1805",
+      "IC 1805",
+      0.47
+    ],
+    [
+      "IC 1848",
+      "IC 1848",
+      2.0
+    ],
+    [
+      "IC 2157",
+      "IC 2157",
+      1.0
+    ],
+    [
+      "IC 2391",
+      "IC 2391",
+      3.25
+    ],
+    [
+      "IC 2395",
+      "IC 2395",
+      4.47
+    ],
+    [
+      "IC 2488",
+      "IC 2488",
+      1.37
+    ],
+    [
+      "IC 2581",
+      "IC 2581",
+      0.32
+    ],
+    [
+      "IC 2714",
+      "IC 2714",
+      0.92
+    ],
+    [
+      "IC 2944",
+      "IC 2944",
+      0.64
+    ],
+    [
+      "IC 4291",
+      "Pismis 18",
+      0.01
+    ],
+    [
+      "IC 4499",
+      "IC 4499",
+      0.0
+    ],
+    [
+      "IC 4651",
+      "IC 4651",
+      1.05
+    ],
+    [
+      "IC 4665",
+      "IC 4665",
+      1.76
+    ],
+    [
+      "IC 4756",
+      "IC 4756",
+      1.3
+    ],
+    [
+      "IC 4996",
+      "IC 4996",
+      0.25
+    ],
+    [
+      "IC 5146",
+      "IC 5146",
+      1.0
+    ],
+    [
+      "NGC 1027",
+      "NGC 1027",
+      0.82
+    ],
+    [
+      "NGC 103",
+      "NGC 103",
+      0.03
+    ],
+    [
+      "NGC 104",
+      "NGC 104",
+      0.03
+    ],
+    [
+      "NGC 1245",
+      "NGC 1245",
+      0.83
+    ],
+    [
+      "NGC 1261",
+      "NGC 1261",
+      0.0
+    ],
+    [
+      "NGC 129",
+      "NGC 129",
+      0.65
+    ],
+    [
+      "NGC 133",
+      "NGC 133",
+      0.65
+    ],
+    [
+      "NGC 1342",
+      "NGC 1342",
+      2.83
+    ],
+    [
+      "NGC 1444",
+      "NGC 1444",
+      0.18
+    ],
+    [
+      "NGC 146",
+      "NGC 146",
+      0.71
+    ],
+    [
+      "NGC 1496",
+      "NGC 1496",
+      0.6
+    ],
+    [
+      "NGC 1502",
+      "NGC 1502",
+      0.42
+    ],
+    [
+      "NGC 1513",
+      "NGC 1513",
+      0.15
+    ],
+    [
+      "NGC 1528",
+      "NGC 1528",
+      1.73
+    ],
+    [
+      "NGC 1545",
+      "NGC 1545",
+      3.29
+    ],
+    [
+      "NGC 1582",
+      "NGC 1582",
+      5.91
+    ],
+    [
+      "NGC 1647",
+      "NGC 1647",
+      5.04
+    ],
+    [
+      "NGC 1662",
+      "NGC 1662",
+      5.12
+    ],
+    [
+      "NGC 1664",
+      "NGC 1664",
+      0.17
+    ],
+    [
+      "NGC 1746",
+      "Theia 754",
+      5.75
+    ],
+    [
+      "NGC 1778",
+      "NGC 1778",
+      0.35
+    ],
+    [
+      "NGC 1817",
+      "NGC 1817",
+      0.2
+    ],
+    [
+      "NGC 1851",
+      "NGC 1851",
+      0.0
+    ],
+    [
+      "NGC 1857",
+      "NGC 1857",
+      0.45
+    ],
+    [
+      "NGC 188",
+      "NGC 188",
+      0.5
+    ],
+    [
+      "NGC 189",
+      "NGC 189",
+      0.31
+    ],
+    [
+      "NGC 1893",
+      "NGC 1893",
+      1.54
+    ],
+    [
+      "NGC 1907",
+      "NGC 1907",
+      0.4
+    ],
+    [
+      "NGC 1980",
+      "NGC 1980",
+      0.58
+    ],
+    [
+      "NGC 2112",
+      "NGC 2112",
+      1.0
+    ],
+    [
+      "NGC 2129",
+      "NGC 2129",
+      0.26
+    ],
+    [
+      "NGC 2141",
+      "NGC 2141",
+      0.66
+    ],
+    [
+      "NGC 2158",
+      "NGC 2158",
+      0.16
+    ],
+    [
+      "NGC 2169",
+      "NGC 2169",
+      0.99
+    ],
+    [
+      "NGC 2175",
+      "NGC 2175",
+      9.63
+    ],
+    [
+      "NGC 2186",
+      "NGC 2186",
+      0.21
+    ],
+    [
+      "NGC 2194",
+      "NGC 2194",
+      0.61
+    ],
+    [
+      "NGC 2204",
+      "NGC 2204",
+      0.2
+    ],
+    [
+      "NGC 2215",
+      "NGC 2215",
+      1.39
+    ],
+    [
+      "NGC 2232",
+      "NGC 2232",
+      5.53
+    ],
+    [
+      "NGC 2236",
+      "NGC 2236",
+      0.31
+    ],
+    [
+      "NGC 2239",
+      "NGC 2244",
+      3.65
+    ],
+    [
+      "NGC 2243",
+      "NGC 2243",
+      0.12
+    ],
+    [
+      "NGC 225",
+      "NGC 225",
+      5.12
+    ],
+    [
+      "NGC 2251",
+      "NGC 2251",
+      0.5
+    ],
+    [
+      "NGC 2254",
+      "NGC 2254",
+      0.06
+    ],
+    [
+      "NGC 2264",
+      "NGC 2264",
+      0.6
+    ],
+    [
+      "NGC 2266",
+      "NGC 2266",
+      0.15
+    ],
+    [
+      "NGC 2269",
+      "NGC 2269",
+      0.47
+    ],
+    [
+      "NGC 2281",
+      "NGC 2281",
+      2.04
+    ],
+    [
+      "NGC 2286",
+      "NGC 2286",
+      0.86
+    ],
+    [
+      "NGC 2298",
+      "NGC 2298",
+      0.0
+    ],
+    [
+      "NGC 2301",
+      "NGC 2301",
+      0.37
+    ],
+    [
+      "NGC 2304",
+      "NGC 2304",
+      0.07
+    ],
+    [
+      "NGC 2311",
+      "NGC 2311",
+      0.53
+    ],
+    [
+      "NGC 2324",
+      "NGC 2324",
+      0.15
+    ],
+    [
+      "NGC 2335",
+      "NGC 2335",
+      2.14
+    ],
+    [
+      "NGC 2343",
+      "NGC 2343",
+      0.18
+    ],
+    [
+      "NGC 2345",
+      "NGC 2345",
+      0.58
+    ],
+    [
+      "NGC 2353",
+      "NGC 2353",
+      0.43
+    ],
+    [
+      "NGC 2354",
+      "NGC 2354",
+      3.24
+    ],
+    [
+      "NGC 2355",
+      "NGC 2355",
+      0.6
+    ],
+    [
+      "NGC 2360",
+      "NGC 2360",
+      0.81
+    ],
+    [
+      "NGC 2362",
+      "NGC 2362",
+      0.14
+    ],
+    [
+      "NGC 2367",
+      "NGC 2367",
+      0.97
+    ],
+    [
+      "NGC 2374",
+      "NGC 2374",
+      2.05
+    ],
+    [
+      "NGC 2383",
+      "NGC 2383",
+      0.04
+    ],
+    [
+      "NGC 2384",
+      "NGC 2384",
+      0.23
+    ],
+    [
+      "NGC 2396",
+      "NGC 2396",
+      4.79
+    ],
+    [
+      "NGC 2414",
+      "NGC 2414",
+      0.21
+    ],
+    [
+      "NGC 2420",
+      "NGC 2420",
+      0.05
+    ],
+    [
+      "NGC 2421",
+      "NGC 2421",
+      0.37
+    ],
+    [
+      "NGC 2423",
+      "NGC 2423",
+      1.06
+    ],
+    [
+      "NGC 2439",
+      "NGC 2439",
+      0.73
+    ],
+    [
+      "NGC 2451",
+      "NGC 2451B",
+      8.35
+    ],
+    [
+      "NGC 2453",
+      "NGC 2453",
+      0.41
+    ],
+    [
+      "NGC 2477",
+      "NGC 2477",
+      0.16
+    ],
+    [
+      "NGC 2479",
+      "NGC 2479",
+      0.59
+    ],
+    [
+      "NGC 2482",
+      "NGC 2482",
+      1.59
+    ],
+    [
+      "NGC 2483",
+      "NGC 2483",
+      2.93
+    ],
+    [
+      "NGC 2489",
+      "NGC 2489",
+      0.22
+    ],
+    [
+      "NGC 2506",
+      "NGC 2506",
+      0.51
+    ],
+    [
+      "NGC 2509",
+      "NGC 2509",
+      0.1
+    ],
+    [
+      "NGC 2516",
+      "NGC 2516",
+      0.45
+    ],
+    [
+      "NGC 2533",
+      "NGC 2533",
+      0.73
+    ],
+    [
+      "NGC 2539",
+      "NGC 2539",
+      0.54
+    ],
+    [
+      "NGC 2546",
+      "NGC 2546",
+      3.37
+    ],
+    [
+      "NGC 2547",
+      "NGC 2547",
+      2.79
+    ],
+    [
+      "NGC 2567",
+      "NGC 2567",
+      0.75
+    ],
+    [
+      "NGC 2571",
+      "NGC 2571",
+      1.26
+    ],
+    [
+      "NGC 2580",
+      "NGC 2580",
+      0.11
+    ],
+    [
+      "NGC 2587",
+      "NGC 2587",
+      0.18
+    ],
+    [
+      "NGC 2627",
+      "NGC 2627",
+      0.2
+    ],
+    [
+      "NGC 2658",
+      "NGC 2658",
+      0.29
+    ],
+    [
+      "NGC 2659",
+      "NGC 2659",
+      0.07
+    ],
+    [
+      "NGC 2660",
+      "NGC 2660",
+      0.06
+    ],
+    [
+      "NGC 2669",
+      "NGC 2669",
+      0.36
+    ],
+    [
+      "NGC 2670",
+      "NGC 2670",
+      0.93
+    ],
+    [
+      "NGC 2808",
+      "NGC 2808",
+      0.0
+    ],
+    [
+      "NGC 288",
+      "NGC 288",
+      0.0
+    ],
+    [
+      "NGC 2910",
+      "NGC 2910",
+      0.24
+    ],
+    [
+      "NGC 2925",
+      "NGC 2925",
+      0.63
+    ],
+    [
+      "NGC 2972",
+      "NGC 2972",
+      0.18
+    ],
+    [
+      "NGC 3033",
+      "NGC 3033",
+      0.21
+    ],
+    [
+      "NGC 3105",
+      "NGC 3105",
+      0.13
+    ],
+    [
+      "NGC 3114",
+      "NGC 3114",
+      2.07
+    ],
+    [
+      "NGC 3201",
+      "NGC 3201",
+      0.0
+    ],
+    [
+      "NGC 3228",
+      "NGC 3228",
+      4.15
+    ],
+    [
+      "NGC 3293",
+      "NGC 3293",
+      0.47
+    ],
+    [
+      "NGC 3324",
+      "NGC 3324",
+      0.74
+    ],
+    [
+      "NGC 3330",
+      "NGC 3330",
+      0.49
+    ],
+    [
+      "NGC 3496",
+      "NGC 3496",
+      0.15
+    ],
+    [
+      "NGC 3519",
+      "Ruprecht 93",
+      0.47
+    ],
+    [
+      "NGC 3532",
+      "NGC 3532",
+      1.08
+    ],
+    [
+      "NGC 3572",
+      "NGC 3572",
+      0.94
+    ],
+    [
+      "NGC 3590",
+      "NGC 3590",
+      0.11
+    ],
+    [
+      "NGC 362",
+      "NGC 362",
+      0.0
+    ],
+    [
+      "NGC 3680",
+      "NGC 3680",
+      0.9
+    ],
+    [
+      "NGC 3766",
+      "NGC 3766",
+      0.68
+    ],
+    [
+      "NGC 381",
+      "NGC 381",
+      0.59
+    ],
+    [
+      "NGC 3960",
+      "NGC 3960",
+      0.25
+    ],
+    [
+      "NGC 4052",
+      "NGC 4052",
+      0.74
+    ],
+    [
+      "NGC 4103",
+      "NGC 4103",
+      0.8
+    ],
+    [
+      "NGC 4337",
+      "NGC 4337",
+      0.19
+    ],
+    [
+      "NGC 4349",
+      "NGC 4349",
+      0.23
+    ],
+    [
+      "NGC 436",
+      "NGC 436",
+      0.29
+    ],
+    [
+      "NGC 4372",
+      "NGC 4372",
+      0.0
+    ],
+    [
+      "NGC 4439",
+      "NGC 4439",
+      0.29
+    ],
+    [
+      "NGC 4463",
+      "NGC 4463",
+      0.2
+    ],
+    [
+      "NGC 457",
+      "NGC 457",
+      0.22
+    ],
+    [
+      "NGC 4609",
+      "NGC 4609",
+      0.43
+    ],
+    [
+      "NGC 4815",
+      "NGC 4815",
+      0.21
+    ],
+    [
+      "NGC 4833",
+      "NGC 4833",
+      0.0
+    ],
+    [
+      "NGC 4852",
+      "NGC 4852",
+      0.31
+    ],
+    [
+      "NGC 5053",
+      "NGC 5053",
+      0.0
+    ],
+    [
+      "NGC 5138",
+      "NGC 5138",
+      0.16
+    ],
+    [
+      "NGC 5139",
+      "NGC 5139",
+      0.0
+    ],
+    [
+      "NGC 5168",
+      "NGC 5168",
+      0.08
+    ],
+    [
+      "NGC 5281",
+      "NGC 5281",
+      0.43
+    ],
+    [
+      "NGC 5286",
+      "NGC 5286",
+      0.0
+    ],
+    [
+      "NGC 5316",
+      "NGC 5316",
+      1.06
+    ],
+    [
+      "NGC 5460",
+      "NGC 5460",
+      1.62
+    ],
+    [
+      "NGC 5466",
+      "NGC 5466",
+      0.0
+    ],
+    [
+      "NGC 559",
+      "NGC 559",
+      0.2
+    ],
+    [
+      "NGC 5606",
+      "NGC 5606",
+      0.32
+    ],
+    [
+      "NGC 5617",
+      "NGC 5617",
+      0.5
+    ],
+    [
+      "NGC 5662",
+      "NGC 5662",
+      7.48
+    ],
+    [
+      "NGC 5715",
+      "NGC 5715",
+      0.35
+    ],
+    [
+      "NGC 5749",
+      "NGC 5749",
+      0.89
+    ],
+    [
+      "NGC 5822",
+      "NGC 5822",
+      0.89
+    ],
+    [
+      "NGC 5823",
+      "NGC 5823",
+      0.42
+    ],
+    [
+      "NGC 5824",
+      "NGC 5824",
+      0.03
+    ],
+    [
+      "NGC 5897",
+      "NGC 5897",
+      0.0
+    ],
+    [
+      "NGC 5925",
+      "NGC 5925",
+      0.42
+    ],
+    [
+      "NGC 5927",
+      "NGC 5927",
+      0.0
+    ],
+    [
+      "NGC 5986",
+      "NGC 5986",
+      0.0
+    ],
+    [
+      "NGC 5999",
+      "NGC 5999",
+      0.16
+    ],
+    [
+      "NGC 6025",
+      "NGC 6025",
+      0.43
+    ],
+    [
+      "NGC 6031",
+      "NGC 6031",
+      0.44
+    ],
+    [
+      "NGC 6067",
+      "NGC 6067",
+      0.32
+    ],
+    [
+      "NGC 6087",
+      "NGC 6087",
+      1.21
+    ],
+    [
+      "NGC 6124",
+      "NGC 6124",
+      1.79
+    ],
+    [
+      "NGC 6134",
+      "NGC 6134",
+      0.46
+    ],
+    [
+      "NGC 6139",
+      "NGC 6139",
+      0.09
+    ],
+    [
+      "NGC 6144",
+      "NGC 6144",
+      0.0
+    ],
+    [
+      "NGC 6152",
+      "NGC 6152",
+      2.05
+    ],
+    [
+      "NGC 6167",
+      "NGC 6167",
+      1.56
+    ],
+    [
+      "NGC 6178",
+      "NGC 6178",
+      0.99
+    ],
+    [
+      "NGC 6192",
+      "NGC 6192",
+      0.13
+    ],
+    [
+      "NGC 6200",
+      "NGC 6200",
+      0.07
+    ],
+    [
+      "NGC 6204",
+      "NGC 6204",
+      0.1
+    ],
+    [
+      "NGC 6208",
+      "NGC 6208",
+      0.32
+    ],
+    [
+      "NGC 6229",
+      "NGC 6229",
+      0.07
+    ],
+    [
+      "NGC 6231",
+      "NGC 6231",
+      1.87
+    ],
+    [
+      "NGC 6235",
+      "NGC 6235",
+      0.0
+    ],
+    [
+      "NGC 6242",
+      "NGC 6242",
+      0.49
+    ],
+    [
+      "NGC 6249",
+      "NGC 6249",
+      0.23
+    ],
+    [
+      "NGC 6250",
+      "NGC 6250",
+      0.77
+    ],
+    [
+      "NGC 6259",
+      "NGC 6259",
+      0.14
+    ],
+    [
+      "NGC 6268",
+      "NGC 6268",
+      0.17
+    ],
+    [
+      "NGC 6281",
+      "NGC 6281",
+      0.63
+    ],
+    [
+      "NGC 6284",
+      "NGC 6284",
+      0.04
+    ],
+    [
+      "NGC 6293",
+      "NGC 6293",
+      0.05
+    ],
+    [
+      "NGC 6304",
+      "NGC 6304",
+      0.0
+    ],
+    [
+      "NGC 6316",
+      "NGC 6316",
+      0.03
+    ],
+    [
+      "NGC 6322",
+      "NGC 6322",
+      0.58
+    ],
+    [
+      "NGC 6352",
+      "NGC 6352",
+      0.0
+    ],
+    [
+      "NGC 6356",
+      "NGC 6356",
+      0.0
+    ],
+    [
+      "NGC 6362",
+      "NGC 6362",
+      0.0
+    ],
+    [
+      "NGC 637",
+      "NGC 637",
+      0.17
+    ],
+    [
+      "NGC 6388",
+      "NGC 6388",
+      0.04
+    ],
+    [
+      "NGC 6396",
+      "NGC 6396",
+      0.52
+    ],
+    [
+      "NGC 6397",
+      "NGC 6397",
+      0.0
+    ],
+    [
+      "NGC 6400",
+      "NGC 6400",
+      0.42
+    ],
+    [
+      "NGC 6425",
+      "NGC 6425",
+      0.43
+    ],
+    [
+      "NGC 6441",
+      "NGC 6441",
+      0.0
+    ],
+    [
+      "NGC 6451",
+      "NGC 6451",
+      0.32
+    ],
+    [
+      "NGC 6453",
+      "NGC 6453",
+      0.01
+    ],
+    [
+      "NGC 6469",
+      "NGC 6469",
+      0.6
+    ],
+    [
+      "NGC 6496",
+      "NGC 6496",
+      0.0
+    ],
+    [
+      "NGC 6520",
+      "NGC 6520",
+      0.14
+    ],
+    [
+      "NGC 6522",
+      "NGC 6522",
+      0.0
+    ],
+    [
+      "NGC 6530",
+      "NGC 6530",
+      1.66
+    ],
+    [
+      "NGC 6535",
+      "NGC 6535",
+      0.0
+    ],
+    [
+      "NGC 654",
+      "NGC 654",
+      0.35
+    ],
+    [
+      "NGC 6541",
+      "NGC 6541",
+      0.0
+    ],
+    [
+      "NGC 6544",
+      "NGC 6544",
+      0.12
+    ],
+    [
+      "NGC 6553",
+      "NGC 6553",
+      0.41
+    ],
+    [
+      "NGC 6568",
+      "NGC 6568",
+      0.24
+    ],
+    [
+      "NGC 6569",
+      "NGC 6569",
+      0.03
+    ],
+    [
+      "NGC 6583",
+      "NGC 6583",
+      0.09
+    ],
+    [
+      "NGC 6584",
+      "NGC 6584",
+      0.0
+    ],
+    [
+      "NGC 659",
+      "NGC 659",
+      0.75
+    ],
+    [
+      "NGC 6604",
+      "NGC 6604",
+      1.07
+    ],
+    [
+      "NGC 663",
+      "NGC 663",
+      1.73
+    ],
+    [
+      "NGC 6633",
+      "NGC 6633",
+      4.09
+    ],
+    [
+      "NGC 6638",
+      "NGC 6638",
+      0.07
+    ],
+    [
+      "NGC 6645",
+      "NGC 6645",
+      0.86
+    ],
+    [
+      "NGC 6649",
+      "NGC 6649",
+      0.19
+    ],
+    [
+      "NGC 6652",
+      "NGC 6652",
+      0.0
+    ],
+    [
+      "NGC 6664",
+      "NGC 6664",
+      0.84
+    ],
+    [
+      "NGC 6683",
+      "NGC 6683",
+      1.64
+    ],
+    [
+      "NGC 6704",
+      "NGC 6704",
+      0.22
+    ],
+    [
+      "NGC 6709",
+      "NGC 6709",
+      0.68
+    ],
+    [
+      "NGC 6712",
+      "NGC 6712",
+      0.0
+    ],
+    [
+      "NGC 6716",
+      "NGC 6716",
+      0.36
+    ],
+    [
+      "NGC 6752",
+      "NGC 6752",
+      0.0
+    ],
+    [
+      "NGC 6755",
+      "NGC 6755",
+      0.48
+    ],
+    [
+      "NGC 6760",
+      "NGC 6760",
+      0.0
+    ],
+    [
+      "NGC 6791",
+      "NGC 6791",
+      0.23
+    ],
+    [
+      "NGC 6802",
+      "NGC 6802",
+      0.33
+    ],
+    [
+      "NGC 6811",
+      "NGC 6811",
+      0.85
+    ],
+    [
+      "NGC 6819",
+      "NGC 6819",
+      0.24
+    ],
+    [
+      "NGC 6823",
+      "NGC 6823",
+      1.6
+    ],
+    [
+      "NGC 6830",
+      "NGC 6830",
+      0.27
+    ],
+    [
+      "NGC 6834",
+      "NGC 6834",
+      0.28
+    ],
+    [
+      "NGC 6866",
+      "NGC 6866",
+      0.48
+    ],
+    [
+      "NGC 6871",
+      "NGC 6871",
+      2.89
+    ],
+    [
+      "NGC 6883",
+      "NGC 6883",
+      0.88
+    ],
+    [
+      "NGC 6910",
+      "NGC 6910",
+      0.31
+    ],
+    [
+      "NGC 6934",
+      "NGC 6934",
+      0.0
+    ],
+    [
+      "NGC 6939",
+      "NGC 6939",
+      0.47
+    ],
+    [
+      "NGC 6940",
+      "NGC 6940",
+      2.21
+    ],
+    [
+      "NGC 6997",
+      "NGC 6996",
+      1.06
+    ],
+    [
+      "NGC 7031",
+      "NGC 7031",
+      0.35
+    ],
+    [
+      "NGC 7039",
+      "NGC 7039",
+      0.97
+    ],
+    [
+      "NGC 7062",
+      "NGC 7062",
+      0.3
+    ],
+    [
+      "NGC 7063",
+      "NGC 7063",
+      1.11
+    ],
+    [
+      "NGC 7067",
+      "NGC 7067",
+      0.33
+    ],
+    [
+      "NGC 7082",
+      "NGC 7082",
+      0.86
+    ],
+    [
+      "NGC 7086",
+      "NGC 7086",
+      0.19
+    ],
+    [
+      "NGC 7128",
+      "NGC 7128",
+      0.08
+    ],
+    [
+      "NGC 7142",
+      "NGC 7142",
+      0.39
+    ],
+    [
+      "NGC 7160",
+      "NGC 7160",
+      0.57
+    ],
+    [
+      "NGC 7209",
+      "NGC 7209",
+      1.4
+    ],
+    [
+      "NGC 7226",
+      "NGC 7226",
+      0.23
+    ],
+    [
+      "NGC 7243",
+      "NGC 7243",
+      1.19
+    ],
+    [
+      "NGC 7245",
+      "NGC 7245",
+      0.18
+    ],
+    [
+      "NGC 7261",
+      "NGC 7261",
+      0.24
+    ],
+    [
+      "NGC 7380",
+      "NGC 7380",
+      3.66
+    ],
+    [
+      "NGC 744",
+      "NGC 744",
+      0.61
+    ],
+    [
+      "NGC 7510",
+      "NGC 7510",
+      0.38
+    ],
+    [
+      "NGC 752",
+      "NGC 752",
+      2.98
+    ],
+    [
+      "NGC 7788",
+      "NGC 7788",
+      0.22
+    ],
+    [
+      "NGC 7789",
+      "NGC 7789",
+      0.23
+    ],
+    [
+      "NGC 7790",
+      "NGC 7790",
+      0.24
+    ],
+    [
+      "NGC 869",
+      "NGC 869",
+      0.89
+    ],
+    [
+      "NGC 884",
+      "NGC 884",
+      2.17
+    ],
+    [
+      "NGC 957",
+      "NGC 957",
+      0.68
+    ]
+  ],
+  "merged_by_position": [
+    [
+      "NGC 2409",
+      "Bochum 4",
+      2.17
+    ],
+    [
+      "NGC 2645",
+      "Pismis 6",
+      5.88
+    ],
+    [
+      "NGC 6115",
+      "Ruprecht 118",
+      0.99
+    ]
+  ],
+  "merge_conflicts": [],
+  "messier_ngc_not_matched": [
+    "M24",
+    "M42",
+    "IC 2105",
+    "NGC 1747",
+    "NGC 1755",
+    "NGC 1763",
+    "NGC 1786",
+    "NGC 1807",
+    "NGC 1818",
+    "NGC 1848",
+    "NGC 1850",
+    "NGC 1854",
+    "NGC 1856",
+    "NGC 1858",
+    "NGC 1866",
+    "NGC 1871",
+    "NGC 1910",
+    "NGC 1933",
+    "NGC 1970",
+    "NGC 1981",
+    "NGC 1984",
+    "NGC 2004",
+    "NGC 2037",
+    "NGC 2042",
+    "NGC 2071",
+    "NGC 2074",
+    "NGC 2100",
+    "NGC 2157",
+    "NGC 2164",
+    "NGC 2180",
+    "NGC 2250",
+    "NGC 2252",
+    "NGC 2299",
+    "NGC 2331",
+    "NGC 2395",
+    "NGC 2520",
+    "NGC 330",
+    "NGC 4230",
+    "NGC 6169",
+    "NGC 6374",
+    "NGC 6507",
+    "NGC 6546",
+    "NGC 6605",
+    "NGC 6625",
+    "NGC 6647",
+    "NGC 6743",
+    "NGC 7234",
+    "NGC 7295",
+    "NGC 7686",
+    "NGC 956"
+  ],
+  "hr_globulars_without_baumgardt": [
+    "BH 176",
+    "HSC 134",
+    "Pfleiderer 2"
+  ],
+  "aliases_dropped": [
+    [
+      "Collinder 220",
+      "NGC 3247",
+      "nebulae-snr.json:NGC 3247"
+    ],
+    [
+      "ESO 589-26",
+      "MW",
+      "local-group.json:Milky Way (Galactic Centre)"
+    ],
+    [
+      "IC 2944",
+      "lam Cen Nebula",
+      "nebulae-snr.json:IC 2944"
+    ],
+    [
+      "IC 5146",
+      "Cocoon Nebula",
+      "nebulae-snr.json:IC 5146"
+    ],
+    [
+      "Melotte 111",
+      "Coma Berenices",
+      "local-group.json:Coma Berenices"
+    ],
+    [
+      "NGC 1980",
+      "Lower Sword",
+      "nebulae-snr.json:NGC 1980"
+    ],
+    [
+      "NGC 2239",
+      "NGC 2244",
+      "nebulae-snr.json:NGC 2239"
+    ],
+    [
+      "NGC 2264",
+      "Christmas Tree Cluster",
+      "nebulae-snr.json:NGC 2264"
+    ],
+    [
+      "NGC 2818",
+      "NGC 2818A",
+      "nebulae-snr.json:NGC 2818A"
+    ],
+    [
+      "Pal 13",
+      "Pegasus",
+      "local-volume.json:Pegasus"
+    ]
+  ],
+  "names_shared": [
+    [
+      "IC 348",
+      "nebulae-snr.json:IC 348",
+      "IC 348 cluster"
+    ],
+    [
+      "IC 1396",
+      "nebulae-snr.json:IC 1396",
+      "IC 1396 cluster"
+    ],
+    [
+      "IC 1590",
+      "nebulae-snr.json:IC 1590",
+      "IC 1590 cluster"
+    ],
+    [
+      "IC 1805",
+      "nebulae-snr.json:IC 1805",
+      "IC 1805 cluster"
+    ],
+    [
+      "IC 1848",
+      "nebulae-snr.json:IC 1848",
+      "IC 1848 cluster"
+    ],
+    [
+      "IC 2944",
+      "nebulae-snr.json:IC 2944",
+      "IC 2944 cluster"
+    ],
+    [
+      "IC 2948",
+      "nebulae-snr.json:IC 2948",
+      "IC 2948 cluster"
+    ],
+    [
+      "IC 5146",
+      "nebulae-snr.json:IC 5146",
+      "IC 5146 cluster"
+    ],
+    [
+      "NGC 1333",
+      "nebulae-snr.json:NGC 1333",
+      "NGC 1333 cluster"
+    ],
+    [
+      "NGC 1579",
+      "nebulae-snr.json:NGC 1579",
+      "NGC 1579 cluster"
+    ],
+    [
+      "NGC 1624",
+      "nebulae-snr.json:NGC 1624",
+      "NGC 1624 cluster"
+    ],
+    [
+      "NGC 1931",
+      "nebulae-snr.json:NGC 1931",
+      "NGC 1931 cluster"
+    ],
+    [
+      "NGC 1980",
+      "nebulae-snr.json:NGC 1980",
+      "NGC 1980 cluster"
+    ],
+    [
+      "NGC 2068",
+      "nebulae-snr.json:M78",
+      "NGC 2068 cluster"
+    ],
+    [
+      "NGC 2175",
+      "nebulae-snr.json:NGC 2175",
+      "NGC 2175 cluster"
+    ],
+    [
+      "NGC 2183",
+      "nebulae-snr.json:NGC 2183",
+      "NGC 2183 cluster"
+    ],
+    [
+      "NGC 2239",
+      "nebulae-snr.json:NGC 2239",
+      "NGC 2239 cluster"
+    ],
+    [
+      "NGC 2264",
+      "nebulae-snr.json:NGC 2264",
+      "NGC 2264 cluster"
+    ],
+    [
+      "NGC 2467",
+      "nebulae-snr.json:NGC 2467",
+      "NGC 2467 cluster"
+    ],
+    [
+      "NGC 2818",
+      "nebulae-snr.json:NGC 2818",
+      "NGC 2818 cluster"
+    ],
+    [
+      "NGC 3324",
+      "nebulae-snr.json:NGC 3324",
+      "NGC 3324 cluster"
+    ],
+    [
+      "NGC 3603",
+      "nebulae-snr.json:NGC 3603",
+      "NGC 3603 cluster"
+    ],
+    [
+      "NGC 6250",
+      "nebulae-snr.json:NGC 6250",
+      "NGC 6250 cluster"
+    ],
+    [
+      "NGC 6334",
+      "nebulae-snr.json:NGC 6334",
+      "NGC 6334 cluster"
+    ],
+    [
+      "NGC 6357",
+      "nebulae-snr.json:NGC 6357",
+      "NGC 6357 cluster"
+    ],
+    [
+      "NGC 6530",
+      "nebulae-snr.json:NGC 6530",
+      "NGC 6530 cluster"
+    ],
+    [
+      "NGC 6611",
+      "nebulae-snr.json:M16",
+      "NGC 6611 cluster"
+    ],
+    [
+      "NGC 6618",
+      "nebulae-snr.json:M17",
+      "NGC 6618 cluster"
+    ],
+    [
+      "NGC 6823",
+      "nebulae-snr.json:NGC 6823",
+      "NGC 6823 cluster"
+    ],
+    [
+      "NGC 6847",
+      "nebulae-snr.json:NGC 6847",
+      "NGC 6847 cluster"
+    ],
+    [
+      "NGC 6997",
+      "nebulae-snr.json:NGC 6997",
+      "NGC 6997 cluster"
+    ],
+    [
+      "NGC 7129",
+      "nebulae-snr.json:NGC 7129",
+      "NGC 7129 cluster"
+    ],
+    [
+      "NGC 7380",
+      "nebulae-snr.json:NGC 7380",
+      "NGC 7380 cluster"
+    ],
+    [
+      "Sagittarius II",
+      "local-group.json:Sagittarius II",
+      "Sagittarius II cluster"
+    ]
+  ],
+  "viewer_merge": "layers.json lists clusters.json before messier-ngc.json; the loader keeps the first entry with a given normalised name, so merged Messier/NGC clusters are shown once, from this file.",
+  "citations": [
+    {
+      "ref": "Hunt & Reffert 2023, A&A 673, A114 (Improving the open cluster census II; VizieR J/A+A/673/A114)",
+      "doi": "10.1051/0004-6361/202346285"
+    },
+    {
+      "ref": "Hunt & Reffert 2024, A&A 686, A42 (Improving the open cluster census III; VizieR J/A+A/686/A42)",
+      "doi": "10.1051/0004-6361/202348662"
+    },
+    {
+      "ref": "Baumgardt & Vasiliev 2021, MNRAS 505, 5957 (GC distances); masses and radii from the Baumgardt Galactic GC database, 4th version (Baumgardt & Hilker 2018, MNRAS 478, 1520)",
+      "doi": "10.1093/mnras/stab1474",
+      "url": "https://people.smp.uq.edu.au/HolgerBaumgardt/globular/combined_table.txt"
+    },
+    {
+      "ref": "CDS VizieR (CfA mirror vizier.cfa.harvard.edu; CDS Strasbourg is down since 2026-11-09)",
+      "url": "https://vizier.cfa.harvard.edu/"
+    }
+  ]
+}

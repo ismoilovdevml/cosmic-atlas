@@ -1,0 +1,2852 @@
+{
+  "catalog": "data/tiles/catalogs/gw-events.json",
+  "bytes": 379343,
+  "started_utc": "2026-11-14T06:40:17Z",
+  "finished_utc": "2026-11-14T06:44:41Z",
+  "service": {
+    "gwosc": "https://gwosc.org/eventapi/json/GWTC/",
+    "zenodo": {
+      "GWTC-2.1-confident": "https://zenodo.org/api/records/6513631",
+      "GWTC-3-confident": "https://zenodo.org/api/records/8177023",
+      "GWTC-4.1": "https://zenodo.org/api/records/20275769",
+      "GWTC-5.0": "https://zenodo.org/api/records/20348005"
+    },
+    "gw170817": "https://dcc.ligo.org/public/0157/P1800381/007/GW170817_skymap.fits.gz",
+    "simbad_tap": "https://simbad.harvard.edu/simbad/sim-tap/sync"
+  },
+  "selection": "GWOSC cumulative GWTC list, events with parameter estimates (luminosity_distance not null)",
+  "distance": "dist_pc = Planck18 comoving distance of the GWOSC median luminosity distance: z from inverting d_L(z) = (1+z) d_C(z) on the coords.py Planck18 grid, then d_C = d_L/(1+z). The 3D volumes use the same conversion per radial bin edge. GWOSC 'redshift' (LVK, Planck15) is kept as a fact.",
+  "facts_keys": {
+    "type": "from median source masses, 3 Msun neutron-star limit (display classification)",
+    "position": "'uncertain' for every event except GW170817 ('host galaxy')",
+    "vol90_mpc3": "90 % credible comoving volume (Planck18), from the sky map, Mpc^3",
+    "area90_deg2": "90 % credible sky area from the sky map",
+    "mass1_msun/mass2_msun/final_mass_msun": "source-frame masses, [median, minus, plus] 90 %",
+    "lum_dist_mpc": "GWOSC luminosity distance [median, minus, plus] 90 %",
+    "comoving_dist_mpc": "Planck18 conversion of lum_dist_mpc (bounds converted too)",
+    "redshift": "GWOSC",
+    "snr": "network matched-filter SNR",
+    "far_per_yr": "false-alarm rate, per year (GWOSC)",
+    "p_astro": "GWOSC"
+  },
+  "loc_format": "loc.e = list of ellipsoids [w, cx, cy, cz, a, b, c, qx, qy, qz, qw]: weight, centre (Galactic, comoving pc), semi-axes (pc) at the 90 % radius of a 3D Gaussian (2.5003 sigma), quaternion from ellipsoid axes to Galactic",
+  "counts": {
+    "events_with_pe": 282,
+    "entries": 283,
+    "events_written": 282,
+    "missing_map": [],
+    "catalogs": {
+      "GWTC-1-confident": 1,
+      "GWTC-2.1-confident": 54,
+      "GWTC-3-confident": 35,
+      "GWTC-4.1": 88,
+      "GWTC-5.0": 104
+    }
+  },
+  "check_vs_ligo_skymap_stats": {
+    "n": 54,
+    "vol_ratio_median": 1.001,
+    "vol_ratio_p5_p95": [
+      1.00065,
+      1.002
+    ],
+    "area_ratio_median": 1.0,
+    "area_ratio_p5_p95": [
+      1.0,
+      1.001
+    ],
+    "note": "LVK numbers use Planck15 and the native multi-order resolution; ours Planck18",
+    "rows": [
+      {
+        "event": "GW150914",
+        "area90_ours": 251.8,
+        "area90_lvk": 251.8,
+        "vol90_ours_comoving": 3393000.0,
+        "vol90_lvk_comoving_planck15": 3387000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW151012",
+        "area90_ours": 1695.2,
+        "area90_lvk": 1694.4,
+        "vol90_ours_comoving": 294400000.0,
+        "vol90_lvk_comoving_planck15": 294000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW151226",
+        "area90_ours": 954.1,
+        "area90_lvk": 953.4,
+        "vol90_ours_comoving": 13230000.0,
+        "vol90_lvk_comoving_planck15": 13210000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW170104",
+        "area90_ours": 1013.2,
+        "area90_lvk": 1012.6,
+        "vol90_ours_comoving": 142100000.0,
+        "vol90_lvk_comoving_planck15": 141900000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW170608",
+        "area90_ours": 378.7,
+        "area90_lvk": 378.7,
+        "vol90_ours_comoving": 2986000.0,
+        "vol90_lvk_comoving_planck15": 2982000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW170729",
+        "area90_ours": 825.9,
+        "area90_lvk": 825.6,
+        "vol90_ours_comoving": 1533000000.0,
+        "vol90_lvk_comoving_planck15": 1532000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW170809",
+        "area90_ours": 261.4,
+        "area90_lvk": 261.4,
+        "vol90_ours_comoving": 38700000.0,
+        "vol90_lvk_comoving_planck15": 38650000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW170814",
+        "area90_ours": 92.2,
+        "area90_lvk": 92.1,
+        "vol90_ours_comoving": 2962000.0,
+        "vol90_lvk_comoving_planck15": 2957000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW170818",
+        "area90_ours": 34.5,
+        "area90_lvk": 34.5,
+        "vol90_ours_comoving": 5997000.0,
+        "vol90_lvk_comoving_planck15": 5989000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW170823",
+        "area90_ours": 1784.1,
+        "area90_lvk": 1783.7,
+        "vol90_ours_comoving": 1106000000.0,
+        "vol90_lvk_comoving_planck15": 1104000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190403_051519",
+        "area90_ours": 3930.4,
+        "area90_lvk": 3930.1,
+        "vol90_ours_comoving": 54670000000.0,
+        "vol90_lvk_comoving_planck15": 54680000000.0,
+        "ratio_vol": 1.0,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190408_181802",
+        "area90_ours": 293.5,
+        "area90_lvk": 293.5,
+        "vol90_ours_comoving": 97590000.0,
+        "vol90_lvk_comoving_planck15": 97470000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190412",
+        "area90_ours": 243.6,
+        "area90_lvk": 243.4,
+        "vol90_ours_comoving": 16000000.0,
+        "vol90_lvk_comoving_planck15": 15980000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190413_052954",
+        "area90_ours": 650.0,
+        "area90_lvk": 650.0,
+        "vol90_ours_comoving": 1980000000.0,
+        "vol90_lvk_comoving_planck15": 1978000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190413_134308",
+        "area90_ours": 628.2,
+        "area90_lvk": 627.7,
+        "vol90_ours_comoving": 2276000000.0,
+        "vol90_lvk_comoving_planck15": 2274000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190421_213856",
+        "area90_ours": 1237.5,
+        "area90_lvk": 1237.0,
+        "vol90_ours_comoving": 1731000000.0,
+        "vol90_lvk_comoving_planck15": 1729000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190425",
+        "area90_ours": 8728.7,
+        "area90_lvk": 8728.0,
+        "vol90_ours_comoving": 7790000.0,
+        "vol90_lvk_comoving_planck15": 7782000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190426_190642",
+        "area90_ours": 4575.8,
+        "area90_lvk": 4574.1,
+        "vol90_ours_comoving": 25300000000.0,
+        "vol90_lvk_comoving_planck15": 25290000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190503_185404",
+        "area90_ours": 100.4,
+        "area90_lvk": 100.4,
+        "vol90_ours_comoving": 44300000.0,
+        "vol90_lvk_comoving_planck15": 44250000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190512_180714",
+        "area90_ours": 233.3,
+        "area90_lvk": 233.1,
+        "vol90_ours_comoving": 84640000.0,
+        "vol90_lvk_comoving_planck15": 84540000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190513_205428",
+        "area90_ours": 445.9,
+        "area90_lvk": 445.8,
+        "vol90_ours_comoving": 423900000.0,
+        "vol90_lvk_comoving_planck15": 423300000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190514_065416",
+        "area90_ours": 3436.1,
+        "area90_lvk": 3435.2,
+        "vol90_ours_comoving": 11030000000.0,
+        "vol90_lvk_comoving_planck15": 11030000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190517_055101",
+        "area90_ours": 506.7,
+        "area90_lvk": 506.7,
+        "vol90_ours_comoving": 524400000.0,
+        "vol90_lvk_comoving_planck15": 523600000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190519_153544",
+        "area90_ours": 568.2,
+        "area90_lvk": 568.0,
+        "vol90_ours_comoving": 1049000000.0,
+        "vol90_lvk_comoving_planck15": 1048000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190521",
+        "area90_ours": 1021.0,
+        "area90_lvk": 1020.5,
+        "vol90_ours_comoving": 3437000000.0,
+        "vol90_lvk_comoving_planck15": 3434000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190521_074359",
+        "area90_ours": 467.1,
+        "area90_lvk": 466.9,
+        "vol90_ours_comoving": 83380000.0,
+        "vol90_lvk_comoving_planck15": 83250000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190527_092055",
+        "area90_ours": 3492.3,
+        "area90_lvk": 3492.0,
+        "vol90_ours_comoving": 6597000000.0,
+        "vol90_lvk_comoving_planck15": 6588000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190602_175927",
+        "area90_ours": 738.8,
+        "area90_lvk": 738.7,
+        "vol90_ours_comoving": 1414000000.0,
+        "vol90_lvk_comoving_planck15": 1412000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190620_030421",
+        "area90_ours": 7656.0,
+        "area90_lvk": 7655.5,
+        "vol90_ours_comoving": 13460000000.0,
+        "vol90_lvk_comoving_planck15": 13450000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190630_185205",
+        "area90_ours": 956.8,
+        "area90_lvk": 956.0,
+        "vol90_ours_comoving": 123100000.0,
+        "vol90_lvk_comoving_planck15": 122900000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190701_203306",
+        "area90_ours": 44.7,
+        "area90_lvk": 44.6,
+        "vol90_ours_comoving": 34650000.0,
+        "vol90_lvk_comoving_planck15": 34610000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190706_222641",
+        "area90_ours": 2596.8,
+        "area90_lvk": 2596.3,
+        "vol90_ours_comoving": 7806000000.0,
+        "vol90_lvk_comoving_planck15": 7799000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190707_093326",
+        "area90_ours": 1157.0,
+        "area90_lvk": 1156.8,
+        "vol90_ours_comoving": 92140000.0,
+        "vol90_lvk_comoving_planck15": 92000000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190708_232457",
+        "area90_ours": 11035.0,
+        "area90_lvk": 11032.3,
+        "vol90_ours_comoving": 986200000.0,
+        "vol90_lvk_comoving_planck15": 984600000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190719_215514",
+        "area90_ours": 3627.4,
+        "area90_lvk": 3626.7,
+        "vol90_ours_comoving": 12960000000.0,
+        "vol90_lvk_comoving_planck15": 12940000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190720_000836",
+        "area90_ours": 256.3,
+        "area90_lvk": 256.2,
+        "vol90_ours_comoving": 42440000.0,
+        "vol90_lvk_comoving_planck15": 42370000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190725_174728",
+        "area90_ours": 2156.1,
+        "area90_lvk": 2155.9,
+        "vol90_ours_comoving": 381200000.0,
+        "vol90_lvk_comoving_planck15": 380800000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190727_060333",
+        "area90_ours": 381.7,
+        "area90_lvk": 381.5,
+        "vol90_ours_comoving": 760100000.0,
+        "vol90_lvk_comoving_planck15": 759200000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190728_064510",
+        "area90_ours": 399.9,
+        "area90_lvk": 399.7,
+        "vol90_ours_comoving": 38840000.0,
+        "vol90_lvk_comoving_planck15": 38800000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190731_140936",
+        "area90_ours": 3640.9,
+        "area90_lvk": 3640.2,
+        "vol90_ours_comoving": 9184000000.0,
+        "vol90_lvk_comoving_planck15": 9174000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190803_022701",
+        "area90_ours": 1004.2,
+        "area90_lvk": 1003.6,
+        "vol90_ours_comoving": 2210000000.0,
+        "vol90_lvk_comoving_planck15": 2208000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.001
+      },
+      {
+        "event": "GW190805_211137",
+        "area90_ours": 1581.2,
+        "area90_lvk": 1580.5,
+        "vol90_ours_comoving": 13110000000.0,
+        "vol90_lvk_comoving_planck15": 13100000000.0,
+        "ratio_vol": 1.0,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190814",
+        "area90_ours": 22.1,
+        "area90_lvk": 22.1,
+        "vol90_ours_comoving": 35960.0,
+        "vol90_lvk_comoving_planck15": 35910.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190828_063405",
+        "area90_ours": 339.9,
+        "area90_lvk": 339.8,
+        "vol90_ours_comoving": 250500000.0,
+        "vol90_lvk_comoving_planck15": 250200000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190828_065509",
+        "area90_ours": 593.4,
+        "area90_lvk": 593.2,
+        "vol90_ours_comoving": 270300000.0,
+        "vol90_lvk_comoving_planck15": 270000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190910_112807",
+        "area90_ours": 9651.0,
+        "area90_lvk": 9647.9,
+        "vol90_ours_comoving": 5195000000.0,
+        "vol90_lvk_comoving_planck15": 5188000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190915_235702",
+        "area90_ours": 449.2,
+        "area90_lvk": 449.2,
+        "vol90_ours_comoving": 244500000.0,
+        "vol90_lvk_comoving_planck15": 244200000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190916_200658",
+        "area90_ours": 2368.5,
+        "area90_lvk": 2368.4,
+        "vol90_ours_comoving": 15370000000.0,
+        "vol90_lvk_comoving_planck15": 15370000000.0,
+        "ratio_vol": 1.0,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190917_114630",
+        "area90_ours": 1659.3,
+        "area90_lvk": 1658.6,
+        "vol90_ours_comoving": 105800000.0,
+        "vol90_lvk_comoving_planck15": 105500000.0,
+        "ratio_vol": 1.003,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190924_021846",
+        "area90_ours": 375.8,
+        "area90_lvk": 375.7,
+        "vol90_ours_comoving": 12100000.0,
+        "vol90_lvk_comoving_planck15": 12090000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190925_232845",
+        "area90_ours": 2898.9,
+        "area90_lvk": 2898.7,
+        "vol90_ours_comoving": 450200000.0,
+        "vol90_lvk_comoving_planck15": 449200000.0,
+        "ratio_vol": 1.002,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190926_050336",
+        "area90_ours": 2015.1,
+        "area90_lvk": 2014.7,
+        "vol90_ours_comoving": 7954000000.0,
+        "vol90_lvk_comoving_planck15": 7945000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190929_012149",
+        "area90_ours": 1669.8,
+        "area90_lvk": 1669.0,
+        "vol90_ours_comoving": 4846000000.0,
+        "vol90_lvk_comoving_planck15": 4841000000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      },
+      {
+        "event": "GW190930_133541",
+        "area90_ours": 1570.3,
+        "area90_lvk": 1569.7,
+        "vol90_ours_comoving": 132300000.0,
+        "vol90_lvk_comoving_planck15": 132100000.0,
+        "ratio_vol": 1.001,
+        "ratio_area": 1.0
+      }
+    ]
+  },
+  "ellipsoid_quality": {
+    "inside_median": 0.939,
+    "inside_p5": 0.913,
+    "vol_ratio_median": 1.1640000000000001,
+    "rows": [
+      {
+        "event": "GW150914",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 1.016
+      },
+      {
+        "event": "GW151012",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.932,
+        "ell_vol_over_v90": 1.08
+      },
+      {
+        "event": "GW151226",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.258
+      },
+      {
+        "event": "GW170104",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.272
+      },
+      {
+        "event": "GW170608",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.106
+      },
+      {
+        "event": "GW170729",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.953,
+        "ell_vol_over_v90": 1.151
+      },
+      {
+        "event": "GW170809",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.919,
+        "ell_vol_over_v90": 0.989
+      },
+      {
+        "event": "GW170814",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 0.993
+      },
+      {
+        "event": "GW170817",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.969,
+        "ell_vol_over_v90": 1.432
+      },
+      {
+        "event": "GW170818",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.962,
+        "ell_vol_over_v90": 1.274
+      },
+      {
+        "event": "GW170823",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.238
+      },
+      {
+        "event": "GW190403_051519",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.92,
+        "ell_vol_over_v90": 0.947
+      },
+      {
+        "event": "GW190408_181802",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.74
+      },
+      {
+        "event": "GW190412",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.904,
+        "ell_vol_over_v90": 1.274
+      },
+      {
+        "event": "GW190413_052954",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.913,
+        "ell_vol_over_v90": 1.393
+      },
+      {
+        "event": "GW190413_134308",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.916,
+        "ell_vol_over_v90": 1.33
+      },
+      {
+        "event": "GW190421_213856",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.148
+      },
+      {
+        "event": "GW190425",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.255
+      },
+      {
+        "event": "GW190426_190642",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.924,
+        "ell_vol_over_v90": 1.06
+      },
+      {
+        "event": "GW190503_185404",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.953,
+        "ell_vol_over_v90": 1.202
+      },
+      {
+        "event": "GW190512_180714",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 0.972
+      },
+      {
+        "event": "GW190513_205428",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.927,
+        "ell_vol_over_v90": 0.925
+      },
+      {
+        "event": "GW190514_065416",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.373
+      },
+      {
+        "event": "GW190517_055101",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.902,
+        "ell_vol_over_v90": 1.764
+      },
+      {
+        "event": "GW190519_153544",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.895,
+        "ell_vol_over_v90": 0.736
+      },
+      {
+        "event": "GW190521",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.892,
+        "ell_vol_over_v90": 0.994
+      },
+      {
+        "event": "GW190521_074359",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.033
+      },
+      {
+        "event": "GW190527_092055",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.265
+      },
+      {
+        "event": "GW190602_175927",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 0.977
+      },
+      {
+        "event": "GW190620_030421",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.605
+      },
+      {
+        "event": "GW190630_185205",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.143
+      },
+      {
+        "event": "GW190701_203306",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.964,
+        "ell_vol_over_v90": 1.271
+      },
+      {
+        "event": "GW190706_222641",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.924,
+        "ell_vol_over_v90": 1.071
+      },
+      {
+        "event": "GW190707_093326",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.04
+      },
+      {
+        "event": "GW190708_232457",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.838
+      },
+      {
+        "event": "GW190719_215514",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.019
+      },
+      {
+        "event": "GW190720_000836",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.363
+      },
+      {
+        "event": "GW190725_174728",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.426
+      },
+      {
+        "event": "GW190727_060333",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.909,
+        "ell_vol_over_v90": 0.934
+      },
+      {
+        "event": "GW190728_064510",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.92,
+        "ell_vol_over_v90": 1.071
+      },
+      {
+        "event": "GW190731_140936",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.165
+      },
+      {
+        "event": "GW190803_022701",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.918,
+        "ell_vol_over_v90": 0.888
+      },
+      {
+        "event": "GW190805_211137",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.324
+      },
+      {
+        "event": "GW190814",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.051
+      },
+      {
+        "event": "GW190828_063405",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.159
+      },
+      {
+        "event": "GW190828_065509",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.461
+      },
+      {
+        "event": "GW190910_112807",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.95,
+        "ell_vol_over_v90": 1.257
+      },
+      {
+        "event": "GW190915_235702",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 0.81
+      },
+      {
+        "event": "GW190916_200658",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.049
+      },
+      {
+        "event": "GW190917_114630",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.92,
+        "ell_vol_over_v90": 0.948
+      },
+      {
+        "event": "GW190924_021846",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.026
+      },
+      {
+        "event": "GW190925_232845",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.655
+      },
+      {
+        "event": "GW190926_050336",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.043
+      },
+      {
+        "event": "GW190929_012149",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 1.082
+      },
+      {
+        "event": "GW190930_133541",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.104
+      },
+      {
+        "event": "GW191103_012549",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.438
+      },
+      {
+        "event": "GW191105_143521",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.919,
+        "ell_vol_over_v90": 1.021
+      },
+      {
+        "event": "GW191109_010717",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.232
+      },
+      {
+        "event": "GW191113_071753",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.076
+      },
+      {
+        "event": "GW191126_115259",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.082
+      },
+      {
+        "event": "GW191127_050227",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.908,
+        "ell_vol_over_v90": 1.188
+      },
+      {
+        "event": "GW191129_134029",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.922,
+        "ell_vol_over_v90": 1.009
+      },
+      {
+        "event": "GW191204_110529",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.922,
+        "ell_vol_over_v90": 1.575
+      },
+      {
+        "event": "GW191204_171526",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.918,
+        "ell_vol_over_v90": 0.927
+      },
+      {
+        "event": "GW191215_223052",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.916,
+        "ell_vol_over_v90": 1.114
+      },
+      {
+        "event": "GW191216_213338",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 0.792
+      },
+      {
+        "event": "GW191219_163120",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.932,
+        "ell_vol_over_v90": 0.957
+      },
+      {
+        "event": "GW191222_033537",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.289
+      },
+      {
+        "event": "GW191230_180458",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.009
+      },
+      {
+        "event": "GW200112_155838",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 1.357
+      },
+      {
+        "event": "GW200115_042309",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.912,
+        "ell_vol_over_v90": 1.091
+      },
+      {
+        "event": "GW200128_022011",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.023
+      },
+      {
+        "event": "GW200129_065458",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 0.86
+      },
+      {
+        "event": "GW200202_154313",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.317
+      },
+      {
+        "event": "GW200208_130117",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.957,
+        "ell_vol_over_v90": 1.463
+      },
+      {
+        "event": "GW200208_222617",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.067
+      },
+      {
+        "event": "GW200209_085452",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 2.207
+      },
+      {
+        "event": "GW200210_092254",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.903,
+        "ell_vol_over_v90": 0.803
+      },
+      {
+        "event": "GW200216_220804",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.056
+      },
+      {
+        "event": "GW200219_094415",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.186
+      },
+      {
+        "event": "GW200220_061928",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 0.994
+      },
+      {
+        "event": "GW200220_124850",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.135
+      },
+      {
+        "event": "GW200224_222234",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.214
+      },
+      {
+        "event": "GW200225_060421",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.1
+      },
+      {
+        "event": "GW200302_015811",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 1.311
+      },
+      {
+        "event": "GW200306_093714",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.371
+      },
+      {
+        "event": "GW200308_173609",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.928,
+        "ell_vol_over_v90": 0.504
+      },
+      {
+        "event": "GW200311_115853",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.961,
+        "ell_vol_over_v90": 1.269
+      },
+      {
+        "event": "GW200316_215756",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.924,
+        "ell_vol_over_v90": 1.297
+      },
+      {
+        "event": "GW200322_091133",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.95,
+        "ell_vol_over_v90": 0.405
+      },
+      {
+        "event": "GW230518_125908",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.935,
+        "ell_vol_over_v90": 1.0
+      },
+      {
+        "event": "GW230529_181500",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.988,
+        "ell_vol_over_v90": 1.365
+      },
+      {
+        "event": "GW230601_224134",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 1.122
+      },
+      {
+        "event": "GW230605_065343",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.928,
+        "ell_vol_over_v90": 1.288
+      },
+      {
+        "event": "GW230606_004305",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.959,
+        "ell_vol_over_v90": 1.246
+      },
+      {
+        "event": "GW230608_205047",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.953,
+        "ell_vol_over_v90": 1.189
+      },
+      {
+        "event": "GW230609_064958",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.075
+      },
+      {
+        "event": "GW230624_113103",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.152
+      },
+      {
+        "event": "GW230627_015337",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.44
+      },
+      {
+        "event": "GW230628_231200",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.096
+      },
+      {
+        "event": "GW230630_125806",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.149
+      },
+      {
+        "event": "GW230630_234532",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.935,
+        "ell_vol_over_v90": 1.527
+      },
+      {
+        "event": "GW230702_185453",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.071
+      },
+      {
+        "event": "GW230704_021211",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.169
+      },
+      {
+        "event": "GW230704_212616",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.954,
+        "ell_vol_over_v90": 1.22
+      },
+      {
+        "event": "GW230706_104333",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.918,
+        "ell_vol_over_v90": 1.334
+      },
+      {
+        "event": "GW230707_124047",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.135
+      },
+      {
+        "event": "GW230708_053705",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.118
+      },
+      {
+        "event": "GW230708_230935",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.138
+      },
+      {
+        "event": "GW230709_122727",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.102
+      },
+      {
+        "event": "GW230712_090405",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.155
+      },
+      {
+        "event": "GW230723_101834",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.927,
+        "ell_vol_over_v90": 1.238
+      },
+      {
+        "event": "GW230726_002940",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.991,
+        "ell_vol_over_v90": 1.512
+      },
+      {
+        "event": "GW230729_082317",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.093
+      },
+      {
+        "event": "GW230731_215307",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 1.034
+      },
+      {
+        "event": "GW230803_033412",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.18
+      },
+      {
+        "event": "GW230805_034249",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.24
+      },
+      {
+        "event": "GW230806_204041",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.956,
+        "ell_vol_over_v90": 1.279
+      },
+      {
+        "event": "GW230811_032116",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.181
+      },
+      {
+        "event": "GW230814_061920",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.222
+      },
+      {
+        "event": "GW230814_230901",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.979,
+        "ell_vol_over_v90": 1.456
+      },
+      {
+        "event": "GW230819_171910",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.264
+      },
+      {
+        "event": "GW230820_212515",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.958,
+        "ell_vol_over_v90": 1.183
+      },
+      {
+        "event": "GW230824_033047",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 1.112
+      },
+      {
+        "event": "GW230825_041334",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.09
+      },
+      {
+        "event": "GW230831_015414",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 1.053
+      },
+      {
+        "event": "GW230904_051013",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.708
+      },
+      {
+        "event": "GW230911_195324",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.988,
+        "ell_vol_over_v90": 1.432
+      },
+      {
+        "event": "GW230914_111401",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.212
+      },
+      {
+        "event": "GW230919_215712",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.935,
+        "ell_vol_over_v90": 1.061
+      },
+      {
+        "event": "GW230920_071124",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 1.254
+      },
+      {
+        "event": "GW230922_020344",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.968,
+        "ell_vol_over_v90": 1.345
+      },
+      {
+        "event": "GW230922_040658",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.319
+      },
+      {
+        "event": "GW230924_124453",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.81
+      },
+      {
+        "event": "GW230927_043729",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.948,
+        "ell_vol_over_v90": 1.148
+      },
+      {
+        "event": "GW230927_153832",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 0.898
+      },
+      {
+        "event": "GW230928_215827",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.151
+      },
+      {
+        "event": "GW230930_110730",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.103
+      },
+      {
+        "event": "GW231001_140220",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.95,
+        "ell_vol_over_v90": 1.281
+      },
+      {
+        "event": "GW231004_232346",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.18
+      },
+      {
+        "event": "GW231005_021030",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.152
+      },
+      {
+        "event": "GW231005_091549",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.161
+      },
+      {
+        "event": "GW231008_142521",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.219
+      },
+      {
+        "event": "GW231014_040532",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.921,
+        "ell_vol_over_v90": 1.163
+      },
+      {
+        "event": "GW231018_233037",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.316
+      },
+      {
+        "event": "GW231020_142947",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.473
+      },
+      {
+        "event": "GW231026_130704",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.047
+      },
+      {
+        "event": "GW231028_153006",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.166
+      },
+      {
+        "event": "GW231029_111508",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.994,
+        "ell_vol_over_v90": 1.53
+      },
+      {
+        "event": "GW231102_071736",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.135
+      },
+      {
+        "event": "GW231104_133418",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 0.998
+      },
+      {
+        "event": "GW231108_125142",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.274
+      },
+      {
+        "event": "GW231110_040320",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 0.999
+      },
+      {
+        "event": "GW231113_122623",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.965,
+        "ell_vol_over_v90": 1.443
+      },
+      {
+        "event": "GW231113_150041",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.179
+      },
+      {
+        "event": "GW231113_200417",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.933,
+        "ell_vol_over_v90": 1.255
+      },
+      {
+        "event": "GW231114_043211",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.193
+      },
+      {
+        "event": "GW231118_005626",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.129
+      },
+      {
+        "event": "GW231118_071402",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.222
+      },
+      {
+        "event": "GW231118_090602",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.114
+      },
+      {
+        "event": "GW231119_075248",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.139
+      },
+      {
+        "event": "GW231123_135430",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 0.127
+      },
+      {
+        "event": "GW231127_165300",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.96,
+        "ell_vol_over_v90": 1.269
+      },
+      {
+        "event": "GW231129_081745",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.302
+      },
+      {
+        "event": "GW231206_233134",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.932,
+        "ell_vol_over_v90": 1.17
+      },
+      {
+        "event": "GW231206_233901",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.943,
+        "ell_vol_over_v90": 1.089
+      },
+      {
+        "event": "GW231213_111417",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.339
+      },
+      {
+        "event": "GW231221_135041",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.247
+      },
+      {
+        "event": "GW231223_032836",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.156
+      },
+      {
+        "event": "GW231223_075055",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.921,
+        "ell_vol_over_v90": 1.203
+      },
+      {
+        "event": "GW231223_202619",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.984,
+        "ell_vol_over_v90": 1.459
+      },
+      {
+        "event": "GW231224_024321",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.329
+      },
+      {
+        "event": "GW231226_101520",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.132
+      },
+      {
+        "event": "GW231230_170116",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.959,
+        "ell_vol_over_v90": 1.272
+      },
+      {
+        "event": "GW231231_154016",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.989,
+        "ell_vol_over_v90": 1.482
+      },
+      {
+        "event": "GW240104_164932",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.99,
+        "ell_vol_over_v90": 1.497
+      },
+      {
+        "event": "GW240107_013215",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.255
+      },
+      {
+        "event": "GW240109_050431",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.991,
+        "ell_vol_over_v90": 1.437
+      },
+      {
+        "event": "GW240413_022019",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.954,
+        "ell_vol_over_v90": 1.345
+      },
+      {
+        "event": "GW240414_054515",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.04
+      },
+      {
+        "event": "GW240420_175625",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.987,
+        "ell_vol_over_v90": 1.443
+      },
+      {
+        "event": "GW240426_031451",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.165
+      },
+      {
+        "event": "GW240428_225440",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.185
+      },
+      {
+        "event": "GW240501_033534",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.919,
+        "ell_vol_over_v90": 0.944
+      },
+      {
+        "event": "GW240505_133552",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.932,
+        "ell_vol_over_v90": 0.986
+      },
+      {
+        "event": "GW240507_041632",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.905,
+        "ell_vol_over_v90": 1.716
+      },
+      {
+        "event": "GW240511_031507",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.963,
+        "ell_vol_over_v90": 1.41
+      },
+      {
+        "event": "GW240512_024139",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.92,
+        "ell_vol_over_v90": 1.126
+      },
+      {
+        "event": "GW240513_183302",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 0.829
+      },
+      {
+        "event": "GW240514_121713",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 0.977
+      },
+      {
+        "event": "GW240515_005301",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.439
+      },
+      {
+        "event": "GW240519_012815",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.829
+      },
+      {
+        "event": "GW240520_213616",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.9,
+        "ell_vol_over_v90": 1.241
+      },
+      {
+        "event": "GW240525_031210",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 1.269
+      },
+      {
+        "event": "GW240526_093944",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.07
+      },
+      {
+        "event": "GW240527_183429",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 1.063
+      },
+      {
+        "event": "GW240527_230910",
+        "k": 2,
+        "k_bic": 4,
+        "inside": 0.883,
+        "ell_vol_over_v90": 0.652
+      },
+      {
+        "event": "GW240530_012417",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.954,
+        "ell_vol_over_v90": 1.435
+      },
+      {
+        "event": "GW240531_040326",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.482
+      },
+      {
+        "event": "GW240531_075248",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.232
+      },
+      {
+        "event": "GW240601_061200",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.411
+      },
+      {
+        "event": "GW240601_231004",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 1.138
+      },
+      {
+        "event": "GW240612_081540",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.323
+      },
+      {
+        "event": "GW240615_113620",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.962,
+        "ell_vol_over_v90": 1.337
+      },
+      {
+        "event": "GW240615_160735",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.084
+      },
+      {
+        "event": "GW240618_071627",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.146
+      },
+      {
+        "event": "GW240621_195059",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.956,
+        "ell_vol_over_v90": 1.355
+      },
+      {
+        "event": "GW240621_200935",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 1.079
+      },
+      {
+        "event": "GW240621_214041",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.105
+      },
+      {
+        "event": "GW240622_004008",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.954,
+        "ell_vol_over_v90": 1.216
+      },
+      {
+        "event": "GW240627_131622",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.913,
+        "ell_vol_over_v90": 0.955
+      },
+      {
+        "event": "GW240629_145256",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.106
+      },
+      {
+        "event": "GW240630_101703",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.248
+      },
+      {
+        "event": "GW240703_191355",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 3.853
+      },
+      {
+        "event": "GW240705_053215",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.922,
+        "ell_vol_over_v90": 1.124
+      },
+      {
+        "event": "GW240716_034900",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.924,
+        "ell_vol_over_v90": 1.227
+      },
+      {
+        "event": "GW240824_205609",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.114
+      },
+      {
+        "event": "GW240825_055146",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 0.991
+      },
+      {
+        "event": "GW240830_211120",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.897,
+        "ell_vol_over_v90": 0.815
+      },
+      {
+        "event": "GW240902_143306",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.21
+      },
+      {
+        "event": "GW240907_153833",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.928,
+        "ell_vol_over_v90": 1.033
+      },
+      {
+        "event": "GW240908_082628",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.907,
+        "ell_vol_over_v90": 0.835
+      },
+      {
+        "event": "GW240908_125134",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.121
+      },
+      {
+        "event": "GW240910_103535",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.926,
+        "ell_vol_over_v90": 1.185
+      },
+      {
+        "event": "GW240915_001357",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.938,
+        "ell_vol_over_v90": 1.107
+      },
+      {
+        "event": "GW240915_105151",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.793
+      },
+      {
+        "event": "GW240916_184352",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.105
+      },
+      {
+        "event": "GW240919_061559",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.126
+      },
+      {
+        "event": "GW240920_073424",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.936,
+        "ell_vol_over_v90": 1.096
+      },
+      {
+        "event": "GW240920_124024",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.941,
+        "ell_vol_over_v90": 1.076
+      },
+      {
+        "event": "GW240921_201835",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.95,
+        "ell_vol_over_v90": 1.074
+      },
+      {
+        "event": "GW240922_142106",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.931,
+        "ell_vol_over_v90": 1.137
+      },
+      {
+        "event": "GW240923_204006",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.918,
+        "ell_vol_over_v90": 0.807
+      },
+      {
+        "event": "GW240924_000316",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 1.061
+      },
+      {
+        "event": "GW240925_005809",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.238
+      },
+      {
+        "event": "GW240930_035959",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.082
+      },
+      {
+        "event": "GW240930_234614",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 1.032
+      },
+      {
+        "event": "GW241002_030559",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.921,
+        "ell_vol_over_v90": 1.053
+      },
+      {
+        "event": "GW241006_015333",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.928,
+        "ell_vol_over_v90": 1.132
+      },
+      {
+        "event": "GW241007_082943",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.954,
+        "ell_vol_over_v90": 1.227
+      },
+      {
+        "event": "GW241009_022835",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.256
+      },
+      {
+        "event": "GW241009_084816",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 0.817
+      },
+      {
+        "event": "GW241009_220455",
+        "k": 3,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 0.681
+      },
+      {
+        "event": "GW241011_233834",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.95,
+        "ell_vol_over_v90": 1.174
+      },
+      {
+        "event": "GW241101_220523",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.94,
+        "ell_vol_over_v90": 2.684
+      },
+      {
+        "event": "GW241102_124058",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.956,
+        "ell_vol_over_v90": 1.371
+      },
+      {
+        "event": "GW241102_144729",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.914,
+        "ell_vol_over_v90": 1.46
+      },
+      {
+        "event": "GW241109_033317",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.939,
+        "ell_vol_over_v90": 2.421
+      },
+      {
+        "event": "GW241109_115924",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.1
+      },
+      {
+        "event": "GW241110_124123",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.959,
+        "ell_vol_over_v90": 1.364
+      },
+      {
+        "event": "GW241111_111552",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.952,
+        "ell_vol_over_v90": 1.32
+      },
+      {
+        "event": "GW241113_163507",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.962,
+        "ell_vol_over_v90": 1.26
+      },
+      {
+        "event": "GW241114_024711",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.96,
+        "ell_vol_over_v90": 1.335
+      },
+      {
+        "event": "GW241114_235258",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 1.189
+      },
+      {
+        "event": "GW241116_151753",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.122
+      },
+      {
+        "event": "GW241124_024914",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.922,
+        "ell_vol_over_v90": 1.214
+      },
+      {
+        "event": "GW241125_010116",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.927,
+        "ell_vol_over_v90": 1.034
+      },
+      {
+        "event": "GW241127_061008",
+        "k": 3,
+        "k_bic": 3,
+        "inside": 0.926,
+        "ell_vol_over_v90": 0.784
+      },
+      {
+        "event": "GW241129_021832",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.929,
+        "ell_vol_over_v90": 0.933
+      },
+      {
+        "event": "GW241130_034908",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 1.171
+      },
+      {
+        "event": "GW241130_110422",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.93,
+        "ell_vol_over_v90": 1.103
+      },
+      {
+        "event": "GW241201_055758",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.921,
+        "ell_vol_over_v90": 1.098
+      },
+      {
+        "event": "GW241210_060606",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.902,
+        "ell_vol_over_v90": 1.269
+      },
+      {
+        "event": "GW241210_120900",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.173
+      },
+      {
+        "event": "GW241225_042553",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.945,
+        "ell_vol_over_v90": 1.879
+      },
+      {
+        "event": "GW241225_082815",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.965,
+        "ell_vol_over_v90": 1.357
+      },
+      {
+        "event": "GW241229_155844",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.921,
+        "ell_vol_over_v90": 1.107
+      },
+      {
+        "event": "GW241230_084504",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.947,
+        "ell_vol_over_v90": 1.095
+      },
+      {
+        "event": "GW241230_233618",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.148
+      },
+      {
+        "event": "GW241231_054133",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.958,
+        "ell_vol_over_v90": 1.257
+      },
+      {
+        "event": "GW250101_011205",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.949,
+        "ell_vol_over_v90": 1.24
+      },
+      {
+        "event": "GW250104_015122",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.932,
+        "ell_vol_over_v90": 1.047
+      },
+      {
+        "event": "GW250108_152221",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.951,
+        "ell_vol_over_v90": 1.162
+      },
+      {
+        "event": "GW250109_010541",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.942,
+        "ell_vol_over_v90": 1.191
+      },
+      {
+        "event": "GW250109_074552",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.925,
+        "ell_vol_over_v90": 2.007
+      },
+      {
+        "event": "GW250114_082203",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.937,
+        "ell_vol_over_v90": 1.044
+      },
+      {
+        "event": "GW250116_015318",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.944,
+        "ell_vol_over_v90": 1.19
+      },
+      {
+        "event": "GW250118_023225",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.934,
+        "ell_vol_over_v90": 1.079
+      },
+      {
+        "event": "GW250118_055802",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.932,
+        "ell_vol_over_v90": 1.84
+      },
+      {
+        "event": "GW250118_170523",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.927,
+        "ell_vol_over_v90": 1.119
+      },
+      {
+        "event": "GW250119_025138",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.919,
+        "ell_vol_over_v90": 0.916
+      },
+      {
+        "event": "GW250119_190238",
+        "k": 4,
+        "k_bic": 4,
+        "inside": 0.967,
+        "ell_vol_over_v90": 1.243
+      }
+    ]
+  },
+  "map_choice": {
+    "GW150914": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW151012": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW151226": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW170104": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW170608": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW170729": "map of the release skymap_stats (cosmo_reweight_C01:SEOBNRv4PHM.fits)",
+    "GW170809": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW170814": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW170818": "map of the release skymap_stats (cosmo_reweight_C01:SEOBNRv4PHM.fits)",
+    "GW170823": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190403_051519": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190408_181802": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190412": "map of the release skymap_stats (cosmo_reweight_C01:SEOBNRv4PHM.fits)",
+    "GW190413_052954": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190413_134308": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190421_213856": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190425": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190426_190642": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190503_185404": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190512_180714": "map of the release skymap_stats (cosmo_reweight_C01:SEOBNRv4PHM.fits)",
+    "GW190513_205428": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190514_065416": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190517_055101": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190519_153544": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190521": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190521_074359": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190527_092055": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190602_175927": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190620_030421": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190630_185205": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190701_203306": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190706_222641": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190707_093326": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190708_232457": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190719_215514": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190720_000836": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190725_174728": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190727_060333": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190728_064510": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190731_140936": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190803_022701": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190805_211137": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190814": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190828_063405": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190828_065509": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190910_112807": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190915_235702": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190916_200658": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190917_114630": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190924_021846": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190925_232845": "map of the release skymap_stats (cosmo_reweight_C01:SEOBNRv4PHM.fits)",
+    "GW190926_050336": "map of the release skymap_stats (cosmo_reweight_C01:IMRPhenomXPHM.fits)",
+    "GW190929_012149": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW190930_133541": "map of the release skymap_stats (cosmo_reweight_C01:Mixed.fits)",
+    "GW191103_012549": "release Default flag",
+    "GW191105_143521": "release Default flag",
+    "GW191109_010717": "release Default flag",
+    "GW191113_071753": "release Default flag",
+    "GW191126_115259": "release Default flag",
+    "GW191127_050227": "release Default flag",
+    "GW191129_134029": "release Default flag",
+    "GW191204_110529": "release Default flag",
+    "GW191204_171526": "release Default flag",
+    "GW191215_223052": "release Default flag",
+    "GW191216_213338": "release Default flag",
+    "GW191219_163120": "release Default flag",
+    "GW191222_033537": "release Default flag",
+    "GW191230_180458": "release Default flag",
+    "GW200112_155838": "release Default flag",
+    "GW200115_042309": "release Default flag",
+    "GW200128_022011": "release Default flag",
+    "GW200129_065458": "release Default flag",
+    "GW200202_154313": "release Default flag",
+    "GW200208_130117": "release Default flag",
+    "GW200208_222617": "release Default flag",
+    "GW200209_085452": "release Default flag",
+    "GW200210_092254": "release Default flag",
+    "GW200216_220804": "release Default flag",
+    "GW200219_094415": "release Default flag",
+    "GW200220_061928": "release Default flag",
+    "GW200220_124850": "release Default flag",
+    "GW200224_222234": "release Default flag",
+    "GW200225_060421": "release Default flag",
+    "GW200302_015811": "release Default flag",
+    "GW200306_093714": "release Default flag",
+    "GW200308_173609": "release Default flag",
+    "GW200311_115853": "release Default flag",
+    "GW200316_215756": "release Default flag",
+    "GW200322_091133": "release Default flag",
+    "GW230518_125908": "PESummaryTable D_L 236 = GWOSC 236 Mpc",
+    "GW230529_181500": "PESummaryTable D_L 203 = GWOSC 203 Mpc",
+    "GW230601_224134": "PESummaryTable D_L 3688 = GWOSC 3700 Mpc",
+    "GW230605_065343": "PESummaryTable D_L 1059 = GWOSC 1060 Mpc",
+    "GW230606_004305": "PESummaryTable D_L 2774 = GWOSC 2800 Mpc",
+    "GW230608_205047": "PESummaryTable D_L 3491 = GWOSC 3500 Mpc",
+    "GW230609_064958": "PESummaryTable D_L 3362 = GWOSC 3400 Mpc",
+    "GW230624_113103": "PESummaryTable D_L 1929 = GWOSC 1930 Mpc",
+    "GW230627_015337": "PESummaryTable D_L 305 = GWOSC 305 Mpc",
+    "GW230628_231200": "PESummaryTable D_L 2262 = GWOSC 2260 Mpc",
+    "GW230630_125806": "PESummaryTable D_L 5406 = GWOSC 5400 Mpc",
+    "GW230630_234532": "PESummaryTable D_L 1089 = GWOSC 1090 Mpc",
+    "GW230702_185453": "PESummaryTable D_L 2482 = GWOSC 2500 Mpc",
+    "GW230704_021211": "PESummaryTable D_L 2713 = GWOSC 2700 Mpc",
+    "GW230704_212616": "PESummaryTable D_L 7285 = GWOSC 7300 Mpc",
+    "GW230706_104333": "PESummaryTable D_L 1913 = GWOSC 1910 Mpc",
+    "GW230707_124047": "PESummaryTable D_L 4448 = GWOSC 4400 Mpc",
+    "GW230708_053705": "PESummaryTable D_L 3307 = GWOSC 3300 Mpc",
+    "GW230708_230935": "PESummaryTable D_L 3482 = GWOSC 3500 Mpc",
+    "GW230709_122727": "PESummaryTable D_L 4716 = GWOSC 4700 Mpc",
+    "GW230712_090405": "PESummaryTable D_L 2033 = GWOSC 2000 Mpc",
+    "GW230723_101834": "PESummaryTable D_L 1610 = GWOSC 1610 Mpc",
+    "GW230726_002940": "PESummaryTable D_L 2068 = GWOSC 2100 Mpc",
+    "GW230729_082317": "PESummaryTable D_L 1636 = GWOSC 1640 Mpc",
+    "GW230731_215307": "PESummaryTable D_L 1099 = GWOSC 1100 Mpc",
+    "GW230803_033412": "PESummaryTable D_L 5024 = GWOSC 5000 Mpc",
+    "GW230805_034249": "PESummaryTable D_L 3506 = GWOSC 3500 Mpc",
+    "GW230806_204041": "PESummaryTable D_L 5501 = GWOSC 5500 Mpc",
+    "GW230811_032116": "PESummaryTable D_L 2100 = GWOSC 2100 Mpc",
+    "GW230814_061920": "PESummaryTable D_L 3972 = GWOSC 4000 Mpc",
+    "GW230814_230901": "PESummaryTable D_L 289 = GWOSC 290 Mpc",
+    "GW230819_171910": "PESummaryTable D_L 4104 = GWOSC 4100 Mpc",
+    "GW230820_212515": "PESummaryTable D_L 3975 = GWOSC 4000 Mpc",
+    "GW230824_033047": "PESummaryTable D_L 4690 = GWOSC 4700 Mpc",
+    "GW230825_041334": "PESummaryTable D_L 4904 = GWOSC 4900 Mpc",
+    "GW230831_015414": "PESummaryTable D_L 4899 = GWOSC 4900 Mpc",
+    "GW230904_051013": "PESummaryTable D_L 1026 = GWOSC 1030 Mpc",
+    "GW230911_195324": "PESummaryTable D_L 1345 = GWOSC 1350 Mpc",
+    "GW230914_111401": "PESummaryTable D_L 2702 = GWOSC 2700 Mpc",
+    "GW230919_215712": "PESummaryTable D_L 1329 = GWOSC 1330 Mpc",
+    "GW230920_071124": "PESummaryTable D_L 2886 = GWOSC 2900 Mpc",
+    "GW230922_020344": "PESummaryTable D_L 1640 = GWOSC 1640 Mpc",
+    "GW230922_040658": "PESummaryTable D_L 6463 = GWOSC 6500 Mpc",
+    "GW230924_124453": "PESummaryTable D_L 2395 = GWOSC 2400 Mpc",
+    "GW230927_043729": "PESummaryTable D_L 3189 = GWOSC 3200 Mpc",
+    "GW230927_153832": "PESummaryTable D_L 1195 = GWOSC 1190 Mpc",
+    "GW230928_215827": "PESummaryTable D_L 4935 = GWOSC 4900 Mpc",
+    "GW230930_110730": "PESummaryTable D_L 4883 = GWOSC 4900 Mpc",
+    "GW231001_140220": "PESummaryTable D_L 4417 = GWOSC 4400 Mpc",
+    "GW231004_232346": "PESummaryTable D_L 4360 = GWOSC 4400 Mpc",
+    "GW231005_021030": "PESummaryTable D_L 6345 = GWOSC 6300 Mpc",
+    "GW231005_091549": "PESummaryTable D_L 3767 = GWOSC 3800 Mpc",
+    "GW231008_142521": "PESummaryTable D_L 3001 = GWOSC 3000 Mpc",
+    "GW231014_040532": "PESummaryTable D_L 2289 = GWOSC 2300 Mpc",
+    "GW231018_233037": "PESummaryTable D_L 1537 = GWOSC 1540 Mpc",
+    "GW231020_142947": "PESummaryTable D_L 1230 = GWOSC 1230 Mpc",
+    "GW231026_130704": "PESummaryTable D_L 4434 = GWOSC 4400 Mpc",
+    "GW231028_153006": "PESummaryTable D_L 4186 = GWOSC 4200 Mpc",
+    "GW231029_111508": "PESummaryTable D_L 3112 = GWOSC 3100 Mpc",
+    "GW231102_071736": "PESummaryTable D_L 3782 = GWOSC 3800 Mpc",
+    "GW231104_133418": "PESummaryTable D_L 1471 = GWOSC 1470 Mpc",
+    "GW231108_125142": "PESummaryTable D_L 2047 = GWOSC 2050 Mpc",
+    "GW231110_040320": "PESummaryTable D_L 1888 = GWOSC 1890 Mpc",
+    "GW231113_122623": "PESummaryTable D_L 3395 = GWOSC 3400 Mpc",
+    "GW231113_150041": "PESummaryTable D_L 5205 = GWOSC 5200 Mpc",
+    "GW231113_200417": "PESummaryTable D_L 1160 = GWOSC 1160 Mpc",
+    "GW231114_043211": "PESummaryTable D_L 1388 = GWOSC 1390 Mpc",
+    "GW231118_005626": "PESummaryTable D_L 2195 = GWOSC 2190 Mpc",
+    "GW231118_071402": "PESummaryTable D_L 4302 = GWOSC 4300 Mpc",
+    "GW231118_090602": "PESummaryTable D_L 1362 = GWOSC 1360 Mpc",
+    "GW231119_075248": "PESummaryTable D_L 6705 = GWOSC 6700 Mpc",
+    "GW231123_135430": "PESummaryTable D_L 2238 = GWOSC 2200 Mpc",
+    "GW231127_165300": "PESummaryTable D_L 4492 = GWOSC 4500 Mpc",
+    "GW231129_081745": "PESummaryTable D_L 3796 = GWOSC 3800 Mpc",
+    "GW231206_233134": "PESummaryTable D_L 3182 = GWOSC 3200 Mpc",
+    "GW231206_233901": "PESummaryTable D_L 1494 = GWOSC 1490 Mpc",
+    "GW231213_111417": "PESummaryTable D_L 3980 = GWOSC 4000 Mpc",
+    "GW231221_135041": "PESummaryTable D_L 4630 = GWOSC 4600 Mpc",
+    "GW231223_032836": "PESummaryTable D_L 4208 = GWOSC 4200 Mpc",
+    "GW231223_075055": "PESummaryTable D_L 969 = GWOSC 970 Mpc",
+    "GW231223_202619": "PESummaryTable D_L 889 = GWOSC 890 Mpc",
+    "GW231224_024321": "PESummaryTable D_L 948 = GWOSC 950 Mpc",
+    "GW231226_101520": "PESummaryTable D_L 1180 = GWOSC 1180 Mpc",
+    "GW231230_170116": "PESummaryTable D_L 5678 = GWOSC 5700 Mpc",
+    "GW231231_154016": "PESummaryTable D_L 1070 = GWOSC 1070 Mpc",
+    "GW240104_164932": "PESummaryTable D_L 1907 = GWOSC 1910 Mpc",
+    "GW240107_013215": "PESummaryTable D_L 5817 = GWOSC 5800 Mpc",
+    "GW240109_050431": "PESummaryTable D_L 1499 = GWOSC 1500 Mpc",
+    "GW240413_022019": "PESummaryTable D_L 569 = GWOSC 570 Mpc",
+    "GW240414_054515": "PESummaryTable D_L 1528 = GWOSC 1530 Mpc",
+    "GW240420_175625": "PESummaryTable D_L 1987 = GWOSC 2000 Mpc",
+    "GW240426_031451": "PESummaryTable D_L 4000 = GWOSC 4000 Mpc",
+    "GW240428_225440": "PESummaryTable D_L 839 = GWOSC 840 Mpc",
+    "GW240501_033534": "PESummaryTable D_L 4696 = GWOSC 4700 Mpc",
+    "GW240505_133552": "PESummaryTable D_L 4693 = GWOSC 4700 Mpc",
+    "GW240507_041632": "PESummaryTable D_L 1446 = GWOSC 1450 Mpc",
+    "GW240511_031507": "PESummaryTable D_L 1989 = GWOSC 1990 Mpc",
+    "GW240512_024139": "PESummaryTable D_L 1166 = GWOSC 1170 Mpc",
+    "GW240513_183302": "PESummaryTable D_L 2247 = GWOSC 2250 Mpc",
+    "GW240514_121713": "PESummaryTable D_L 2590 = GWOSC 2590 Mpc",
+    "GW240515_005301": "PESummaryTable D_L 3794 = GWOSC 3800 Mpc",
+    "GW240519_012815": "PESummaryTable D_L 1743 = GWOSC 1740 Mpc",
+    "GW240520_213616": "PESummaryTable D_L 1402 = GWOSC 1400 Mpc",
+    "GW240525_031210": "PESummaryTable D_L 4541 = GWOSC 4500 Mpc",
+    "GW240526_093944": "PESummaryTable D_L 1939 = GWOSC 1940 Mpc",
+    "GW240527_183429": "PESummaryTable D_L 6438 = GWOSC 6400 Mpc",
+    "GW240527_230910": "PESummaryTable D_L 1193 = GWOSC 1190 Mpc",
+    "GW240530_012417": "PESummaryTable D_L 1007 = GWOSC 1010 Mpc",
+    "GW240531_040326": "PESummaryTable D_L 3043 = GWOSC 3000 Mpc",
+    "GW240531_075248": "PESummaryTable D_L 4137 = GWOSC 4100 Mpc",
+    "GW240601_061200": "PESummaryTable D_L 5086 = GWOSC 5100 Mpc",
+    "GW240601_231004": "PESummaryTable D_L 1273 = GWOSC 1270 Mpc",
+    "GW240612_081540": "PESummaryTable D_L 6212 = GWOSC 6200 Mpc",
+    "GW240615_113620": "PESummaryTable D_L 1565 = GWOSC 1560 Mpc",
+    "GW240615_160735": "PESummaryTable D_L 3971 = GWOSC 4000 Mpc",
+    "GW240618_071627": "PESummaryTable D_L 5479 = GWOSC 5500 Mpc",
+    "GW240621_195059": "PESummaryTable D_L 1208 = GWOSC 1210 Mpc",
+    "GW240621_200935": "PESummaryTable D_L 4802 = GWOSC 4800 Mpc",
+    "GW240621_214041": "PESummaryTable D_L 6779 = GWOSC 6800 Mpc",
+    "GW240622_004008": "PESummaryTable D_L 1472 = GWOSC 1470 Mpc",
+    "GW240627_131622": "PESummaryTable D_L 1353 = GWOSC 1350 Mpc",
+    "GW240629_145256": "PESummaryTable D_L 1279 = GWOSC 1280 Mpc",
+    "GW240630_101703": "PESummaryTable D_L 3196 = GWOSC 3200 Mpc",
+    "GW240703_191355": "PESummaryTable D_L 1882 = GWOSC 1880 Mpc",
+    "GW240705_053215": "PESummaryTable D_L 3734 = GWOSC 3700 Mpc",
+    "GW240716_034900": "PESummaryTable D_L 1862 = GWOSC 1860 Mpc",
+    "GW240824_205609": "PESummaryTable D_L 5277 = GWOSC 5300 Mpc",
+    "GW240825_055146": "PESummaryTable D_L 1254 = GWOSC 1250 Mpc",
+    "GW240830_211120": "PESummaryTable D_L 1143 = GWOSC 1140 Mpc",
+    "GW240902_143306": "PESummaryTable D_L 2864 = GWOSC 2900 Mpc",
+    "GW240907_153833": "PESummaryTable D_L 4483 = GWOSC 4500 Mpc",
+    "GW240908_082628": "PESummaryTable D_L 3094 = GWOSC 3100 Mpc",
+    "GW240908_125134": "PESummaryTable D_L 4655 = GWOSC 4700 Mpc",
+    "GW240910_103535": "PESummaryTable D_L 739 = GWOSC 740 Mpc",
+    "GW240915_001357": "PESummaryTable D_L 918 = GWOSC 920 Mpc",
+    "GW240915_105151": "PESummaryTable D_L 630 = GWOSC 630 Mpc",
+    "GW240916_184352": "PESummaryTable D_L 1285 = GWOSC 1280 Mpc",
+    "GW240919_061559": "PESummaryTable D_L 1869 = GWOSC 1870 Mpc",
+    "GW240920_073424": "PESummaryTable D_L 1441 = GWOSC 1440 Mpc",
+    "GW240920_124024": "PESummaryTable D_L 1091 = GWOSC 1090 Mpc",
+    "GW240921_201835": "PESummaryTable D_L 918 = GWOSC 920 Mpc",
+    "GW240922_142106": "PESummaryTable D_L 1231 = GWOSC 1230 Mpc",
+    "GW240923_204006": "PESummaryTable D_L 4025 = GWOSC 4000 Mpc",
+    "GW240924_000316": "PESummaryTable D_L 3717 = GWOSC 3700 Mpc",
+    "GW240925_005809": "PESummaryTable D_L 356 = GWOSC 356 Mpc",
+    "GW240930_035959": "PESummaryTable D_L 953 = GWOSC 950 Mpc",
+    "GW240930_234614": "PESummaryTable D_L 3613 = GWOSC 3600 Mpc",
+    "GW241002_030559": "PESummaryTable D_L 1459 = GWOSC 1460 Mpc",
+    "GW241006_015333": "PESummaryTable D_L 1849 = GWOSC 1850 Mpc",
+    "GW241007_082943": "PESummaryTable D_L 4035 = GWOSC 4000 Mpc",
+    "GW241009_022835": "PESummaryTable D_L 5598 = GWOSC 5600 Mpc",
+    "GW241009_084816": "PESummaryTable D_L 1132 = GWOSC 1130 Mpc",
+    "GW241009_220455": "PESummaryTable D_L 2924 = GWOSC 2900 Mpc",
+    "GW241011_233834": "PESummaryTable D_L 212 = GWOSC 212 Mpc",
+    "GW241101_220523": "PESummaryTable D_L 2194 = GWOSC 2200 Mpc",
+    "GW241102_124058": "PESummaryTable D_L 390 = GWOSC 390 Mpc",
+    "GW241102_144729": "PESummaryTable D_L 3374 = GWOSC 3400 Mpc",
+    "GW241109_033317": "PESummaryTable D_L 2697 = GWOSC 2700 Mpc",
+    "GW241109_115924": "PESummaryTable D_L 602 = GWOSC 600 Mpc",
+    "GW241110_124123": "PESummaryTable D_L 739 = GWOSC 740 Mpc",
+    "GW241111_111552": "PESummaryTable D_L 1545 = GWOSC 1550 Mpc",
+    "GW241113_163507": "PESummaryTable D_L 1355 = GWOSC 1360 Mpc",
+    "GW241114_024711": "PESummaryTable D_L 2583 = GWOSC 2600 Mpc",
+    "GW241114_235258": "PESummaryTable D_L 786 = GWOSC 790 Mpc",
+    "GW241116_151753": "PESummaryTable D_L 5738 = GWOSC 5700 Mpc",
+    "GW241124_024914": "PESummaryTable D_L 4503 = GWOSC 4500 Mpc",
+    "GW241125_010116": "PESummaryTable D_L 4722 = GWOSC 4700 Mpc",
+    "GW241127_061008": "PESummaryTable D_L 1077 = GWOSC 1080 Mpc",
+    "GW241129_021832": "PESummaryTable D_L 2552 = GWOSC 2550 Mpc",
+    "GW241130_034908": "PESummaryTable D_L 1987 = GWOSC 1990 Mpc",
+    "GW241130_110422": "PESummaryTable D_L 1315 = GWOSC 1320 Mpc",
+    "GW241201_055758": "PESummaryTable D_L 7071 = GWOSC 7100 Mpc",
+    "GW241210_060606": "PESummaryTable D_L 2596 = GWOSC 2600 Mpc",
+    "GW241210_120900": "PESummaryTable D_L 3585 = GWOSC 3600 Mpc",
+    "GW241225_042553": "PESummaryTable D_L 664 = GWOSC 660 Mpc",
+    "GW241225_082815": "PESummaryTable D_L 1876 = GWOSC 1880 Mpc",
+    "GW241229_155844": "PESummaryTable D_L 6777 = GWOSC 6800 Mpc",
+    "GW241230_084504": "PESummaryTable D_L 2877 = GWOSC 2900 Mpc",
+    "GW241230_233618": "PESummaryTable D_L 2715 = GWOSC 2700 Mpc",
+    "GW241231_054133": "PESummaryTable D_L 914 = GWOSC 910 Mpc",
+    "GW250101_011205": "PESummaryTable D_L 3175 = GWOSC 3200 Mpc",
+    "GW250104_015122": "PESummaryTable D_L 4828 = GWOSC 4800 Mpc",
+    "GW250108_152221": "PESummaryTable D_L 3775 = GWOSC 3800 Mpc",
+    "GW250109_010541": "PESummaryTable D_L 3416 = GWOSC 3400 Mpc",
+    "GW250109_074552": "PESummaryTable D_L 2290 = GWOSC 2300 Mpc",
+    "GW250114_082203": "PESummaryTable D_L 405 = GWOSC 405 Mpc",
+    "GW250116_015318": "PESummaryTable D_L 5159 = GWOSC 5200 Mpc",
+    "GW250118_023225": "PESummaryTable D_L 5805 = GWOSC 5800 Mpc",
+    "GW250118_055802": "PESummaryTable D_L 936 = GWOSC 940 Mpc",
+    "GW250118_170523": "PESummaryTable D_L 1908 = GWOSC 1910 Mpc",
+    "GW250119_025138": "PESummaryTable D_L 3078 = GWOSC 3100 Mpc",
+    "GW250119_190238": "PESummaryTable D_L 311 = GWOSC 311 Mpc",
+    "GW170817": "GWTC-1 release sky map"
+  },
+  "citations": [
+    {
+      "ref": "GWOSC event portal, cumulative GWTC list (LIGO/Virgo/KAGRA; Abbott et al. 2023, ApJS 267, 29 'Open Data from LIGO, Virgo, and KAGRA through the First Part of the Fourth Observing Run'), CC BY 4.0",
+      "url": "https://gwosc.org/eventapi/json/GWTC/",
+      "doi": "10.3847/1538-4365/acdc9f"
+    },
+    {
+      "ref": "LIGO/Virgo 2019, PRX 9, 031040 (GWTC-1)",
+      "doi": "10.1103/PhysRevX.9.031040"
+    },
+    {
+      "ref": "LIGO/Virgo 2024, PRD 109, 022001 (GWTC-2.1)",
+      "doi": "10.1103/PhysRevD.109.022001"
+    },
+    {
+      "ref": "LIGO/Virgo/KAGRA 2023, PRX 13, 041039 (GWTC-3)",
+      "doi": "10.1103/PhysRevX.13.041039"
+    },
+    {
+      "ref": "LIGO/Virgo/KAGRA 2025, GWTC-4.0 (arXiv:2508.18082); GWTC-4.1 and GWTC-5.0 data releases on Zenodo (2026-05-26)",
+      "url": "https://gwosc.org/eventapi/html/GWTC/"
+    },
+    {
+      "ref": "Singer et al. 2016, ApJL 829, L15 (3D sky map distance ansatz)",
+      "doi": "10.3847/2041-8205/829/1/L15"
+    },
+    {
+      "ref": "Coulter et al. 2017, Science 358, 1556 (optical counterpart of GW170817 in NGC 4993)",
+      "doi": "10.1126/science.aap9811"
+    },
+    {
+      "ref": "Cantiello et al. 2018, ApJL 854, L31 (SBF distance to NGC 4993: 40.7 +- 1.4 +- 1.9 Mpc)",
+      "doi": "10.3847/2041-8213/aaad64"
+    },
+    {
+      "ref": "Planck Collaboration 2020, A&A 641, A6 (Planck18 cosmology, astropy)",
+      "doi": "10.1051/0004-6361/201833910"
+    }
+  ]
+}

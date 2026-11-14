@@ -22,6 +22,9 @@ if [ -f data/raw/stars-gaia/bright_supplement.parquet ]; then
   $B stars-bright --src data/raw/stars-gaia --glob "bright_supplement.parquet" \
      --order lum --kind-model star --title "Bright stars (Hipparcos supplement)" --id-prefix "HIP " 2>&1 | tail -1
 fi
+# Star clusters: every Hunt & Reffert / Baumgardt cluster (scripts/build_clusters.py writes the raw table)
+build star-clusters --order lum --kind-model star --title "Star clusters (Hunt & Reffert 2023/24, Baumgardt)" \
+                    --id-prefix "HR23 ID "
 build galaxies-desi --order random --kind-model galaxy --title "DESI DR1 galaxies and quasars" --id-prefix "DESI "
 build galaxies-2mrs --order random --kind-model galaxy --title "2MASS Redshift Survey"
 build galaxies-cf4  --order random --kind-model galaxy --title "Cosmicflows-4"

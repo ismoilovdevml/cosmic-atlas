@@ -11,7 +11,7 @@ import { radecDistToGal } from '../src/math/frames';
 import type { CatalogEntry } from '../src/data/manifest';
 
 const dir = resolve(import.meta.dirname, '../../data/tiles/catalogs');
-const NEW = ['black-holes', 'exoplanets', 'pulsars', 'nebulae-snr', 'seti'];
+const NEW = ['black-holes', 'exoplanets', 'pulsars', 'nebulae-snr', 'seti', 'clusters'];
 const load = (n: string) => JSON.parse(readFileSync(resolve(dir, `${n}.json`), 'utf8')) as CatalogEntry[];
 const byName = (es: CatalogEntry[], n: string) => es.find((e) => e.name === n)!;
 

@@ -139,6 +139,15 @@ System sits at the origin). Motion is linear: it ignores the Galaxy's gravity, w
 paths; Bailer-Jones 2015 (A&A 575, A35) shows linear motion gives inaccurate, biased encounter
 parameters for many stars, so the viewer limits Δt to ±1 Myr and says so.
 
+### Layer note: `star-clusters`
+
+Built by `scripts/build_clusters.py` (raw table) + `build_tiles.py --kind-model star`: every Hunt & Reffert
+2023/24 and Baumgardt cluster (7,181). Its `mag` and `color` are **rendering proxies**, not measurements:
+M = 4.83 − 2.5 log10(mass/M☉) (member count if no mass), colour a BP−RP-like value from log age. The
+`id` is the Hunt & Reffert ID (100000 + row for Baumgardt-only globulars). The viewer opens the
+`clusters.json` card of a picked point (nearest entry within 0.05 pc); the full catalogue with facts would
+be 2.3 MB, so far unnamed moving groups exist only in this layer.
+
 ## 4. Small catalogues (`data/tiles/catalogs/*.json`, committed when < 2 MB)
 
 Named objects for labels and instant search: `named-stars.json`, `local-group.json`,

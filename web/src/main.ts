@@ -45,6 +45,9 @@ import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, observerGala
 import type { BlackHoleFeature } from './blackhole';
 import { StarEpoch } from './solar/epoch';
 import { formatEpoch } from './solar/timebar';
+// --- GW hook (web/src/render/gwVolumes.ts, web/src/objects/gw.ts): localisation volumes, card note and links
+import { GwVolumes } from './render/gwVolumes';
+import { clusterPointCard, gwLinks, gwNote, nearestEntry } from './objects/gw';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -141,6 +144,9 @@ export class App {
   // --- Black hole hook (null until its chunk has loaded, see loadBlackHoles)
   bh: BlackHoleFeature | null = null;
   private bhReady: Promise<void> | null = null;
+  // --- GW hook
+  gw = new GwVolumes();
+  gwCfg: LayerConfig | null = null;
 
   async start() {
     initLang();
@@ -187,6 +193,7 @@ export class App {
     this.rail = new ScaleRail($('rail'), $('rail-ticks'), $('rail-mark'));
     this.scene.add(this.mw.points);
     this.scene.add(this.shapes.group);
+    this.scene.add(this.gw.group); // --- GW hook
     this.shapes.onChange = () => (this.dirty = true);
     this.shapes.thumbsEnabled = new URLSearchParams(location.search).get('thumbs') !== 'off';
     // --- Solar System hook: the layer, its time bar, and clicks on its labels
@@ -284,6 +291,9 @@ export class App {
         // progressive: the small preview first (~200 KB), the full image once metas and catalogues are in
         if (cfg.preview) this.loadSky([cfg.preview], 1);
         else this.loadSkyFull();
+      } else if (cfg.type === 'gw-volumes') { // --- GW hook
+        this.gwCfg = cfg;
+        this.gw.visible = vis ?? cfg.visible;
       }
     }
     if (hashLayers?.solar !== undefined) this.solar.visible = hashLayers.solar; // --- Solar System hook
@@ -361,6 +371,7 @@ export class App {
     for (const L of this.layers) if (L.status === 'ready' && !L.superseded) out[L.cfg.id] = L.visible;
     if (this.mwCfg) out[this.mwCfg.id] = this.mw.visible;
     if (this.skyCfg) out[this.skyCfg.id] = this.sky.visible;
+    if (this.gwCfg) out[this.gwCfg.id] = this.gw.visible; // --- GW hook
     out.solar = this.solar.visible; // --- Solar System hook
     return out;
   }
@@ -372,6 +383,7 @@ export class App {
       if (!on) this.streamer.releaseLayer(L);
     } else if (this.mwCfg?.id === id) this.mw.visible = on;
     else if (this.skyCfg?.id === id) this.sky.visible = on;
+    else if (this.gwCfg?.id === id) this.gw.visible = on; // --- GW hook
     else if (id === 'solar') this.solar.visible = on; // --- Solar System hook
     const cb = document.getElementById(`lyr-${id}`) as HTMLInputElement | null;
     if (cb && cb.checked !== on) {
@@ -456,7 +468,7 @@ export class App {
       // lite tile sets (scripts/make_lite_tiles.py) say how much of the full layer they carry
       const what = m.lite && m.fullCount
         ? t('layers.lite', { a: fmtCount(m.count), b: fmtCount(m.fullCount) })
-        : t(L.kind === 'star' ? 'layers.stars' : 'layers.galaxies', { n: m.count, nText: fmtCount(m.count) });
+        : t((L.cfg as { kind?: string }).kind === 'cluster' ? 'layers.clusters' : L.kind === 'star' ? 'layers.stars' : 'layers.galaxies', { n: m.count, nText: fmtCount(m.count) }); // --- Clusters hook: count noun
       // preview layers (part of a download) say how much of the sky they cover
       const metaText = L.cfg.preview && m.preview
         ? t('layers.preview', { stars: what, pct: fmtFixed(m.preview.skyFraction * 100, 0) })
@@ -486,6 +498,13 @@ export class App {
         onOpacity: (v) => (this.sky.opacity = v),
       });
     }
+    if (this.gwCfg && this.gw.events.length) { // --- GW hook: its row in the layers panel
+      row({
+        id: this.gwCfg.id, title: title(this.gwCfg), swatch: 'gw',
+        meta: `${t('layers.gwEvents', { n: this.gw.events.length, nText: fmtFixed(this.gw.events.length, 0) })}, ${this.gwCfg.credit ?? ''}`,
+        checked: this.gw.visible, opacity: this.gw.opacity, onOpacity: (v) => (this.gw.opacity = v),
+      });
+    }
     // --- Solar System hook: its row in the layers panel
     row({
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
@@ -501,6 +520,7 @@ export class App {
       ...this.layers.filter((L) => L.status === 'ready' && !L.superseded).map((L) => `${title(L.cfg)}: ${L.cfg.credit ?? (L.cfg.dev ? t('layers.syntheticCredit') : L.meta?.title ?? '')}`),
       this.mwCfg ? `${title(this.mwCfg)}: ${this.mwCfg.credit}` : '',
       this.skyCfg ? `${title(this.skyCfg)}: ${this.skyCfg.credit}` : '',
+      this.gwCfg && this.gw.events.length ? `${title(this.gwCfg)}: ${this.gwCfg.credit}` : '', // --- GW hook
       solarTr('solar.credit'), // --- Solar System hook
       t('credits.sesame'),
       t('credits.skymap'),
@@ -526,6 +546,8 @@ export class App {
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
     this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
+    this.gw.setEntries(this.catalog); // --- GW hook
+    if (this.gw.events.length) this.renderLayerPanel(); // --- GW hook: its row needs the events
     this.buildLabels();
     void this.loadBlackHoles(); // --- Black hole hook
   }
@@ -728,6 +750,7 @@ export class App {
       u.slabHalf.value = slabHalf;
     }
     this.mwFade = this.mw.update(cam, pxPerRad, this.dpr);
+    this.gw.update(cam, D); // --- GW hook
     const ge = AUTO_EXPOSURE.galaxy;
     this.shapes.update({
       cam, camera: this.camera, frustum: this.frustum, pxPerRad, dpr: this.dpr, dt, exposure: this.exposure,
@@ -948,9 +971,13 @@ export class App {
     if (!hit || !n || n.layer !== L || !n.data || hit.index >= n.meta.count) {
       // a drawn galaxy disk (its points are faded out) is picked on the CPU
       const g = this.shapes.pickAt(cx, cy, this.nav.camPos(), this.camera, window.innerWidth, window.innerHeight);
+      let ge: CatalogEntry | null; // --- GW hook
       if (g) {
         this.showCatalogEntry(g.entry);
         if (fly) void this.nav.flyTo(this.viewFor(g.entry));
+      } else if ((ge = this.gw.pickAt(cx, cy, this.nav.camPos(), this.camera, window.innerWidth, window.innerHeight))) { // --- GW hook
+        this.showCatalogEntry(ge);
+        if (fly) void this.nav.flyTo(this.viewFor(ge));
       } else if (!fly) this.closeInfo();
       return;
     }
@@ -964,6 +991,27 @@ export class App {
   private async showPoint(n: TileNode, i: number, x0: Vec3, fly: boolean, lum: number) {
     const L = n.layer;
     const kind = L.kind;
+    // --- Clusters hook: a star-clusters point opens the cluster's catalogue card; the few points that
+    // clusters.json does not carry (far moving groups) get a short card of their own
+    if ((L.cfg as { kind?: string }).kind === 'cluster') {
+      const e = nearestEntry(this.catalog, x0, ['cluster', 'cluster_nebula']);
+      if (e) {
+        this.showCatalogEntry(e);
+        if (fly) void this.nav.flyTo(this.viewFor(e));
+        return;
+      }
+      let x: ReturnType<typeof readExtRecord> | null = null;
+      try { x = readExtRecord(await L.loadExt(n), i, L.extStride); } catch { /* card without id */ }
+      const c = clusterPointCard({ id: x ? x.id.toString() : '', xyz: x0, lo: x?.distLo, hi: x?.distHi });
+      const rd = galToRadec(x0);
+      const flyC: Partial<View> = { focus: x0, dist: 25 };
+      if (fly) void this.nav.flyTo(flyC);
+      this.selection = { xyz: x0, title: c.title, fly: flyC, ref: x ? { type: 'point', layer: L.cfg.id, id: x.id.toString(), xyz: x0 } : null, lo: x?.distLo, hi: x?.distHi };
+      this.infoRefresh = () => void this.showPoint(n, i, x0, false, lum);
+      this.openInfo({ kind: t('kind.cluster'), title: c.title, italic: false, rows: [...c.rows, ...this.positionRows(galToLB(x0), rd.ra, rd.dec)],
+        note: t('cluster.pointNote'), links: c.links, fly: flyC, doc: 'star-cluster' });
+      return;
+    }
     const M = absMagFromLum(lum, kind);
     // --- star epoch: velocity (relative to the Sun) and the position at the slider time
     const ep = this.epoch.myr;
@@ -1088,6 +1136,8 @@ export class App {
     rows.push(...factRows(e.facts, loc.t, loc), ...planetRows(e.planets, loc));
     if (e.ra !== undefined && e.dec !== undefined) rows.push(...this.positionRows(galToLB(radecDistToGal(e.ra, e.dec, 1)), e.ra, e.dec));
     let note = e.ref ? t('info.source', { ref: e.ref }) : '';
+    if (e.kind === 'gw_event') note = `${gwNote(e)} ${note}`; // --- GW hook: say plainly that the position is uncertain
+    this.gw.highlight(e.kind === 'gw_event' ? e.name : null); // --- GW hook
     const g = e.kind.includes('galaxy') ? this.shapes.shapeFor(e) : null;
     if (g) {
       const src = (k?: string) => (k ? ({ hyperleda: 'HyperLEDA', openngc: 'OpenNGC', leda2003: 'HyperLEDA 2003', ungc: 'UNGC', mcc: 'McConnachie 2012', derived: t('shape.derived') } as Record<string, string>)[k] ?? k : '');
@@ -1154,8 +1204,10 @@ export class App {
     for (const [label, href] of o.links) {
       const a = document.createElement('a');
       a.href = href;
-      a.target = '_blank';
-      a.rel = 'noopener';
+      if (!href.startsWith('#')) { // --- GW hook: in-atlas links (#focus=) stay in this tab
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
       a.innerHTML = `<span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`;
       a.querySelector('span')!.textContent = label;
       links.appendChild(a);
@@ -1191,6 +1243,7 @@ export class App {
 
   private closeInfo() {
     this.solarSel = null; // --- Solar System hook
+    if (this.gw.highlighted) this.gw.highlight(null); // --- GW hook
     $('info').hidden = true;
     document.body.classList.remove('has-info');
     this.selection = null;
@@ -1952,6 +2005,7 @@ function sesameSource(r: Resolved): string {
 function catalogLinks(e: CatalogEntry): [string, string][] {
   const out: [string, string][] = [];
   if (e.kind === 'exoplanet') out.push([t('link.exoplanetArchive'), `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(e.name)}`]);
+  else if (e.kind === 'gw_event') out.push(...gwLinks(e)); // --- GW hook: GWOSC page and host galaxy, no SIMBAD
   else if (e.name !== 'Sun' && e.kind !== 'message' && e.kind !== 'seti_signal')
     out.push([t('link.simbad'), `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(e.name)}`]);
   if (e.doi) out.push([t('link.doi'), `https://doi.org/${e.doi}`]);

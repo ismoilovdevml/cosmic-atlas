@@ -4,12 +4,15 @@ summary: Звёзды, родившиеся вместе из одного об�
 related: [star, milky-way, nebula, gaia-mission, interstellar-message]
 sources:
   - Hunt & Reffert 2023, A&A 673, A114, Improving the open cluster census II (arXiv:2303.13424)
+  - Hunt & Reffert 2024, A&A 686, A42, Improving the open cluster census III, cluster masses and bound/unbound classes (arXiv:2403.05143)
+  - Baumgardt & Hilker 2018, MNRAS 478, 1520, masses and structural parameters of Milky Way globular clusters (Baumgardt globular cluster database, 4th version)
   - Baumgardt & Vasiliev 2021, MNRAS 505, 5957, Accurate distances to Galactic globular clusters (arXiv:2105.09526)
   - NASA Science, Hubble Messier catalog, Messier 45, https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-45/
   - NASA Science, Star clusters: inside the universe's stellar collections, https://science.nasa.gov/universe/star-clusters-inside-the-universes-stellar-collections/
   - National Geographic, 40 years ago, Earth beamed its first postcard to the stars, https://www.nationalgeographic.com/science/article/40-years-ago-earth-beamed-its-first-postcard-to-the-stars
   - Cosmic Atlas catalogue messier-ngc.json (OpenNGC, SIMBAD, Hunt & Reffert 2023, Baumgardt & Vasiliev 2021)
-updated: 2026-11-13
+  - Cosmic Atlas catalogue clusters.json and the star-clusters layer (scripts/build_clusters.py)
+updated: 2026-11-14
 ---
 
 ## Что это?
@@ -37,6 +40,12 @@ updated: 2026-11-13
 надёжных скоплений. Они также выяснили, что некоторых скоплений из старых каталогов, возможно, не
 существует.
 
+В 2024 году те же авторы «взвесили» каждое скопление и задали простой вопрос: хватает ли его
+собственной гравитации, чтобы удержать звёзды вместе? Проверку прошли только **5647** — это
+связанные рассеянные скопления. **1309** — *движущиеся группы*: их звёзды летят вместе, но
+постепенно разбегаются. Рядом с Солнцем таких групп большинство: в пределах 250 пк связанным
+скоплением оказывается лишь примерно одно из девяти.
+
 Шаровые скопления слишком далеки для точных простых параллаксов, поэтому Хольгер Баумгардт и Евгений
 Васильев (2021) объединили данные Gaia, «Хаббла» и другие и измерили расстояния до 162 шаровых
 скоплений, примерно для 20 из них — с точностью 1 % или лучше.
@@ -53,11 +62,21 @@ updated: 2026-11-13
 
 ## Где найти в атласе
 
-В каталоге Мессье/NGC атласа есть рассеянные и шаровые скопления с расстояниями по Ханту и Рефферт
-(2023) или Баумгардту и Васильеву (2021). Попробуйте:
+[Слой звёздных скоплений](#layer=star-clusters) показывает все **7181** скопление точками: перепись
+Ханта и Рефферт (без 17 объектов, которые потом оказались галактиками или ошибками) и 167 шаровых
+скоплений из базы Баумгардта. Ярче — более массивные скопления, голубее — более молодые; это способ
+показа, а не измеренный цвет. Около 6000 из них — все связанные рассеянные, все шаровые, все
+скопления Мессье/NGC и движущиеся группы в пределах 250 пк — имеют ещё и подпись, и карточку с
+возрастом, числом звёзд-членов, радиусом, в котором половина из них, и массой. Для шаровых скоплений
+взяты расстояния Баумгардта и Васильева: они точнее, чем одни параллаксы Gaia. Возрасты получены
+подгонкой цветов звёзд-членов и могут ошибаться вдвое (см. интервал в карточке). Попробуйте:
 
-- [Плеяды, M45](#focus=M45) — рассеянное скопление в 135 пк;
+- [Гиады, Melotte 25](#focus=Melotte%2025) — ближайшее рассеянное скопление, 47 пк, возраст около
+  580 млн лет;
+- [Плеяды, M45](#focus=M45) — рассеянное скопление в 135 пк, возраст около 120 млн лет;
 - [Ясли, M44](#focus=M44) — рассеянное скопление в 183 пк;
+- [двойное скопление h и χ Персея, NGC 869](#focus=NGC%20869) и [NGC 884](#focus=NGC%20884) — два
+  молодых (около 18 млн лет) скопления рядом друг с другом в 2,3 кпк;
 - [скопление в Геркулесе, M13](#focus=M13) — шаровое, 7,42 кпк;
 - [Омега Центавра, NGC 5139](#focus=NGC%205139) — шаровое, 5,43 кпк;
 - [47 Тукана, NGC 104](#focus=NGC%20104) — шаровое, 4,52 кпк.

@@ -66,6 +66,10 @@ export const LAYER_VIEWS: Record<string, NamedView> = {
   solar: NAMED_VIEWS['solar-system'],
   // the all-sky image is only drawn within ~2 kpc of the Sun
   'gaia-sky': { target: { sun: true }, dist: 1, pitchDeg: 10 },
+  // Hunt & Reffert clusters thin out beyond ~3 kpc; the bright, nearby ones within 1 kpc
+  'star-clusters': { target: { sun: true }, dist: 1500, pitchDeg: 35 },
+  // GWTC events reach ~3.5 Gpc comoving; 4 Gpc of camera distance shows them all
+  'gw-volumes': { target: { sun: true }, dist: 4e9, pitchDeg: 25 },
 };
 
 export const LAYER_ID = /^[A-Za-z0-9_.-]{1,64}$/;

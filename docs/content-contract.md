@@ -45,7 +45,7 @@ Every searchable or clickable thing has a `kind`. The registry is `web/src/objec
 | `galaxy` | galaxy | DESI, 2MRS, CF4, UNGC | `galaxy` |
 | `qso` | quasar | DESI | `quasar` |
 | `lg_galaxy` | Local Group galaxy | McConnachie | `local-group` |
-| `cluster` | star cluster | OpenNGC / Hunt & Reffert / Baumgardt | `star-cluster` |
+| `cluster` | star cluster (open, moving group, globular) | Hunt & Reffert 2023/24, Baumgardt & Vasiliev 2021 (`clusters.json`, merged with OpenNGC names) | `star-cluster` |
 | `nebula` | emission / reflection / planetary nebula | OpenNGC + literature distances | `nebula` |
 | `snr` | supernova remnant | Green 2024 SNR catalogue + distances | `supernova-remnant` |
 | `pulsar` | pulsar / neutron star | ATNF Pulsar Catalogue | `pulsar` |
@@ -56,6 +56,7 @@ Every searchable or clickable thing has a `kind`. The registry is `web/src/objec
 | `message` | message sent to the stars (Arecibo 1974, Cosmic Call...) | literature | `interstellar-message` |
 | `seti_signal` | candidate signal (Wow! 1977) | literature | `seti` |
 | `model` | Milky Way model features | Reid et al. 2019 | `milky-way` |
+| `gw_event` | gravitational-wave merger; drawn as its 90 % localisation volume, not a point (GW170817 at its host NGC 4993) | GWOSC GWTC list + LVK sky maps (`gw-events.json`) | `gravitational-waves` |
 
 ## 3. Catalogue entries (`data/tiles/catalogs/*.json`)
 
@@ -81,8 +82,14 @@ Same shape as data-contract §4, plus:
   names; numbers follow the archive's `[value, err1, err2]` with `err2 <= 0`); the viewer adds the planet
   names to the search aliases. Kinds `exoplanet`, `pulsar`, `black_hole`, `message`, `seti_signal` are
   de-duplicated only against their own kind (a planet system shares its name with its star).
+- Text facts in `facts.val.<slug>` (slug = lower case, non-alphanumerics → `_`, e.g. `facts.val.open_cluster`)
+  are shown translated; other text is shown as catalogued.
+- `clusters.json` loads before `messier-ngc.json` (layers.json order): its Messier/NGC-named clusters
+  replace those entries. A cluster whose NGC/IC number is also a nebula in an earlier file is named
+  `<name> cluster`. `gw-events.json` entries carry `loc` (ellipsoids of the 90 % volume, see
+  `scripts/build_gw.py`), `gwosc` (event page) and, for GW170817, `host`.
 - Each catalogue is built by `scripts/build_<name>.py` (black_holes, exoplanets, pulsars, nebulae_snr,
-  seti); its provenance block (sources, queries, counts, citations) is written next to it,
+  seti, clusters, gw); its provenance block (sources, queries, counts, citations) is written next to it,
   `data/tiles/catalogs/provenance/<name>.json`; downloads are cached in `data/cache/` (gitignored).
 
 ## 4. Docs articles (`web/public/docs/<lang>/<slug>.md`)
@@ -121,7 +128,7 @@ Concepts: `index`, `how-to-use`, `units` (AU, light-year, parsec), `parallax`, `
 `lookback-time`, `distance-uncertainty`, `gaia-mission`, `desi-survey`, `cosmic-web`.
 Kinds: `star`, `white-dwarf`, `galaxy`, `quasar`, `local-group`, `milky-way`, `star-cluster`, `nebula`,
 `supernova-remnant`, `pulsar`, `neutron-star`, `black-hole`, `exoplanet`, `spacecraft`,
-`interstellar-message`, `seti`.
+`interstellar-message`, `seti`, `gravitational-waves`.
 Solar System: `solar-system`, `sun`, `mercury`, `venus`, `earth`, `moon`, `mars`, `jupiter`, `saturn`,
 `uranus`, `neptune`, `pluto`, `asteroid-belt`.
 Highlights: `sgr-a-star`, `m87-black-hole`, `gaia-bh3`, `crab-nebula`, `proxima-b`, `trappist-1`,

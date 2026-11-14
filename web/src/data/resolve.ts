@@ -189,6 +189,9 @@ export function viewDistanceFor(kind: string, distPc: number): number {
     case 'snr':
     case 'seti_signal':
       return Math.max(1, Math.min(60, distPc * 0.02 || 20));
+    case 'gw_event':
+      // frame the localisation volume, which is about as large as its distance
+      return Math.max(5e6, distPc * 0.8);
     case 'black_hole':
       // stellar BHs like stars nearby; SMBHs in other galaxies framed at galaxy scale
       return distPc > 1e5 ? 150_000 : Math.max(1, Math.min(60, distPc * 0.02 || 20));

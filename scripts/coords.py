@@ -56,6 +56,20 @@ def comoving_pc(z) -> np.ndarray:
     return out
 
 
+_DLGRID = (1.0 + _ZGRID) * _DCGRID  # Planck18 luminosity distance, monotonic in z
+
+
+def z_from_lumdist_pc(dl) -> np.ndarray:
+    """Planck18 redshift of a luminosity distance in pc (inverse of d_L(z) = (1+z) d_C(z); NaN past z=8)."""
+    return np.interp(np.asarray(dl, dtype=float), _DLGRID, _ZGRID, left=np.nan, right=np.nan)
+
+
+def lumdist_to_comoving_pc(dl) -> np.ndarray:
+    """Planck18 comoving distance for a luminosity distance (both pc): d_C = d_L / (1 + z(d_L))."""
+    dl = np.asarray(dl, dtype=float)
+    return dl / (1.0 + z_from_lumdist_pc(dl))
+
+
 def distmod_to_pc(mu):
     """Distance modulus (m-M)_0 -> pc."""
     return 10.0 ** (np.asarray(mu, dtype=float) / 5.0 + 1.0)
@@ -69,6 +83,10 @@ def self_test() -> None:
     exact = Planck18.comoving_distance(zs).to_value(u.pc)
     rel = np.max(np.abs(comoving_pc(zs) / exact - 1))
     assert rel < 1e-5, rel
+    dl = Planck18.luminosity_distance(zs).to_value(u.pc)
+    zrel = np.max(np.abs(z_from_lumdist_pc(dl) / zs - 1))
+    crel = np.max(np.abs(lumdist_to_comoving_pc(dl) / exact - 1))
+    assert zrel < 1e-4 and crel < 1e-5, (zrel, crel)
     # Galactic Centre direction -> +x ; NGP -> +z
     gc = SkyCoord(l=0 * u.deg, b=0 * u.deg, frame="galactic").icrs
     v = galactic_xyz(gc.ra.deg, gc.dec.deg, 8000.0)

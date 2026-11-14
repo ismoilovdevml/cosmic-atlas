@@ -306,7 +306,7 @@ export class LabelLayer {
       el.className = 'label';
       el.tabIndex = -1;
       el.textContent = it.name;
-      el.dataset.kind = it.kind.includes('galaxy') ? 'galaxy' : it.kind === 'model' ? 'model' : 'star';
+      el.dataset.kind = it.kind.includes('galaxy') ? 'galaxy' : it.kind === 'model' ? 'model' : it.kind === 'gw_event' ? 'volume' : 'star';
       // marker ring and text tint in the kind colour (kinds.ts); the model keeps its own style
       if (it.kind !== 'model') {
         el.style.setProperty('--kc', kindColor(it.kind));
