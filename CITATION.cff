@@ -2,6 +2,7 @@ cff-version: 1.2.0
 message: "If you use Cosmic Atlas, please cite it as below, and cite the surveys whose data you used (see README and each layer's PROVENANCE.json)."
 title: "Cosmic Atlas: a 3D map of the real universe in the browser"
 type: software
+doi: "10.5281/zenodo.24224239"
 authors:
   - alias: ismoilovdevml
 repository-code: "https://github.com/ismoilovdevml/cosmic-atlas"

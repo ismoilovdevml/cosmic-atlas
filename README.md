@@ -4,6 +4,8 @@
 
 **[Open the atlas →](https://ismoilovdevml.github.io/cosmic-atlas/)**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24224239.svg)](https://doi.org/10.5281/zenodo.24224239)
+
 ![From Earth to the cosmic web: Earth, Saturn, the Andromeda galaxy and the DESI galaxy web](docs/images/banner.jpg)
 
 Fly from your own planet past Saturn, out of the Milky Way, past Andromeda and into the web of
