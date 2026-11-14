@@ -42,6 +42,32 @@ always work.
 tar -czf cosmic-atlas-lite.tar.gz -C /path/to/lite .     # _index.json must be at the archive root
 ```
 
+**The live site (since 2026-11-15): Pages + a Hugging Face dataset.** Gaia (1.9 GB), DESI and SDSS
+do not fit in 1 GB, so they are hybrid layers (data contract section 3b): their shallow nodes ship
+with the site, every node is also on `datasets/ismoilovdev/cosmic-atlas-tiles`, and the viewer
+fetches the deep ones from there. Measured from Tashkent: a warm HF node in ~0.67 s, a warm Pages
+node in ~0.65 s; HF sends `Access-Control-Allow-Origin` after its 302 to the CDN.
+
+```bash
+# 1. every node of the big layers to HF, sharded n/<name[:3]>/ (token: ~/.config/cosmic-atlas/hf.env)
+for l in stars-gaia galaxies-desi galaxies-sdss; do
+  .venv/bin/python scripts/upload_tiles_hf.py data/tiles/$l --repo ismoilovdev/cosmic-atlas-tiles
+done   # prints "remote base: .../resolve/<commit>/<layer>"; use the LAST commit for all three
+# 2. hybrid lite set for Pages
+B=https://huggingface.co/datasets/ismoilovdev/cosmic-atlas-tiles/resolve/<commit>
+.venv/bin/python scripts/make_lite_tiles.py /path/to/lite --budget-mb 950 \
+    --exclude synthetic-stars --exclude synthetic-galaxies --exclude stars-gaia-preview \
+    --remote stars-gaia=$B/stars-gaia --remote galaxies-desi=$B/galaxies-desi --remote galaxies-sdss=$B/galaxies-sdss
+# 3. archive it on the same repo, point the workflow at it, deploy
+tar -czf pages-tiles-vN.tar.gz -C /path/to/lite .
+#    (huggingface_hub upload_file -> pages/pages-tiles-vN.tar.gz; xet sends only changed chunks)
+gh variable set LITE_TILES_URL --body https://huggingface.co/datasets/ismoilovdev/cosmic-atlas-tiles/resolve/<commit>/pages/pages-tiles-vN.tar.gz
+gh workflow run pages.yml
+```
+
+v3 (2026-11-15): 950 MB, Gaia 7.67 M of 39.6 M stars local, DESI 9.2 M of 15.1 M local, the rest
+from HF. Commit-pinned URLs never change, so an old site keeps working while a new one deploys.
+
 **What a visit costs.** Measured with headless Chrome against `python -m http.server`, using the
 full DESI tiles and the default 4 M point budget:
 

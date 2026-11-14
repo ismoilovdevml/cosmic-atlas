@@ -43,7 +43,7 @@ number on screen comes with the catalogue it came from.
 | Asteroids and comets | 1,580,450 asteroids and 4,666 comets on their orbits | IAU Minor Planet Center |
 | Earth satellites | 16,896, plus JWST | CelesTrak (SGP4), JPL Horizons |
 | Moon and Mars surfaces | 861 named features, 21 landing sites, streamed surface imagery | NASA Moon/Mars Trek (LRO, Viking, MRO CTX), IAU Gazetteer |
-| Stars | Gaia DR3 within 100 pc now, within 1 kpc *(being added)*; 653 named stars | ESA Gaia, Bailer-Jones et al. 2021, IAU |
+| Stars | 39,629,790 Gaia DR3 stars within 1 kpc with space velocities, 309 bright stars from Hipparcos, 653 named stars | ESA Gaia, Bailer-Jones et al. 2021, Hipparcos (van Leeuwen 2007), IAU |
 | Star clusters | 7,181 star clusters | Hunt & Reffert 2023/24, Baumgardt |
 | Exoplanets | 6,442 planets in 4,834 systems | NASA Exoplanet Archive |
 | Pulsars | 4,429 | ATNF Pulsar Catalogue |
@@ -109,7 +109,8 @@ built from the original archives with the scripts in `scripts/` and `pipeline/`;
   so one scene holds a planet and a galaxy cluster without jitter.
 - **Streaming**: every large layer is an octree of small binary tiles. The browser loads only
   what is on screen, up to a point budget, and draws regions that aren't loaded yet as their
-  total light.
+  total light. The shallow levels are served with the site; the deep levels of Gaia, DESI and SDSS
+  stream from a [Hugging Face dataset](https://huggingface.co/datasets/ismoilovdev/cosmic-atlas-tiles).
 - **Science first**: Planck18 cosmology, Bailer-Jones distances for Gaia stars, IAU radii, and a
   cited source for every number. Each catalogue has a re-runnable script and a `PROVENANCE.json`
   with its query, date and citation.
