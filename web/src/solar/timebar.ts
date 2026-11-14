@@ -89,6 +89,12 @@ export class TimeBar {
     this.slider.addEventListener('input', () => epoch.set(sliderToMyr(+this.slider.value)));
     this.starNow.addEventListener('click', () => epoch.set(0));
     this.el = el;
+    // the right-hand panels (info card, stats) stop above this bar: style.css reads --timectl-h
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => {
+        document.documentElement.style.setProperty('--timectl-h', `${el.offsetHeight}px`);
+      }).observe(el);
+    }
     this.relabel();
     const prev = clock.onChange;
     clock.onChange = () => {
