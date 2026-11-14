@@ -1993,6 +1993,9 @@ export class App {
   /** layer visibility that differs from each layer's default (keeps shared URLs short) */
   private layerDiff(): Record<string, boolean> {
     const def: Record<string, boolean> = {};
+    // every layer in layers.json (dust, GW volumes, small bodies, satellites ... included), so a
+    // layer left at its default never lands in the URL
+    for (const cfg of this.manifest?.layers ?? []) def[cfg.id] = cfg.visible;
     for (const L of this.layers) def[L.cfg.id] = L.cfg.visible;
     if (this.mwCfg) def[this.mwCfg.id] = this.mwCfg.visible;
     if (this.skyCfg) def[this.skyCfg.id] = this.skyCfg.visible;
