@@ -52,6 +52,7 @@
   "tag.lite": "облегчённый",
   "tag.model": "модель",
   "layer.stars-gaia": "Звёзды Gaia DR3",
+  "layer.stars-bright": "Яркие звёзды (Hipparcos)",
   "layer.galaxies-desi": "Галактики DESI",
   "layer.galaxies-2mrs": "2MASS Redshift Survey",
   "layer.galaxies-cf4": "Галактики Cosmicflows-4",

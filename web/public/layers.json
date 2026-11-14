@@ -27,6 +27,14 @@
       "credit": "ESA/Gaia/DPAC, Gaia DR3"
     },
     {
+      "id": "stars-bright",
+      "title": "Bright stars",
+      "path": "tiles/stars-bright",
+      "visible": true,
+      "colorMode": "star",
+      "credit": "Hipparcos new reduction (van Leeuwen 2007, I/311/hip2): the 309 stars too bright for Gaia DR3 within 1 kpc"
+    },
+    {
       "id": "stars-gaia-preview",
       "title": "Gaia DR3 stars within 100 pc",
       "path": "tiles/stars-gaia-preview",

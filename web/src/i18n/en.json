@@ -52,6 +52,7 @@
   "tag.lite": "lite",
   "tag.model": "model",
   "layer.stars-gaia": "Gaia DR3 stars",
+  "layer.stars-bright": "Bright stars (Hipparcos)",
   "layer.galaxies-desi": "DESI galaxies",
   "layer.galaxies-2mrs": "2MASS Redshift Survey",
   "layer.galaxies-cf4": "Cosmicflows-4 galaxies",

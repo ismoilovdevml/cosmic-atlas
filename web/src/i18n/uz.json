@@ -52,6 +52,7 @@
   "tag.lite": "yengil",
   "tag.model": "model",
   "layer.stars-gaia": "Gaia DR3 yulduzlari",
+  "layer.stars-bright": "Yorqin yulduzlar (Hipparcos)",
   "layer.galaxies-desi": "DESI galaktikalari",
   "layer.galaxies-2mrs": "2MASS Redshift Survey",
   "layer.galaxies-cf4": "Cosmicflows-4 galaktikalari",
