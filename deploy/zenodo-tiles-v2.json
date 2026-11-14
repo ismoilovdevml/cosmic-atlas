@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "title": "Cosmic Atlas tile set v2: streamable 3D octree tiles of open astronomical catalogues",
+    "upload_type": "dataset",
+    "description": "<p>The tile set behind <a href=\"https://ismoilovdevml.github.io/cosmic-atlas/\">Cosmic Atlas</a>, a browser 3D map of the universe. Each catalogue is converted to heliocentric Galactic Cartesian coordinates in parsecs and cut into an additive level-of-detail octree of small binary tiles (16-byte render records plus a 24-byte extension with the 16th and 84th percentile distances), so a browser can stream only what is on screen. Every node also carries the summed light of its subtree. The format is documented in <a href=\"https://github.com/ismoilovdevml/cosmic-atlas/blob/main/docs/data-contract.md\">docs/data-contract.md</a>; the code that builds it is in the same repository.</p><p>This is the web build: for each octree layer it keeps the shallowest nodes in breadth-first order up to a size budget, so the deepest levels of the largest surveys are not included. Layers: DESI DR1 galaxies and quasars (15,140,002 in the full tree), SDSS DR17 (2,313,525 not in DESI), 6dFGS DR3 (86,804), 2dFGRS (146,845), 2MRS (43,463), Cosmicflows-4 (55,877), the Local Group (146) and Local Volume (868), star clusters from Hunt &amp; Reffert 2023/24 and Baumgardt (7,181), a Gaia DR3 preview within 100 pc (67,537), the Edenhofer et al. 2024 3D dust map, MPC asteroid and comet elements, a CelesTrak satellite snapshot, and the small catalogues of the atlas (named stars, exoplanets, pulsars, black holes, nebulae and others), each with a PROVENANCE file.</p><p>Licence: the tiles are derived data and keep the terms of their sources. Gaia data are CC BY-NC 3.0 IGO, which makes this bundle non-commercial as a whole; DESI DR1 is CC BY 4.0; please cite each survey you use (see the PROVENANCE files and the repository README).</p>",
+    "creators": [{ "name": "ismoilovdevml" }],
+    "license": "cc-by-nc-4.0",
+    "access_right": "open",
+    "version": "v2",
+    "keywords": ["astronomy", "3D map", "octree", "level of detail", "Gaia DR3", "DESI DR1", "SDSS", "galaxy redshift survey", "3D dust", "data visualization"],
+    "related_identifiers": [
+      { "identifier": "https://github.com/ismoilovdevml/cosmic-atlas", "relation": "isSupplementTo" },
+      { "identifier": "https://ismoilovdevml.github.io/cosmic-atlas/", "relation": "isDocumentedBy" },
+      { "identifier": "https://github.com/ismoilovdevml/cosmic-atlas/releases/tag/tiles-v2", "relation": "isIdenticalTo" }
+    ]
+  }
+}

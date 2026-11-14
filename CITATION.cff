@@ -9,7 +9,7 @@ url: "https://ismoilovdevml.github.io/cosmic-atlas/"
 license: MIT
 abstract: >-
   A browser 3D map of the universe built only from open survey data: the Solar System at its
-  real positions, Gaia DR3 stars with space velocities, 3D dust, star clusters, the Local Group,
+  real positions, Gaia DR3 stars, 3D dust, star clusters, the Local Group,
   15 million DESI DR1 galaxies and quasars, gravitational-wave localisation volumes, FRBs,
   neutrinos and the Planck CMB, streamed as octree tiles with distance uncertainty and a cited
   source for every number. WebGPU, with a WebGL2 fallback; interface and articles in Uzbek,
