@@ -1748,7 +1748,10 @@ export class App {
     }
     if (!vis[id]) this.setLayerVisible(id, true);
     const L = this.layers.find((l) => l.cfg.id === id);
-    const cfg = L?.cfg ?? this.msg.config(id) ?? (this.mwCfg?.id === id ? this.mwCfg : this.skyCfg); // --- Messengers hook
+    // non-octree layers (GW volumes, CMB, small bodies, satellites) only live in the manifest; without
+    // this lookup their view card fell through to the sky background's
+    const cfg = L?.cfg ?? this.msg.config(id) ?? this.manifest.layers.find((c) => c.id === id)
+      ?? (this.mwCfg?.id === id ? this.mwCfg : this.skyCfg); // --- Messengers hook
     const v = LAYER_VIEWS[id];
     if (v && cfg) this.flyToNamedView({ ...v, ref: cfg.credit }, () => layerTitle(cfg));
     this.scheduleHash();
