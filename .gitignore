@@ -1,6 +1,9 @@
 data/raw/
 data/tiles/*
 !data/tiles/catalogs/
+# dust: meta + provenance are tracked, the 35 MB textures are rebuilt by scripts/build_dust.py
+!data/tiles/dust/
+data/tiles/dust/*.bin
 .venv/
 __pycache__/
 node_modules/

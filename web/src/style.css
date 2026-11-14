@@ -191,6 +191,8 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border-radius
   transition: background 0.15s, border-color 0.15s;
 }
 .btn:hover { background: rgba(201, 166, 107, 0.22); border-color: var(--brass); }
+/* display: inline-flex above beats the UA [hidden] rule; e.g. "Learn more" on cards without an article */
+.btn[hidden] { display: none; }
 .btn svg { width: 14px; height: 14px; fill: currentColor; }
 .btn[aria-pressed='true'] { background: rgba(201, 166, 107, 0.3); }
 .icon-btn {
@@ -369,6 +371,11 @@ body.has-info .stats { top: auto; bottom: 168px; }
 body.has-docs .caption { display: none; }
 /* ---------- Solar System: time control (src/solar/timebar.ts) ---------- */
 .swatch.solar { background: radial-gradient(circle at 35% 35%, #fff2c9 0 25%, #f2b94f 55%, #8a5a1a 80%); }
+/* --- Dust layer (src/dust) */
+.swatch.dust { background: radial-gradient(circle at 40% 45%, #3a2418 0 30%, #9e5a2e 62%, #2a1a12 90%); }
+.tag.data { color: #d9a46f; border-color: rgba(217, 164, 111, 0.45); }
+.dust-controls { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 2px; }
+.dust-controls select { background: var(--glass-strong); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-ctl); padding: 2px 4px; font: inherit; min-height: 28px; }
 .timectl {
   position: fixed; right: 16px; bottom: 96px; z-index: 11;
   display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 22px;

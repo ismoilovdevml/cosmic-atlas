@@ -48,6 +48,8 @@ import { formatEpoch } from './solar/timebar';
 // --- GW hook (web/src/render/gwVolumes.ts, web/src/objects/gw.ts): localisation volumes, card note and links
 import { GwVolumes } from './render/gwVolumes';
 import { clusterPointCard, gwLinks, gwNote, nearestEntry } from './objects/gw';
+// --- Dust hook (web/src/dust): Edenhofer et al. 2024 3D dust, ray-marched in the post pass
+import { DustFeature } from './dust';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -147,6 +149,8 @@ export class App {
   // --- GW hook
   gw = new GwVolumes();
   gwCfg: LayerConfig | null = null;
+  // --- Dust hook
+  dust = new DustFeature();
 
   async start() {
     initLang();
@@ -294,10 +298,13 @@ export class App {
       } else if (cfg.type === 'gw-volumes') { // --- GW hook
         this.gwCfg = cfg;
         this.gw.visible = vis ?? cfg.visible;
-      }
+      } else if (cfg.type === 'dust') this.dust.configure(cfg, vis ?? cfg.visible); // --- Dust hook
     }
     if (hashLayers?.solar !== undefined) this.solar.visible = hashLayers.solar; // --- Solar System hook
     const known = this.tilesIndex ? new Set(this.tilesIndex.layers) : undefined;
+    // --- Dust hook: textures load in the background (35 MB); the panel row appears when ready
+    this.dust.onChange = () => (this.dirty = true);
+    void this.dust.load(this.post, known).then(() => this.renderLayerPanel());
     const inits = this.layers.map((L) => L.init(known)); // 'missing' is set synchronously from the index
     this.updateSuperseded(known);
     this.streamer.layers = this.layers; // pending layers are inactive until their meta.json is in
@@ -373,6 +380,7 @@ export class App {
     if (this.skyCfg) out[this.skyCfg.id] = this.sky.visible;
     if (this.gwCfg) out[this.gwCfg.id] = this.gw.visible; // --- GW hook
     out.solar = this.solar.visible; // --- Solar System hook
+    if (this.dust.cfg && this.dust.status === 'ready') out[this.dust.cfg.id] = this.dust.visible; // --- Dust hook
     return out;
   }
 
@@ -385,6 +393,7 @@ export class App {
     else if (this.skyCfg?.id === id) this.sky.visible = on;
     else if (this.gwCfg?.id === id) this.gw.visible = on; // --- GW hook
     else if (id === 'solar') this.solar.visible = on; // --- Solar System hook
+    else if (this.dust.cfg?.id === id) this.dust.visible = on; // --- Dust hook
     const cb = document.getElementById(`lyr-${id}`) as HTMLInputElement | null;
     if (cb && cb.checked !== on) {
       cb.checked = on;
@@ -410,7 +419,10 @@ export class App {
     }) => {
       const sig = JSON.stringify([getLang(), opts.title, opts.swatch, opts.tag ?? null, opts.meta, !!opts.loading]);
       const prev = old.get(opts.id);
-      if (prev && prev.dataset.sig === sig) return void want.push(prev);
+      if (prev && prev.dataset.sig === sig) {
+        want.push(prev);
+        return prev; // unchanged row: reused as is (callers may decorate it once, see the dust row)
+      }
       const li = document.createElement('li');
       li.className = opts.loading ? 'layer loading' : 'layer';
       li.dataset.id = opts.id;
@@ -446,6 +458,7 @@ export class App {
         this.dirty = true;
       });
       want.push(li);
+      return li;
     };
 
     const title = (c: LayerConfig) => layerTitle(c);
@@ -505,6 +518,18 @@ export class App {
         checked: this.gw.visible, opacity: this.gw.opacity, onOpacity: (v) => (this.gw.opacity = v),
       });
     }
+    // --- Dust hook: its row (data tag, credit) with the look / quality selects
+    const dc = this.dust.cfg;
+    if (dc && this.dust.status === 'ready') {
+      const li = row({
+        id: dc.id, title: title(dc), swatch: 'dust', tag: ['data', t('tag.data')], meta: `${t('dust.meta')}. ${dc.credit ?? ''}`,
+        checked: this.dust.visible, opacity: this.dust.opacity, onOpacity: (v) => (this.dust.opacity = v),
+      });
+      if (li.dataset.dustCtl !== '1') {
+        this.dust.controls(li);
+        li.dataset.dustCtl = '1';
+      }
+    } else if (dc && (this.dust.status === 'missing' || this.dust.status === 'error')) missing.push(title(dc));
     // --- Solar System hook: its row in the layers panel
     row({
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
@@ -521,6 +546,7 @@ export class App {
       this.mwCfg ? `${title(this.mwCfg)}: ${this.mwCfg.credit}` : '',
       this.skyCfg ? `${title(this.skyCfg)}: ${this.skyCfg.credit}` : '',
       this.gwCfg && this.gw.events.length ? `${title(this.gwCfg)}: ${this.gwCfg.credit}` : '', // --- GW hook
+      dc && this.dust.status === 'ready' ? `${title(dc)}: ${dc.credit}` : '', // --- Dust hook
       solarTr('solar.credit'), // --- Solar System hook
       t('credits.sesame'),
       t('credits.skymap'),
@@ -768,7 +794,7 @@ export class App {
 
     // --- Black hole hook: environment cube for rays bent out of the frame, then the lensed pipeline
     this.bh?.captureEnv(this.renderer, this.scene, (px, dpr) => this.setSpritePx(cam, px, dpr), () => this.setSpritePx(cam, pxPerRad, this.dpr));
-    this.post.render(this.camera, this.skyAmount, this.bh?.lensActive ?? false);
+    this.post.render(this.camera, this.skyAmount, this.bh?.lensActive ?? false, this.dust.update(cam, D)); // --- Dust hook: uniforms + on/off
     this.renders++;
     this.totalRenders++;
     // frames-in-flight cap (WebGPU): count submitted work until the queue reports it done
@@ -982,6 +1008,8 @@ export class App {
       } else if ((ge = this.gw.pickAt(cx, cy, this.nav.camPos(), this.camera, window.innerWidth, window.innerHeight))) { // --- GW hook
         this.showCatalogEntry(ge);
         if (fly) void this.nav.flyTo(this.viewFor(ge));
+      } else if (this.showDustAt(cx, cy, fly)) {
+        // --- Dust hook: a click on a cloud (nothing else under the cursor)
       } else if (!fly) this.closeInfo();
       return;
     }
@@ -990,6 +1018,23 @@ export class App {
     const xyz: Vec3 = [c[0] + p[hit.index * 3], c[1] + p[hit.index * 3 + 1], c[2] + p[hit.index * 3 + 2]];
     await this.showPoint(n, hit.index, xyz, fly, n.data.rgbl[hit.index * 4 + 3]);
   }
+
+  /** --- Dust hook: the cloud under CSS pixel (cx, cy) -> info card; false when there is none */
+  showDustAt(cx: number, cy: number, fly: boolean): boolean {
+    const t2 = Math.tan((this.camera.fov * Math.PI) / 360);
+    const v = new THREE.Vector3(((2 * cx) / window.innerWidth - 1) * t2 * this.camera.aspect, (1 - (2 * cy) / window.innerHeight) * t2, -1)
+      .transformDirection(this.camera.matrixWorld);
+    const hit = this.dust.pick(this.nav.camPos(), [v.x, v.y, v.z]);
+    if (!hit) return false;
+    const c = this.dust.card(hit);
+    this.selection = { xyz: hit.xyz, title: c.title, fly: c.fly, ref: null };
+    this.infoRefresh = () => this.openInfo({ ...this.dust.card(hit), italic: false });
+    this.openInfo({ ...c, italic: false });
+    if (fly) void this.nav.flyTo(c.fly);
+    this.dirty = true;
+    return true;
+  }
+
 
   /** `x0` = the catalogue position (epoch 0); the card shows the point at the current star epoch */
   private async showPoint(n: TileNode, i: number, x0: Vec3, fly: boolean, lum: number) {

@@ -115,6 +115,19 @@ export function installDebugApi(app: App) {
         labels: () => [...document.querySelectorAll<HTMLElement>('.label')].filter((el) => el.style.visibility === 'visible' && +el.style.opacity > 0.5).map((el) => el.textContent),
       },
     },
+    // --- Dust hook (captures / tests)
+    dust: {
+      state: () => ({ status: app.dust.status, active: app.dust.active, amount: app.dust.amount, mode: app.dust.mode, quality: app.dust.quality, visible: app.dust.visible,
+        trace: app.dust.shader?.traceTex?.renderTarget ? [app.dust.shader.traceTex.renderTarget.width, app.dust.shader.traceTex.renderTarget.height] : null }),
+      setMode: (m: 'auto' | 'absorb' | 'glow') => app.dust.setMode(m),
+      setQuality: (q: 'low' | 'medium' | 'high') => app.dust.setQuality(q),
+      /** benchmarks: raw march sample count (0 = only the extra scene target and the lookups) */
+      setSteps: (n: number) => {
+        if (app.dust.shader) app.dust.shader.uSteps.value = n;
+        app.dirty = true;
+      },
+      pickAt: (x: number, y: number) => (app.showDustAt(x, y, false) ? app.selection?.title ?? null : null),
+    },
     // --- Black hole hook (captures / tests)
     bh: { ...(bh?.debugApi() ?? {}), experience: (name: string) => {
       const h = bh?.find(name);

@@ -203,6 +203,21 @@ Source priority, per field: HyperLEDA (live) > OpenNGC > HyperLEDA 2003 (VizieR 
 precessed from B1950) > UNGC > McConnachie 2012; inclination HyperLEDA > UNGC > derived from b/a
 with q0 = 0.2.
 
+### 4c. Volume layer: `data/tiles/dust/` (`scripts/build_dust.py`)
+
+A layer with `"type": "dust"` in `layers.json` (`path` = this directory). Same frame and unit as
+§1. `meta.json` and `PROVENANCE.json` are committed; the textures are rebuilt (35.1 MB).
+
+| file | layout |
+|---|---|
+| `meta.json` | `fine`/`aux`: `file`, `dims` [nx, ny, nz], `voxelPc`, `origin` (min corner, pc), `format`, `bytes`; `mean`/`std`: log10 code range `lo`, `hi`; `sunAv.max`; `dataRadiusPc`; `rgbExtinctionRatio`; `percentiles`; `landmarks` (validation clouds: name, (l, b), literature distance, map xyz); `citation`, `doi`, `license` |
+| `mean_u8.bin` | 418 × 418 × 134 uint8, 6 pc voxels, origin (−1254, −1254, −402): posterior mean A_V per kpc, code 0 = below 10^lo (decoded `c · 10^lo`), 1–255 = 10^(lo + (c−1)/254 (hi−lo)) |
+| `aux_rgba8.bin` | 209 × 209 × 67 RGBA8, 12 pc voxels, same origin: R = mean (same code), G = posterior std (its own code), B·256 + A = A_V from the Sun to the voxel centre as uint16 of `sunAv.max` |
+
+Voxel (i, j, k) is the average over origin + [i, i+1) × voxel (x fastest, then y, then z); its value
+sits at the cell centre, so a GPU linear sampler at normalised coordinate (x − origin) / (dims × voxel)
+reads it exactly (`web/src/dust/grid.ts`, unit-tested). Outside r = 1248 pc the field is 0 (no data).
+
 ## 5. Renderer rules (web/)
 
 - Node world position = `center` (float64 in JS) minus camera position (float64), uploaded as a

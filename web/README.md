@@ -18,7 +18,8 @@ npm run synth        # optional: synthetic raw tables -> pipeline/build_tiles.py
 npm run dev          # http://localhost:5173
 npm test             # vitest: tile parser (16/24 B ext), blob light conservation, photometry, deep links,
                      # tours, ICRS->Galactic, Planck18, fly-to path, Sesame parsing, Solar System
-                     # ephemerides vs JPL Horizons, probe interpolation, Tashkent vs astropy, uz/ru search
+                     # ephemerides vs JPL Horizons, probe interpolation, Tashkent vs astropy, uz/ru search,
+                     # dust grid <-> xyz, ray geometry, Sun-side A_V and known clouds on the built grid
 npm run build        # tsc --noEmit + vite build -> dist/
 npm run capture      # with the dev server up: screenshots at 1 pc / 300 pc / 30 kpc / 1 Gpc -> ../figures
 node scripts/capture_galaxies.mjs  # M31, M33, M81, NGC 253 (EARTH=1: from the Sun; CAPTURE_EXTRA=1: LOD ladder)
@@ -29,6 +30,8 @@ node scripts/qa_compare.mjs a.png b.png ...    # pixel diff of screenshot pairs
 node scripts/qa_mobile.mjs <outdir> <prefix> <url>   # 390x844 + 360x740 touch: layout, 44 px targets, contrast, gestures
 node scripts/perf_budget.mjs 4,12 '' '#v=0,0,0,1e9,-150,28' <url> [--uncapped] [--detail=N]
 node scripts/capture_blackholes.mjs ../figures 'http://localhost:5173/?gputime' 1  # black holes -> figures/bh-*.png, GPU ms
+node scripts/capture_dust.mjs ../figures http://localhost:5173/   # 3D dust on/off pairs, Sun null view, Taurus card, GPU ms
+node scripts/perf_dust.mjs http://localhost:5173/ low,medium,high 300pc,3kpc 3   # dust GPU ms, off/on alternated
 ../.venv/bin/python -I scripts/measure_blackholes.py ../figures        # shadow radius vs Synge, disk asymmetry PA
 node scripts/perf_firstpaint.mjs dist after --json=after.json   # first load of a build: fast / 1 MB/s / 0.3 MB/s (own server)
 node scripts/plot_perf.mjs before.json after.json ../figures/perf-firstpaint.png
@@ -185,6 +188,77 @@ the Earth-side line of sight at 25 r_s with a disk, 40 r_s without) and the sky 
   of the Flamm overlay. Points of the tile layers outside the main view are missing from the
   environment cube (the streamer culls by the main frustum). The camera cannot roll, so disks are
   not always horizontal on screen.
+
+### 3D dust (`src/dust/`)
+
+The interstellar dust within 1.25 kpc of the Sun, from Edenhofer et al. 2024 (A&A 685, A82, CC BY 4.0;
+Zenodo 10.5281/zenodo.8187943). Layer `dust` in `layers.json` (`type: "dust"`), data contract §4c.
+
+- **Data** (`../scripts/build_dust.py`). The whole `mean_and_std_healpix.fits` (3,252,715,200 B,
+  md5 = the Zenodo checksum, sha256 in `PROVENANCE.json`) is downloaded with parallel Range requests
+  (`scripts/zenodo_fetch.py`; Zenodo gave ~0.45 MB/s per connection, ~4 MB/s with 24). Its 516 HEALPix
+  spheres (Nside 256, 69–1248 pc) are deposited cell by cell, volume-weighted, into a 6 pc grid of
+  ±1254 × ±1254 × ±402 pc (the |z| < 400 pc box of the paper's Fig. 5): 17,582,976 of the 17,586,520
+  voxels inside the data sphere get cell centres, the other 3,544 a point lookup. Inside 68.8 pc the
+  source has only the integrated extinction per pixel; it is spread evenly along the radius (labelled
+  in meta.json). Units: A_V per kpc, A_V = 2.8 E(ZGR23) (paper Sect. 7). uint8 log code: 1.0 % median,
+  2.1 % 99th-percentile round-trip error; 1,759 voxels clip at the 99.99th percentile (31.8 mag/kpc).
+  A 12 pc grid carries the mean, the posterior std (volume-weighted mean of the cells' std, an upper
+  bound on the std of the average) and A_V from the Sun to each voxel centre, marched through the
+  decoded 6 pc field. 35.1 MB in all.
+- **Checks against the literature** (`PROVENANCE.json`, `test/dust.test.ts`, `../figures/dust-xy-check.png`,
+  `../figures/dust-xy-vs-paper.png`). Density peak on the sight line, native map / shipped grid vs literature:
+  Taurus 149 / 145 vs 141 pc, Ophiuchus 150 / 150 vs 139, Perseus 305 / 301 vs 294, Orion A 425 / 432 vs
+  ~400 (390–470 along the cloud), Chamaeleon I 189 / 192 vs 190, Lupus 173 / 171 vs 155 pc. The map
+  sits 0–18 pc beyond the maser/Gaia distances for the nearest clouds. Local Bubble: 3.2 % of the volume
+  inside 100 pc is above 1 mag/kpc, 16 % between 150 and 300 pc; in the plane the first > 1 mag/kpc is
+  at a median 149 pc (10–90 %: 109–530 pc). Radcliffe Wave (Alves et al. 2020 model): mean 3.34 mag/kpc
+  along the curve vs 0.83 ± 0.58 for the same curve rotated about the Sun (50 rotations). The
+  z-integrated map has the same structures and scale as the paper's Fig. 5.
+- **Rendering: relative extinction.** The Gaia sky image and the Gaia star magnitudes were measured
+  from the Sun, through the dust; dimming them again would count the dust twice. Light from a source
+  P is scaled by 10^(−0.4 k (A_camera→P − A_Sun→P)) per channel (k = 0.87 / 1.00 / 1.21 at 610 / 540 /
+  465 nm, CCM89), capped at 1, so the layer only removes light. For the points, P is the pixel's
+  light-weighted mean source depth from a second, single-channel half-float target of the dust
+  pipeline's own scene pass (Σ luminance·log2 depth; Σ luminance is the HDR light itself). For the sky,
+  P is where the Sun's ray in that direction leaves the map. At the Sun nothing changes: camera at the
+  Sun, dust on vs off, mean |Δ| 0.51/255, 1.3 % of pixels change by > 4/255, mean luminance 41.18 vs
+  41.66 (`figures/dust-sun-null*.png`). Away from the Sun, clouds you look through that the Sun did
+  not darken what lies behind them (`figures/dust-taurus-inside.png` vs `-off`).
+- **Glow** (a display aid, not emission): ∫ ρ 10^(−0.4 A) ds in warm brown, on when the camera is
+  outside the map (|z| > 402 pc or r > 1248 pc, ramping over 25 %). Layer panel: Look = auto /
+  absorbing only / with glow, Quality = low / medium / high. The layer fades in over 10–20 pc and out
+  over 5–8 kpc of camera distance.
+- **Ray march** (`shader.ts`): a trace RTT (Low: ¼ resolution, 48 samples; Medium: ½, 64; High: ½,
+  128) over the ray's part inside sphere ∩ slab, jittered per pixel; it reads the 6 pc grid (half
+  float, decoded once on load through a 256-entry table) while a step is under one voxel and the 12 pc
+  grid above two. The Sun-side A_V lookups happen in the trace; the compose reads one texel.
+- **Click** on a cloud (when no object is under the cursor): along the ray, the point of maximum
+  density × transmission (CPU twin `grid.ts`, 1024 steps). The card gives A_V per kpc at 6 pc with
+  the 12 pc relative std, the 12 pc mean ± std, distance, A_V from the Sun and along the sight line,
+  and the nearest validation cloud within 40 pc.
+- **GPU time** (`scripts/perf_dust.mjs`, 1440×900, DPR 1, Apple M4 Pro, Chromium WebGPU, timestamp
+  queries, dust on minus off, median of 3 alternated rounds): see the table below. Low stays under
+  3 ms inside the map; views from outside it cost more, mostly fixed overhead (below).
+
+  | view (2026-11-14) | dust off | Low | Medium | High |
+  |---|---|---|---|---|
+  | camera at the Sun | 6.58 ms | +1.86 | +2.28 | +6.92 |
+  | 300 pc from the Sun (inside) | 7.89 ms | +2.56 | +3.55 | +8.03 |
+  | Taurus from 110 pc (inside) | 7.08 ms | +2.17 | +3.13 | +7.42 |
+  | 1 kpc, above the slab (glow) | 10.30 ms | +3.83 | +5.03 | +9.78 |
+  | 3 kpc (glow) | 12.18 ms | +4.46 | +4.91 | +7.48 |
+
+  Low is the default; Low and Medium look the same at the Taurus view (quarter vs half trace).
+
+- **Not modelled / approximate.** One mean source depth per trace texel (2×2 or 4×4 pixels), so stars
+  at different depths in one block share a factor; a star the Sun saw behind a cloud is never made
+  brighter (cap 1), even where the camera's path avoids that cloud; the synthetic dev stars carry no
+  extinction, so their dimming is relative to an extinction they never had; no dust beyond 1.25 kpc
+  or |z| > 402 pc; no scattering or reddening of the glow; the trace is off while a black hole lens
+  runs. Where the overhead goes at 3 kpc (dust on, 0 samples, ¼ trace): the extra scene target
+  ≈ 1.0 ms, and sampling the scene pass's textures inside the trace RTT ≈ 1.5–2.2 ms (measured by
+  removing each; not yet understood or fixed). WebGL2 runs the same TSL (checked on ANGLE/Metal only).
 
 `npm run synth` uses the repo's `.venv` (numpy, astropy, pyarrow). It writes contract §2 Parquet
 (`data/raw/synthetic-{stars,galaxies}/synthetic.parquet` + `PROVENANCE.json`, including

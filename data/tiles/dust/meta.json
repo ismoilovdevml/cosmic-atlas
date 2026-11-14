@@ -1,0 +1,191 @@
+{
+ "layer": "dust",
+ "title": "3D dust, Edenhofer et al. 2024",
+ "frame": "galactic-helio",
+ "unit": "pc",
+ "quantity": "differential extinction A_V per kpc (posterior mean), A_V = 2.8 E(ZGR23)",
+ "sourceUnit": "E of Zhang, Green, and Rix (2023)",
+ "eToAv": 2.8,
+ "dataRadiusPc": [
+  0.0,
+  1248.10009765625
+ ],
+ "innerAssumption": "inside 68.6 pc the source gives only the integrated extinction per pixel; spread uniformly along the radius",
+ "fine": {
+  "file": "mean_u8.bin",
+  "dims": [
+   418,
+   418,
+   134
+  ],
+  "voxelPc": 6.0,
+  "origin": [
+   -1254.0,
+   -1254.0,
+   -402.0
+  ],
+  "format": "r8",
+  "bytes": 23413016
+ },
+ "aux": {
+  "file": "aux_rgba8.bin",
+  "dims": [
+   209,
+   209,
+   67
+  ],
+  "voxelPc": 12.0,
+  "origin": [
+   -1254.0,
+   -1254.0,
+   -402.0
+  ],
+  "format": "rgba8",
+  "channels": [
+   "mean A_V/kpc (log code, = mean)",
+   "std A_V/kpc (log code, = std)",
+   "A_V from Sun, high byte",
+   "A_V from Sun, low byte"
+  ],
+  "bytes": 11706508
+ },
+ "mean": {
+  "encoding": "log10",
+  "lo": -3.0654546463181016,
+  "hi": 1.5019217364797801,
+  "note": "code 0: value < 10^lo (decoded linearly as code*10^lo); 1..255: 10^(lo + (code-1)/254 (hi-lo))"
+ },
+ "std": {
+  "encoding": "log10",
+  "lo": -3.303617297041454,
+  "hi": 1.058568060807487,
+  "aggregation": "volume-weighted mean of per-cell posterior std over the 12 pc voxel"
+ },
+ "sunAv": {
+  "max": 5.3,
+  "encoding": "uint16 fixed point (B<<8|A)/65535*max",
+  "steps": 512
+ },
+ "percentiles": {
+  "AvPerKpc_6pc": {
+   "0.5": 0.000561907300405236,
+   "1": 0.0008600928823109884,
+   "5": 0.0031817132359015514,
+   "50": 0.06938238997468976,
+   "95": 1.9000050614116335,
+   "99": 5.95842941608785,
+   "99.9": 15.674663504399136,
+   "99.99": 31.763016227904068,
+   "max": 173.72748280612828
+  },
+  "stdAvPerKpc_12pc": {
+   "1": 0.0004970301145114486,
+   "50": 0.03731271931042242,
+   "99": 2.8088375779828008,
+   "99.99": 11.443742072851323,
+   "max": 31.840335047094346
+  }
+ },
+ "rgbExtinctionRatio": {
+  "lambdaNm": [
+   610,
+   540,
+   465
+  ],
+  "ratioToAV": [
+   0.8725,
+   1.0,
+   1.2097
+  ],
+  "law": "Cardelli, Clayton & Mathis 1989, R_V = 3.1"
+ },
+ "landmarks": [
+  {
+   "name": "Taurus (L1495/B213)",
+   "lb": [
+    169.6,
+    -16.1
+   ],
+   "d_lit_pc": 141,
+   "xyz": [
+    -136.6,
+    25.1,
+    -40.1
+   ],
+   "ref": "Zucker et al. 2019, ApJ 879, 125 (Taurus 141 pc); Galli et al. 2019, A&A 630, A137"
+  },
+  {
+   "name": "Ophiuchus (L1688)",
+   "lb": [
+    353.1,
+    16.9
+   ],
+   "d_lit_pc": 139,
+   "xyz": [
+    142.0,
+    -17.2,
+    43.5
+   ],
+   "ref": "Ortiz-Leon et al. 2017, ApJ 834, 141 (137 pc); Zucker et al. 2019 (139 pc)"
+  },
+  {
+   "name": "Perseus (NGC 1333 - IC 348)",
+   "lb": [
+    159.4,
+    -19.8
+   ],
+   "d_lit_pc": 294,
+   "xyz": [
+    -264.7,
+    99.5,
+    -101.8
+   ],
+   "ref": "Zucker et al. 2018, ApJ 869, 83 (294 pc); Ortiz-Leon et al. 2018, ApJ 865, 73"
+  },
+  {
+   "name": "Orion A (ONC to L1641)",
+   "lb": [
+    210.5,
+    -19.6
+   ],
+   "d_lit_pc": 400,
+   "xyz": [
+    -350.3,
+    -206.3,
+    -144.7
+   ],
+   "ref": "Grossschedl et al. 2018, A&A 619, A106 (390-470 pc along the cloud); Kounkel et al. 2017 (ONC 388 pc)"
+  },
+  {
+   "name": "Chamaeleon I",
+   "lb": [
+    297.1,
+    -15.6
+   ],
+   "d_lit_pc": 190,
+   "xyz": [
+    84.0,
+    -164.2,
+    -51.5
+   ],
+   "ref": "Zucker et al. 2019 (Cha I 179-192 pc); Dzib et al. 2018, ApJ 867, 151"
+  },
+  {
+   "name": "Lupus I-IV",
+   "lb": [
+    339.5,
+    15.5
+   ],
+   "d_lit_pc": 155,
+   "xyz": [
+    153.9,
+    -57.5,
+    45.6
+   ],
+   "ref": "Zucker et al. 2019; Galli et al. 2020, A&A 643, A148 (155-160 pc)"
+  }
+ ],
+ "citation": "Edenhofer, G., Zucker, C., Frank, P., Saydjari, A. K., Speagle, J. S., Finkbeiner, D., & Ensslin, T. A. 2024, A&A 685, A82, \"A parsec-scale Galactic 3D dust map out to 1.25 kpc from the Sun\"",
+ "doi": "10.1051/0004-6361/202347628",
+ "license": "CC BY 4.0"
+}

@@ -366,7 +366,7 @@ Effort is for one developer working with this repo's existing pipeline: rough da
 | P0.1 Hosting | Bunny trial; upload the current 2.1 GB; measure; switch `TILE_BASE`; lite set stays on Pages. Apply to AWS Open Data | §7 | 2–3 d |
 | P0.2 Endpoint hygiene | Replace every `*.cds.unistra.fr` / alasky URL with mirror lists (IDIA, CfA, ESA skies, PADC). Add a live search fallback through Sesame and SIMBAD-CfA | §6, §5 | 1–2 d |
 | P0.3 Milky Way structure pack (small JSON / octree layers) | Hunt & Reffert clusters (+ 1.29 M members as tags or points, 52.8 MB); Baumgardt GCs; galstreams polylines; Radcliffe Wave; Zucker clouds; WISE HII V3.0 (1,435 with distances); Exoplanet Archive hosts; LVDB in place of McConnachie | §1 | 5–7 d |
-| P0.4 3D dust volume | Edenhofer 2024 MEAN → uint8 512×512×128 (33.6 MB) 3D texture + ray-marched volume renderer (WebGPU, WebGL2 fallback) | §1 | 7–10 d |
+| P0.4 3D dust volume | Edenhofer 2024 MEAN → uint8 512×512×128 (33.6 MB) 3D texture + ray-marched volume renderer (WebGPU, WebGL2 fallback) | §1 | 7–10 d. **Done 2026-11-14** as 6 pc uint8 418×418×134 + 12 pc RGBA8 (mean, std, A_V from the Sun) = 35.1 MB, from the HEALPix product; see web/README "3D dust" |
 | P0.5 Cosmic flows | CF4 64³ delta/velocity + CF4++ 128³ mean/std (post-erratum) + Laniakea watershed meshes; streamlines; reuses the P0.4 volume renderer | §2 | 5–7 d |
 | P0.6 More galaxies | SDSS DR17 good-z (≈ 2.1 M after de-duplication against DESI); 6dFGS; 2dFGRS; MCXC-II + eRASS1 cluster markers | §2 | 4–5 d |
 | P0.7 Multi-messenger | GWTC-5.0 cumulative list + baked 90 % volumes (≈ 3.4 MB); FRB hosts (101 z); IceCat-1 arrows; ZTF BTS (after the licence email); GW170817 / TXS 0506+056 / NGC 1068 cards | §3 | 5–6 d |

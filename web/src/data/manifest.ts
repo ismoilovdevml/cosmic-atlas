@@ -27,7 +27,7 @@ export interface PointLayerConfig {
 
 export interface ModelLayerConfig {
   id: string;
-  type: 'milky-way-model' | 'sky' | 'gw-volumes';
+  type: 'milky-way-model' | 'sky' | 'gw-volumes' | 'dust';
   title: string;
   visible: boolean;
   credit?: string;
@@ -37,6 +37,8 @@ export interface ModelLayerConfig {
   imageWebp?: string;
   /** sky only: small preview shown until the full image is in (progressive loading) */
   preview?: string;
+  /** dust only: directory holding meta.json and the textures (src/dust) */
+  path?: string;
 }
 
 export type LayerConfig = PointLayerConfig | ModelLayerConfig;

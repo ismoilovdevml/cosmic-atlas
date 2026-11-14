@@ -1,0 +1,198 @@
+{
+ "layer": "dust",
+ "built_utc": "2026-11-14T06:20:01Z",
+ "script": "scripts/build_dust.py",
+ "source": {
+  "record": "https://zenodo.org/records/8187943",
+  "doi": "10.5281/zenodo.8187943",
+  "version": "v1.0",
+  "license": "cc-by-4.0",
+  "file": "mean_and_std_healpix.fits",
+  "url": "https://zenodo.org/api/records/8187943/files/mean_and_std_healpix.fits/content",
+  "size": 3252715200,
+  "md5_zenodo": "md5:10c823a5fcf81b47b6e15530bcdf54dc",
+  "md5": "10c823a5fcf81b47b6e15530bcdf54dc",
+  "sha256": "7c36dd928afcd2a774ce746ccddba95a1d8490d7a034073fd622c57217c63ae6",
+  "verified_utc": "2026-11-13T20:28:20Z"
+ },
+ "overlay": {
+  "radcliffe_wave": "Alves et al. 2020, Nature 578, 237; best-fit model, Harvard Dataverse doi:10.7910/DVN/OE51SZ (CC0), file Radcliffe_Wave_Best_Fit.tab, md5 248936d0dd29d46ddf77b22bfd7290e0"
+ },
+ "healpix": "scripts/healpix_nest.py (numpy port of healpix_base NESTED loc2pix/pix2loc), checked against healpy 1.20.1: 0/2e6 mismatches",
+ "citation": "Edenhofer, G., Zucker, C., Frank, P., Saydjari, A. K., Speagle, J. S., Finkbeiner, D., & Ensslin, T. A. 2024, A&A 685, A82, \"A parsec-scale Galactic 3D dust map out to 1.25 kpc from the Sun\"",
+ "doi": "10.1051/0004-6361/202347628",
+ "checks": {
+  "clouds": [
+   {
+    "name": "Taurus (L1495/B213)",
+    "l": 169.6,
+    "b": -16.1,
+    "d": 141,
+    "tol": 25,
+    "ref": "Zucker et al. 2019, ApJ 879, 125 (Taurus 141 pc); Galli et al. 2019, A&A 630, A137",
+    "native": {
+     "peak_pc": 148.6,
+     "half_cum_pc": 149.5,
+     "Av_total": 1.61,
+     "pixels": 15
+    },
+    "grid6pc": {
+     "peak_pc": 144.5,
+     "half_cum_pc": 150.5,
+     "Av_total": 1.1
+    },
+    "xyz_peak": [
+     -136.6,
+     25.1,
+     -40.1
+    ],
+    "agrees": true
+   },
+   {
+    "name": "Ophiuchus (L1688)",
+    "l": 353.1,
+    "b": 16.9,
+    "d": 139,
+    "tol": 25,
+    "ref": "Ortiz-Leon et al. 2017, ApJ 834, 141 (137 pc); Zucker et al. 2019 (139 pc)",
+    "native": {
+     "peak_pc": 149.5,
+     "half_cum_pc": 149.5,
+     "Av_total": 2.62,
+     "pixels": 15
+    },
+    "grid6pc": {
+     "peak_pc": 149.5,
+     "half_cum_pc": 147.5,
+     "Av_total": 0.89
+    },
+    "xyz_peak": [
+     142.0,
+     -17.2,
+     43.5
+    ],
+    "agrees": true
+   },
+   {
+    "name": "Perseus (NGC 1333 - IC 348)",
+    "l": 159.4,
+    "b": -19.8,
+    "d": 294,
+    "tol": 40,
+    "ref": "Zucker et al. 2018, ApJ 869, 83 (294 pc); Ortiz-Leon et al. 2018, ApJ 865, 73",
+    "native": {
+     "peak_pc": 305.3,
+     "half_cum_pc": 303.5,
+     "Av_total": 2.13,
+     "pixels": 16
+    },
+    "grid6pc": {
+     "peak_pc": 300.5,
+     "half_cum_pc": 300.5,
+     "Av_total": 1.56
+    },
+    "xyz_peak": [
+     -264.7,
+     99.5,
+     -101.8
+    ],
+    "agrees": true
+   },
+   {
+    "name": "Orion A (ONC to L1641)",
+    "l": 210.5,
+    "b": -19.6,
+    "d": 400,
+    "tol": 60,
+    "ref": "Grossschedl et al. 2018, A&A 619, A106 (390-470 pc along the cloud); Kounkel et al. 2017 (ONC 388 pc)",
+    "native": {
+     "peak_pc": 425.3,
+     "half_cum_pc": 427.7,
+     "Av_total": 2.95,
+     "pixels": 14
+    },
+    "grid6pc": {
+     "peak_pc": 431.5,
+     "half_cum_pc": 432.5,
+     "Av_total": 1.7
+    },
+    "xyz_peak": [
+     -350.3,
+     -206.3,
+     -144.7
+    ],
+    "agrees": true
+   },
+   {
+    "name": "Chamaeleon I",
+    "l": 297.1,
+    "b": -15.6,
+    "d": 190,
+    "tol": 30,
+    "ref": "Zucker et al. 2019 (Cha I 179-192 pc); Dzib et al. 2018, ApJ 867, 151",
+    "native": {
+     "peak_pc": 189.3,
+     "half_cum_pc": 189.3,
+     "Av_total": 2.15,
+     "pixels": 15
+    },
+    "grid6pc": {
+     "peak_pc": 191.5,
+     "half_cum_pc": 188.5,
+     "Av_total": 1.01
+    },
+    "xyz_peak": [
+     84.0,
+     -164.2,
+     -51.5
+    ],
+    "agrees": true
+   },
+   {
+    "name": "Lupus I-IV",
+    "l": 339.5,
+    "b": 15.5,
+    "d": 155,
+    "tol": 30,
+    "ref": "Zucker et al. 2019; Galli et al. 2020, A&A 643, A148 (155-160 pc)",
+    "native": {
+     "peak_pc": 173.0,
+     "half_cum_pc": 173.0,
+     "Av_total": 0.97,
+     "pixels": 15
+    },
+    "grid6pc": {
+     "peak_pc": 170.5,
+     "half_cum_pc": 174.5,
+     "Av_total": 0.85
+    },
+    "xyz_peak": [
+     153.9,
+     -57.5,
+     45.6
+    ],
+    "agrees": true
+   }
+  ],
+  "local_bubble": {
+   "median_Av_per_kpc_r_lt_100": 0.1006,
+   "median_Av_per_kpc_150_300": 0.146,
+   "wall_b0": {
+    "threshold_Av_per_kpc": 1.0,
+    "median_pc": 149.0,
+    "p10_pc": 109.0,
+    "p90_pc": 529.8,
+    "directions_never_crossing": 6,
+    "volume_fraction_gt1_r_lt_100": 0.0323,
+    "volume_fraction_gt1_150_300": 0.1596
+   }
+  },
+  "radcliffe_wave": {
+   "points_inside_1200pc": 1284,
+   "mean_Av_per_kpc_on_curve": 3.343,
+   "median_on_curve": 1.06,
+   "mean_rotated_controls": 0.832,
+   "std_rotated_controls": 0.578
+  }
+ }
+}

@@ -101,6 +101,14 @@
       "credit": "Arms: Reid et al. 2019, ApJ 885, 131; R0 = 8.275 kpc, GRAVITY 2021. A model, not data."
     },
     {
+      "id": "dust",
+      "type": "dust",
+      "title": "3D dust (Edenhofer 2024)",
+      "path": "tiles/dust",
+      "visible": true,
+      "credit": "Edenhofer et al. 2024, A&A 685, A82; Zenodo 10.5281/zenodo.8187943 (CC BY 4.0)"
+    },
+    {
       "id": "gaia-sky",
       "type": "sky",
       "title": "Gaia all-sky image",
