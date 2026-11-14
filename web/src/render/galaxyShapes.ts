@@ -30,7 +30,7 @@ import * as THREE from 'three/webgpu';
 import {
   Fn, attribute, exp, float, length, max, select, smoothstep, sqrt, texture, uniform, varying, vec2, vec3,
 } from 'three/tsl';
-import { DSS2_COLOR, fetchCutout, type HipsSurvey } from '../data/hipsCutout';
+import { DSS2_COLOR, type HipsSurvey } from '../data/hipsSurvey';
 import { catalogKey, type CatalogEntry } from '../data/manifest';
 import { type Vec3 } from '../math/frames';
 import { REF_PX_PER_RAD, KNEE, srgbToLinear } from './brightness';
@@ -424,6 +424,8 @@ export class GalaxyShapes {
     try {
       const ra = it.entry.ra ?? it.shape.ra;
       const dec = it.entry.dec ?? it.shape.dec;
+      // the cutout / HEALPix reprojection code is fetched with the first thumbnail
+      const { fetchCutout } = await import('../data/hipsCutout');
       const c = await fetchCutout(this.survey, ra, dec, it.fovDeg, THUMB_SIZE);
       const st = thumbStats(c.rgba, c.size, it.pa, it.q);
       if (!(st.meanIn > 1e-4)) throw new Error('empty cutout (no signal above the border median)');

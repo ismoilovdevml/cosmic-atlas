@@ -30,6 +30,10 @@ node scripts/qa_mobile.mjs <outdir> <prefix> <url>   # 390x844 + 360x740 touch: 
 node scripts/perf_budget.mjs 4,12 '' '#v=0,0,0,1e9,-150,28' <url> [--uncapped] [--detail=N]
 node scripts/capture_blackholes.mjs ../figures 'http://localhost:5173/?gputime' 1  # black holes -> figures/bh-*.png, GPU ms
 ../.venv/bin/python -I scripts/measure_blackholes.py ../figures        # shadow radius vs Synge, disk asymmetry PA
+node scripts/perf_firstpaint.mjs dist after --json=after.json   # first load of a build: fast / 1 MB/s / 0.3 MB/s (own server)
+node scripts/plot_perf.mjs before.json after.json ../figures/perf-firstpaint.png
+node scripts/capture_labels.mjs ../figures labels <url>        # GC from 5 / 7 kpc, Orion from 400 pc + label counts
+../.venv/bin/python -I ../scripts/make_sky_variants.py public/sky/gaia_dr3_sky_l9.jpg   # sky preview + WebP
 ```
 
 ### Solar System (`src/solar/`)
@@ -147,11 +151,44 @@ load. See the repo README, "Deploy".
       "visible": true, "colorMode": "star" | "galaxy", "magOffset": 0, "credit": "..." },
     { "id": "synthetic-stars", ..., "dev": true, "fallbackFor": "stars-gaia" },  // hidden once the real layer exists
     { "id": "milky-way-model", "type": "milky-way-model", ... },
-    { "id": "gaia-sky", "type": "sky", "image": "sky/gaia_dr3_sky_l9.jpg", "credit": "..." } ] }
+    { "id": "gaia-sky", "type": "sky", "image": "sky/gaia_dr3_sky_l9.jpg",       // JPEG: fallback
+      "imageWebp": "sky/gaia_dr3_sky_l9.webp", "preview": "sky/gaia_dr3_sky_l9_lo.jpg", "credit": "..." } ] }
 ```
 
 `colorMode` selects how the `lum` byte is decoded (contract section 3) and which sprite
 profile is drawn: crisp round PSF for stars, soft random-axis ellipse for galaxies.
+
+### First load
+
+Only what the first frame needs is in the entry: the app (`index-*.js`), `three` (three/webgpu,
+~0.9 MB of the ~1.2 MB, its own chunk so it stays cached across app releases) and `vendor`
+(astronomy-engine). Dynamic imports, fetched later: the docs reader and markdown renderer (on the
+first open), `docs/store.ts` (first info card), the black hole module (after the catalogues), the
+HiPS cutout code (first galaxy thumbnail), the Show me tour (first click) and `window.__atlas`
+(`debug/api.ts`, after the catalogues). Solar System textures are fetched per body once its true
+radius passes 0.4 CSS px, so none at the default view. The layers panel lists every layer from
+`layers.json` at once, each row in a loading state until its `meta.json` is in; metas and
+catalogues load in parallel. The sky comes as a 1440×720 JPEG preview (190 KB), then, after the
+metas and catalogues, the full image as WebP (2985 KB, 40.7 dB PSNR against the JPEG master), with
+the JPEG (3666 KB) as fallback.
+
+Measured 2026-11-14 with `scripts/perf_firstpaint.mjs` (production build served gzip-like GitHub
+Pages, headless Chrome WebGPU, 1440×900, default view; medians of 3 runs local, 2 throttled):
+
+| | local | 1 MB/s, 100 ms | 0.3 MB/s, 100 ms |
+|---|---|---|---|
+| first frame | 145 → 116 ms | 773 → 746 ms | 1839 → 1774 ms |
+| layers panel lists the layers | 177 → 133 ms | 2364 → 852 ms | 6518 → 1888 ms |
+| every layer meta in | 177 → 141 ms | 2364 → 1426 ms | 6518 → 4937 ms |
+| first sky image | 169 → 138 ms | 25.5 → 2.8 s | 88.1 → 7.4 s |
+| catalogues in | 261 → 204 ms | 8.0 → 5.3 s | 25.0 → 16.4 s |
+| full sky image | 169 → 218 ms | 25.5 → 24.6 s | 88.1 → 83.6 s |
+
+JS + CSS before the first frame: 1 file + CSS, 1,264 kB raw / 372 kB gzip → 5 files, 1,228 kB /
+358 kB. Requests: 21 → 13 before the first frame; shell requests (all but tile `.bin` and
+external hosts) 43 → 39, 7.09 → 4.90 MB. The full sky stays slow on a slow link because the tile
+streamer's ~230 `.bin` requests (48 MB at the default view) share the bandwidth; DevTools
+throttling shares it per request, not exactly as a real link does.
 
 ## Architecture
 
@@ -168,7 +205,8 @@ main.ts ── App: renderer init (WebGPU → WebGL2), on-demand frame loop with
  ├─ render/pick.ts       GPU picking: 1×1 cropped projection into RGBA32F, one pick in flight
  ├─ render/post.ts       TSL RenderPipeline: linear HDR → asinh → explicit sRGB encode; Gaia sky sphere
  ├─ render/milkyway.ts   procedural MW model (Reid et al. 2019 arms), TSL sprites
- ├─ render/labels.ts     DOM labels: scale windows, padded measured-box declutter, 300 ms fades
+ ├─ render/labels.ts     DOM labels: scale windows, padded measured-box declutter, 300 ms fades, per-kind
+ │                       caps, importance-scaled spacing, context-first, "12 pulsars" badges (unit-tested)
  ├─ render/galaxyShapes.ts  resolved nearby galaxies: dot → oriented disk → DSS thumbnail (TSL, ≤16 slots)
  ├─ render/galaxyGeom.ts    LOD weights, disk axes from PA + inclination, profiles (pure, unit-tested)
  ├─ render/galaxyMask.ts    shared dot-weight mask applied to galaxy tile points (TSL Loop)

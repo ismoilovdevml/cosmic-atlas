@@ -10,12 +10,11 @@ import './ui/okina';
 
 import * as THREE from 'three/webgpu';
 import {
-  catalogKey, isPointLayer, loadCatalogs, loadManifest, loadTilesIndex, type CatalogEntry, type LayerConfig, type Manifest, type TilesIndex,
+  catalogKey, isPointLayer, loadCatalogs, loadManifest, loadTilesIndex, type CatalogEntry, type LayerConfig, type Manifest, type ModelLayerConfig, type TilesIndex,
 } from './data/manifest';
 import { DEFAULT_TILE_BASE, applyTileBase, resolveTileBase } from './data/tilebase';
 import { normName, resolveSesame, searchCatalog, viewDistanceFor, type Resolved } from './data/resolve';
-import { DocsPanel } from './docs/panel';
-import { loadArticle } from './docs/store';
+import { LazyDocsPanel, loadArticleLazy } from './docs/lazy';
 import { decimalSep, fmtFixed, getLang, initLang, onLangChange, t, tOr } from './i18n';
 import { applyI18n, mountLangSwitch } from './i18n/dom';
 import { galToLB, galToRadec, radecDistToGal, type Vec3 } from './math/frames';
@@ -28,7 +27,7 @@ import { NavController, type View } from './nav/controller';
 import { absMagFromLum, galaxyRadiusPc } from './render/brightness';
 import { DEFAULT_EXPOSURE, binCounts, exposureFromCounts, smoothExposure, type SamplePoints } from './render/exposure';
 import { DENSITY_SPRITE_PX, SLAB_OFF } from './render/pointMaterial';
-import { LabelLayer, type LabelItem } from './render/labels';
+import { LabelLayer, isNotable, type LabelItem } from './render/labels';
 import { MilkyWayModel, R0_PC } from './render/milkyway';
 import { GalaxyShapes, type GalaxyShapesDoc } from './render/galaxyShapes';
 import { GpuPicker } from './render/pick';
@@ -37,12 +36,13 @@ import { formatHash, parseHash, type SelRef } from './state/hash';
 import { factRows, planetRows } from './objects/facts';
 import { PC_PER_KMS_MYR, VEL_Q, closestApproach, findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
-import { SCALE_TOUR, SHOW_ME_TOUR, needsHere, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
+import { SCALE_TOUR, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
 import { ScaleRail } from './ui/rail';
 // --- Solar System hook (web/src/solar): live planets, time control, probes
 import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, observerGalacticXyz, solarInfo, tr as solarTr, type SolarEntry } from './solar';
-// --- Black hole hook (web/src/blackhole): lensing post pass, disk, HUD, approach to 1.5 r_s
-import { BlackHoleFeature } from './blackhole';
+// --- Black hole hook (web/src/blackhole): lensing post pass, disk, HUD, approach to 1.5 r_s.
+// Loaded after the catalogues (dynamic import): nothing of it is needed for the first frame.
+import type { BlackHoleFeature } from './blackhole';
 import { StarEpoch } from './solar/epoch';
 import { formatEpoch } from './solar/timebar';
 
@@ -67,7 +67,7 @@ interface Selection {
   hi?: number;
 }
 
-class App {
+export class App {
   renderer!: THREE.WebGPURenderer;
   backend: 'WebGPU' | 'WebGL2' = 'WebGL2';
   scene = new THREE.Scene();
@@ -80,7 +80,7 @@ class App {
   mw = new MilkyWayModel();
   shapes = new GalaxyShapes();
   mwCfg: LayerConfig | null = null;
-  skyCfg: LayerConfig | null = null;
+  skyCfg: ModelLayerConfig | null = null;
   sky = { visible: true, opacity: 1, loaded: false };
   labels!: LabelLayer;
   rail!: ScaleRail;
@@ -97,28 +97,28 @@ class App {
   slabMpc = 0;
   private slabWanted = 80;
   /** galaxy density-mode exposure (smoothed) and when it was last estimated */
-  private densityK = 0;
+  densityK = 0;
   private densityTarget = 0;
   private lastExposureT = 0;
-  private densityInfo = { p98: 0, k: 0 };
+  densityInfo = { p98: 0, k: 0 };
   private renders = 0;
-  private totalRenders = 0;
+  totalRenders = 0;
   private fpsT0 = performance.now();
   private lastT = performance.now();
   private dpr = 1;
   private frustum = new THREE.Frustum();
   private pv = new THREE.Matrix4();
-  private selection: Selection | null = null;
+  selection: Selection | null = null;
   private hashTimer = 0;
   private lastUi = 0;
   private tourAbort: ((restoreView: boolean) => void) | null = null;
-  private dirty = true;
+  dirty = true;
   private skyAmount = 0;
   private mwFade = 0;
   private inFlight = 0;
   private pendingSel: SelRef | null = null;
   private layersReady: Promise<void> = Promise.resolve();
-  docs!: DocsPanel;
+  docs!: LazyDocsPanel;
   /** live Solar System bodies (registered by the Solar System module) */
   bodies: BodyProvider | null = null;
   /** re-renders the open info card (language change) */
@@ -138,14 +138,15 @@ class App {
   /** catalogue labels that sit at today's position (hidden while the epoch is far from now) */
   private epochLabels: LabelItem[] = [];
   private solarInfoT = 0;
-  // --- Black hole hook
-  bh = new BlackHoleFeature();
+  // --- Black hole hook (null until its chunk has loaded, see loadBlackHoles)
+  bh: BlackHoleFeature | null = null;
+  private bhReady: Promise<void> | null = null;
 
   async start() {
     initLang();
     applyI18n();
     mountLangSwitch($('lang'));
-    this.docs = new DocsPanel();
+    this.docs = new LazyDocsPanel(); // reader + markdown renderer are fetched on the first open
     this.docs.onFocus = (name) => this.focusByName(name);
     this.docs.onLayer = (id) => this.showLayer(id);
     this.docs.onChange = () => this.scheduleHash();
@@ -179,6 +180,9 @@ class App {
     this.picker = new GpuPicker(this.renderer, this.camera);
     this.nav = new NavController(canvas, this.camera);
     this.labels = new LabelLayer($('labels'));
+    this.labels.clusterText = (family, n) => tOr(`labels.cluster.${family}`, t('labels.cluster.other', { n }), { n });
+    this.labels.clusterHint = (label) => t('labels.clusterHint', { label });
+    this.labels.onCluster = (members) => this.flyToCluster(members);
     this.nav.addGestureSource($('labels'));
     this.rail = new ScaleRail($('rail'), $('rail-ticks'), $('rail-mark'));
     this.scene.add(this.mw.points);
@@ -196,13 +200,6 @@ class App {
       this.dirty = true;
     };
     this.solar.onSelect = (e) => this.showSolar(e);
-    // --- Black hole hook: lens pipeline, HUD; flights and re-renders go through the app
-    this.bh.attach(this.post, this.backend);
-    this.bh.onChange = () => (this.dirty = true);
-    this.bh.onFly = (v) => {
-      this.stopTour(false);
-      return this.nav.flyTo(v);
-    };
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
@@ -224,6 +221,10 @@ class App {
 
     requestAnimationFrame(this.loop);
 
+    // the tile index is fetched alongside layers.json from the origin that applies when layers.json
+    // has no tilesBase (the usual case); only a manifest tilesBase costs a second, serial request
+    const guessBase = resolveTileBase(location.search, import.meta.env.VITE_TILE_BASE, undefined, location.href);
+    const guessIndex = loadTilesIndex(guessBase);
     try {
       this.manifest = await loadManifest();
     } catch (e) {
@@ -233,11 +234,12 @@ class App {
     // tile origin: ?tiles= > VITE_TILE_BASE > layers.json tilesBase > tiles/ (src/data/tilebase.ts)
     this.tileBase = resolveTileBase(location.search, import.meta.env.VITE_TILE_BASE, this.manifest.tilesBase, location.href);
     this.manifest = applyTileBase(this.manifest, this.tileBase);
-    this.tilesIndex = await loadTilesIndex(this.tileBase);
+    this.tilesIndex = this.tileBase === guessBase ? await guessIndex : await loadTilesIndex(this.tileBase);
+    // panel rows appear at once (per-row loading state); metas and catalogues load in parallel
     this.layersReady = this.initLayers(h.layers);
-    await this.layersReady;
-    await this.initCatalogs();
-    this.exposeDebugApi();
+    await Promise.all([this.layersReady, this.initCatalogs()]);
+    this.loadSkyFull(); // after the metas and catalogues, so a slow link spends its first seconds on them
+    void this.exposeDebugApi();
     if (this.pendingSel) void this.restoreSelection(this.pendingSel);
     if (h.layer) await this.showLayer(h.layer);
     if (h.focus) this.focusByName(h.focus);
@@ -279,41 +281,80 @@ class App {
       } else if (cfg.type === 'sky') {
         this.skyCfg = cfg;
         this.sky.visible = vis ?? cfg.visible;
-        this.loadSky(cfg.image ?? 'sky/gaia_dr3_sky_l9.jpg');
+        // progressive: the small preview first (~200 KB), the full image once metas and catalogues are in
+        if (cfg.preview) this.loadSky([cfg.preview], 1);
+        else this.loadSkyFull();
       }
     }
     if (hashLayers?.solar !== undefined) this.solar.visible = hashLayers.solar; // --- Solar System hook
     const known = this.tilesIndex ? new Set(this.tilesIndex.layers) : undefined;
-    await Promise.all(this.layers.map((L) => L.init(known)));
-    // dev layers step aside when the real layer they stand in for exists
-    for (const L of this.layers) {
-      const fb = L.cfg.fallbackFor;
-      if (fb) L.superseded = this.layers.some((o) => (Array.isArray(fb) ? fb.includes(o.cfg.id) : o.cfg.id === fb) && o.status === 'ready');
-      if (L.status === 'error') console.error(`[layers] ${L.cfg.id}: ${L.error}`);
-    }
-    this.streamer.layers = this.layers;
+    const inits = this.layers.map((L) => L.init(known)); // 'missing' is set synchronously from the index
+    this.updateSuperseded(known);
+    this.streamer.layers = this.layers; // pending layers are inactive until their meta.json is in
     this.streamer.setEpoch(this.epoch.myr);
     this.renderLayerPanel();
-    this.dirty = true;
+    await Promise.all(inits.map((p, i) => p.then(() => {
+      const L = this.layers[i];
+      if (L.status === 'error') console.error(`[layers] ${L.cfg.id}: ${L.error}`);
+      this.updateSuperseded(known);
+      this.renderLayerPanel();
+      this.dirty = true;
+    })));
   }
 
-  private loadSky(url: string) {
+  /**
+   * Dev layers step aside when the real layer they stand in for exists. While the real layer's
+   * meta.json is still loading, the tile index decides (no index: assume it will load), so a
+   * synthetic row does not flash up and vanish again; a real layer that then fails brings it back.
+   */
+  private updateSuperseded(known?: Set<string>) {
+    for (const L of this.layers) {
+      if (!L.cfg.fallbackFor) continue;
+      const real = this.layers.find((o) => o.cfg.id === L.cfg.fallbackFor);
+      L.superseded = !!real && (real.status === 'ready' || (real.status === 'pending' && (!known || known.has(real.cfg.path.replace(/\/$/, '').split('/').pop()!))));
+    }
+  }
+
+  /** sky image level: 0 none, 1 preview, 2 full */
+  private skyLevel = 0;
+
+  /** the full-resolution sky: WebP when the manifest lists one, the JPEG if that fails to load */
+  private loadSkyFull() {
+    const cfg = this.skyCfg;
+    if (!cfg || this.skyLevel >= 2) return;
+    const full = cfg.image ?? 'sky/gaia_dr3_sky_l9.jpg';
+    this.loadSky(cfg.imageWebp ? [cfg.imageWebp, full] : [full], 2);
+  }
+
+  /** load the first URL of `urls` that works; a level never replaces a higher one already shown */
+  private loadSky(urls: string[], level: number) {
+    const [url, ...rest] = urls;
     new THREE.TextureLoader().load(
       url,
       (tex) => {
+        if (level <= this.skyLevel) return void tex.dispose();
         tex.colorSpace = THREE.SRGBColorSpace; // decoded to linear on sampling
         tex.generateMipmaps = true;
         tex.minFilter = THREE.LinearMipmapLinearFilter;
         tex.magFilter = THREE.LinearFilter;
         const img = tex.image as HTMLImageElement;
+        const old = this.skyTex;
         this.post.setSky(tex, img.width, img.height);
+        this.skyTex = tex;
+        this.skyLevel = level;
+        old?.dispose();
         this.sky.loaded = true;
         this.dirty = true;
       },
       undefined,
-      () => console.warn(`[sky] could not load ${url}`),
+      () => {
+        if (rest.length) this.loadSky(rest, level);
+        else console.warn(`[sky] could not load ${url}`);
+      },
     );
   }
+
+  private skyTex: THREE.Texture | null = null;
 
   private layerVisibility(): Record<string, boolean> {
     const out: Record<string, boolean> = {};
@@ -324,7 +365,7 @@ class App {
     return out;
   }
 
-  private setLayerVisible(id: string, on: boolean) {
+  setLayerVisible(id: string, on: boolean) {
     const L = this.layers.find((l) => l.cfg.id === id);
     if (L) {
       L.visible = on;
@@ -341,16 +382,28 @@ class App {
     this.dirty = true;
   }
 
+  /**
+   * Layer rows from layers.json, before any meta.json is in: a pending layer gets a row in its
+   * loading state, and each row is rebuilt only when its content changes (meta arrived, language),
+   * so a click on one row is not lost to another layer finishing.
+   */
   private renderLayerPanel() {
     const list = $('layer-list');
-    list.textContent = '';
     const missing: string[] = [];
+    const want: HTMLLIElement[] = [];
+    const old = new Map([...list.children].map((li) => [(li as HTMLElement).dataset.id, li as HTMLLIElement]));
     const row = (opts: {
       id: string; title: string; swatch: string; tag?: [string, string]; meta: string; checked: boolean; opacity: number;
-      onOpacity: (v: number) => void;
+      onOpacity: (v: number) => void; loading?: boolean;
     }) => {
+      const sig = JSON.stringify([getLang(), opts.title, opts.swatch, opts.tag ?? null, opts.meta, !!opts.loading]);
+      const prev = old.get(opts.id);
+      if (prev && prev.dataset.sig === sig) return void want.push(prev);
       const li = document.createElement('li');
-      li.className = 'layer';
+      li.className = opts.loading ? 'layer loading' : 'layer';
+      li.dataset.id = opts.id;
+      li.dataset.sig = sig;
+      if (opts.loading) li.setAttribute('aria-busy', 'true');
       const cid = `lyr-${opts.id}`;
       li.innerHTML = `
         <label class="layer-row" for="${cid}">
@@ -380,7 +433,7 @@ class App {
         opts.onOpacity(+rg.value);
         this.dirty = true;
       });
-      list.appendChild(li);
+      want.push(li);
     };
 
     const title = (c: LayerConfig) => layerTitle(c);
@@ -389,7 +442,15 @@ class App {
         missing.push(L.status === 'error' ? t('layers.invalid', { title: title(L.cfg) }) : title(L.cfg));
         continue;
       }
-      if (L.status !== 'ready' || L.superseded) continue;
+      if (L.superseded) continue;
+      if (L.status === 'pending') {
+        row({
+          id: L.cfg.id, title: title(L.cfg), swatch: L.kind, tag: L.cfg.dev ? ['synthetic', t('tag.synthetic')] : undefined,
+          meta: `${t('layers.loading')}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
+          checked: L.visible, opacity: L.opacity, onOpacity: (v) => (L.opacity = v), loading: true,
+        });
+        continue;
+      }
       const m = L.meta!;
       const fmtCount = (c: number) => (c >= 1e5 ? t('num.million', { n: fmtNum(c / 1e6, 3) }) : fmtFixed(c, 0));
       // lite tile sets (scripts/make_lite_tiles.py) say how much of the full layer they carry
@@ -430,6 +491,10 @@ class App {
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
       checked: this.solar.visible, opacity: this.solar.opacity, onOpacity: (v) => (this.solar.opacity = v),
     });
+    for (const li of [...list.children]) if (!want.includes(li as HTMLLIElement)) li.remove();
+    want.forEach((li, i) => {
+      if (list.children[i] !== li) list.insertBefore(li, list.children[i] ?? null);
+    });
     $('layer-missing').textContent = missing.length ? t('layers.notBuilt', { list: missing.join(', ') }) : '';
     $('credits').innerHTML = '';
     const credits = [
@@ -461,8 +526,26 @@ class App {
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
     this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
-    this.bh.setCatalog(this.catalog); // --- Black hole hook
     this.buildLabels();
+    void this.loadBlackHoles(); // --- Black hole hook
+  }
+
+  /** --- Black hole hook: fetch the module, then lens pipeline, HUD; flights and re-renders go through the app */
+  private loadBlackHoles(): Promise<void> {
+    this.bhReady ??= import('./blackhole').then((m) => {
+      const bh = new m.BlackHoleFeature();
+      bh.attach(this.post, this.backend);
+      bh.onChange = () => (this.dirty = true);
+      bh.onFly = (v) => {
+        this.stopTour(false);
+        return this.nav.flyTo(v);
+      };
+      bh.setCatalog(this.catalog);
+      this.bh = bh;
+      if (!$('info').hidden) this.infoRefresh?.(); // a card opened meanwhile gets its "Experience it" button
+      this.dirty = true;
+    }).catch((e) => console.error(`[black holes] module not loaded: ${(e as Error).message}`));
+    return this.bhReady;
   }
 
   /** map labels from the catalogues and the Milky Way model; rebuilt when the language changes */
@@ -490,11 +573,12 @@ class App {
         kind: e.kind,
         absMag: e.name === 'Sun' ? 4.83 : absMag,
         // the Sun is labelled up to Milky Way scale (the Solar System layer labels it closer in); whole-galaxy entries only beyond it
-        ...(e.name === 'Sun' ? { minScale: SOLAR_LABEL_MAX, maxScale: 2e5 } : /^milky way/i.test(e.name) ? { minScale: 2e5, maxScale: Infinity } : {}),
+        ...(e.name === 'Sun' ? { minScale: SOLAR_LABEL_MAX, maxScale: 2e5 } : isMw ? { minScale: 2e5, maxScale: Infinity, context: true } : {}),
+        notable: isNotable(e),
         onClick: () => this.showCatalogEntry(e),
       });
     }
-    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: t('view.milky-way'), xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5, sizePc: 15000,
+    if (!entries.some((e) => /^milky way/i.test(e.name))) items.push({ name: t('view.milky-way'), xyz: [R0_PC, 0, 0], kind: 'galaxy', absMag: -20.8, minScale: 2e5, sizePc: 15000, context: true,
       onClick: () => this.nav.flyTo({ focus: [R0_PC, 0, 0], dist: 6e4, pitch: 1.5 }) });
     for (const m of this.mw.labels) items.push({ name: tOr(MW_LABEL_KEYS[m.name] ?? '', m.name), xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
@@ -504,6 +588,19 @@ class App {
     this.applyEpochLabels();
     if (this.hereLabel) items.push(this.hereLabel);
     this.dirty = true;
+  }
+
+  /** a label badge ("12 pulsars") was clicked: fly toward its members until they spread out */
+  private flyToCluster(members: LabelItem[]) {
+    if (!members.length) return;
+    this.stopTour(false);
+    const c: Vec3 = [0, 0, 0];
+    for (const m of members) for (let k = 0; k < 3; k++) c[k] += m.xyz[k] / members.length;
+    const rms = Math.sqrt(members.reduce((a, m) => a + (m.xyz[0] - c[0]) ** 2 + (m.xyz[1] - c[1]) ** 2 + (m.xyz[2] - c[2]) ** 2, 0) / members.length);
+    const cam = this.nav.camPos();
+    const r = Math.hypot(c[0] - cam[0], c[1] - cam[1], c[2] - cam[2]);
+    // members sit within ~80 px of each other: a quarter of the distance spreads them ~4x
+    void this.nav.flyTo({ focus: c, dist: Math.max(Math.min(r / 4, rms * 3), r / 12, 1e-3) }, { durationScale: 0.7 });
   }
 
   /** D25 axes / PA / inclination per catalogue galaxy (scripts/build_galaxy_shapes.py) */
@@ -521,7 +618,7 @@ class App {
   }
 
   /** catalogue entry by any name or alias, with catalogue-id normalisation (M81 = MESSIER081) */
-  private findEntry(name: string): CatalogEntry | null {
+  findEntry(name: string): CatalogEntry | null {
     const k = catalogKey(name);
     return this.catalog.find((e) => [e.name, ...(e.alt ?? [])].some((n) => catalogKey(n) === k)) ?? null;
   }
@@ -569,7 +666,7 @@ class App {
     }
     this.nav.applyToCamera();
     // --- Black hole hook: lens uniforms, HUD, keep the camera outside 1.5 r_s (may move the focus)
-    if (this.bh.update({ nav: this.nav, camera: this.camera, pxPerRad: this.pxPerRad(), dt, width: window.innerWidth, height: window.innerHeight })) this.dirty = true;
+    if (this.bh?.update({ nav: this.nav, camera: this.camera, pxPerRad: this.pxPerRad(), dt, width: window.innerWidth, height: window.innerHeight })) this.dirty = true;
     const cam = this.nav.camPos();
     const D = this.nav.view.dist;
     // --- Solar System hook: positions at the simulation time; re-render when something moved on screen
@@ -643,8 +740,8 @@ class App {
     this.skyAmount = this.sky.visible && this.sky.loaded ? this.sky.opacity * skyFade : 0;
 
     // --- Black hole hook: environment cube for rays bent out of the frame, then the lensed pipeline
-    this.bh.captureEnv(this.renderer, this.scene, (px, dpr) => this.setSpritePx(cam, px, dpr), () => this.setSpritePx(cam, pxPerRad, this.dpr));
-    this.post.render(this.camera, this.skyAmount, this.bh.lensActive);
+    this.bh?.captureEnv(this.renderer, this.scene, (px, dpr) => this.setSpritePx(cam, px, dpr), () => this.setSpritePx(cam, pxPerRad, this.dpr));
+    this.post.render(this.camera, this.skyAmount, this.bh?.lensActive ?? false);
     this.renders++;
     this.totalRenders++;
     // frames-in-flight cap (WebGPU): count submitted work until the queue reports it done
@@ -780,7 +877,7 @@ class App {
     return out;
   }
 
-  private project(p: Vec3, cam: Vec3): { x: number; y: number } | null {
+  project(p: Vec3, cam: Vec3): { x: number; y: number } | null {
     const v = new THREE.Vector3(p[0] - cam[0], p[1] - cam[1], p[2] - cam[2]).applyMatrix4(this.camera.matrixWorldInverse);
     if (v.z >= 0) return null; // behind the camera (NDC z alone rounds to 1 with a tiny near plane)
     v.applyMatrix4(this.camera.projectionMatrix);
@@ -837,7 +934,7 @@ class App {
 
   // ------------------------------------------------------------------ picking (GPU)
 
-  private async pick(cx: number, cy: number, fly: boolean) {
+  async pick(cx: number, cy: number, fly: boolean) {
     // --- Solar System hook: bodies and probes are picked on the CPU, before the GPU point pick
     const se = this.solar.pickAt(cx, cy);
     if (se) {
@@ -973,7 +1070,7 @@ class App {
     ];
   }
 
-  private showCatalogEntry(e: CatalogEntry) {
+  showCatalogEntry(e: CatalogEntry) {
     if ((e as unknown as SolarEntry).solar) return this.showSolar(e as unknown as SolarEntry); // --- Solar System hook
     const rows: [string, string][] = [];
     if (e.alt?.length) rows.push([t('row.also'), e.alt.slice(0, 3).join(', ')]);
@@ -1064,7 +1161,7 @@ class App {
       links.appendChild(a);
     }
     $('info-fly').onclick = () => void this.nav.flyTo(o.fly);
-    this.bh.infoFor(o.title, $('info-fly').parentElement!, this.nav); // --- Black hole hook: "Experience it" button
+    this.bh?.infoFor(o.title, $('info-fly').parentElement!, this.nav); // --- Black hole hook: "Experience it" button
     $('info').hidden = false;
     document.body.classList.add('has-info');
     this.scheduleHash();
@@ -1080,7 +1177,7 @@ class App {
     if (!slug) return;
     more.setAttribute('aria-label', t('info.learnMoreLabel', { title }));
     more.onclick = () => void this.docs.open(slug);
-    void loadArticle(slug, getLang()).then((a) => {
+    void loadArticleLazy(slug, getLang()).then((a) => {
       if (my !== this.infoToken) return;
       if (!a) {
         more.hidden = true;
@@ -1145,7 +1242,7 @@ class App {
   // ------------------------------------------------------------------ Solar System hook
 
   /** info card for a Solar System body or probe (rows live: refreshed while time runs) */
-  private showSolar(e: SolarEntry) {
+  showSolar(e: SolarEntry) {
     const info = solarInfo(this.solar, e);
     const fly = this.solar.viewFor(e);
     this.solarSel = e;
@@ -1159,7 +1256,7 @@ class App {
   }
 
   /** fly to a body, then keep the focus on it while it moves */
-  private flySolar(e: SolarEntry, view?: Partial<View>) {
+  flySolar(e: SolarEntry, view?: Partial<View>) {
     this.solar.attach(null);
     const id = this.solar.bodyIdOf(e);
     void this.nav.flyTo(view ?? this.solar.viewFor(e)).then((ok) => {
@@ -1629,6 +1726,7 @@ class App {
     } else if (!this.here) {
       this.status(t('showme.denied', { msg: 'no geolocation' }), 'warn');
     }
+    const { SHOW_ME_TOUR, needsHere } = await import('./tour/showme');
     const tour = this.here ? SHOW_ME_TOUR : { ...SHOW_ME_TOUR, beats: SHOW_ME_TOUR.beats.filter((b) => !needsHere(b)) };
     await this.runTour(tour);
   }
@@ -1795,145 +1893,11 @@ class App {
 
   // ------------------------------------------------------------------ test hooks
 
-  private exposeDebugApi() {
-    (window as unknown as { __atlas: unknown }).__atlas = {
-      stats: () => ({ backend: this.backend, fps: this.fps, ...this.streamer.stats, budget: this.streamer.pointBudget, view: this.nav.view, slab: this.slabMpc,
-        selection: this.selection ? { title: this.selection.title, ref: this.selection.ref, lo: this.selection.lo, hi: this.selection.hi } : null,
-        layers: this.layers.map((L) => ({ id: L.cfg.id, status: L.status, active: L.active, count: L.meta?.count ?? 0 })) }),
-      setView: (v: Partial<View>) => this.nav.setView(v),
-      flyTo: (v: Partial<View>) => this.nav.flyTo(v),
-      pickAt: (x: number, y: number) => this.pick(x, y, false),
-      setContinuous: (on: boolean) => (this.continuous = on),
-      setSlab: (halfMpc: number) => this.setSlab(halfMpc),
-      density: () => ({ ...this.densityInfo, kSmoothed: this.densityK }),
-      setExposure: (mag: number) => {
-        this.exposure = mag;
-        this.dirty = true;
-      },
-      setLayer: (id: string, on: boolean) => this.setLayerVisible(id, on),
-      /** star epoch, Myr from now (the 4D time slider) */
-      setEpoch: (myr: number) => this.epoch.set(myr),
-      epoch: () => this.epoch.myr,
-      /**
-       * test hook: the brightest on-screen moving point of a layer, its catalogue id and its CPU-moved
-       * position projected to CSS px (to check that the GPU pick finds it at the same place)
-       */
-      movedProbe: async (layerId: string) => {
-        const cam = this.nav.camPos();
-        let best: { id: string; x: number; y: number; xyz: Vec3; lum: number } | null = null;
-        for (const n of this.streamer.drawn()) {
-          if (n.layer.cfg.id !== layerId || !n.data || !this.streamer.moving(n) || !n.velData) continue;
-          const ext = await n.layer.loadExt(n);
-          const sv = n.layer.meta!.velocity!.sunVelocity;
-          const k = this.epoch.myr * PC_PER_KMS_MYR;
-          for (let i = 0; i < n.meta.count; i++) {
-            const lum = n.data.rgbl[i * 4 + 3];
-            if (best && lum <= best.lum) continue;
-            const c = n.meta.center;
-            const p = n.data.positions;
-            const v = n.velData;
-            const xyz: Vec3 = [0, 1, 2].map((a) => c[a] + p[i * 3 + a] + (v[i * 4 + a] - sv[a]) * k) as Vec3;
-            const s = this.project(xyz, cam);
-            if (!s || s.x < 40 || s.y < 40 || s.x > window.innerWidth - 40 || s.y > window.innerHeight - 200) continue;
-            best = { id: readExtRecord(ext, i, n.layer.extStride).id.toString(), x: s.x, y: s.y, xyz, lum };
-          }
-        }
-        return best;
-      },
-      shapes: () => this.shapes.stats(),
-      /** view of a catalogue galaxy from the Sun's side, its D25 major axis filling `fill` of the height */
-      galaxyView: (name: string, fill = 0.6, fromSun = false) => {
-        const e = this.findEntry(name);
-        const it = e ? this.shapes.itemFor(e) : null;
-        if (!e || !e.xyz || !it) return null;
-        const d = Math.hypot(...e.xyz);
-        const s = e.xyz.map((v) => v / d);
-        // fromSun: camera at the Sun (the Earth view); the caller narrows the field with setFov(fovDeg)
-        const fovDeg = (2 * Math.atan(it.R / d / fill) * 180) / Math.PI;
-        if (fromSun) return { focus: e.xyz.slice(), dist: d * (1 - 1e-9), yaw: Math.atan2(-s[1], -s[0]), pitch: Math.asin(-s[2]), fovDeg };
-        const dist = (2 * it.R) / (fill * 2 * Math.tan((this.camera.fov * Math.PI) / 360));
-        return { focus: e.xyz.slice(), dist, yaw: Math.atan2(-s[1], -s[0]), pitch: Math.asin(-s[2]) };
-      },
-      /** CSS-px screen position of a sky offset (arcmin north / east) from a catalogue object, seen from the camera */
-      skyPoint: (name: string, northArcmin: number, eastArcmin: number) => {
-        const e = this.findEntry(name);
-        if (!e || !e.xyz || e.ra === undefined || e.dec === undefined) return null;
-        const dec = e.dec + northArcmin / 60;
-        const ra = e.ra + eastArcmin / 60 / Math.cos((e.dec * Math.PI) / 180);
-        return this.project(radecDistToGal(ra, dec, e.dist_pc), this.nav.camPos());
-      },
-      /** vertical field of view in degrees (default 55); narrow fields show the Earth view of a galaxy */
-      setFov: (deg: number) => {
-        this.camera.fov = deg;
-        this.camera.updateProjectionMatrix();
-        this.dirty = true;
-      },
-      showEntry: (name: string) => {
-        const e = this.findEntry(name);
-        if (e) this.showCatalogEntry(e);
-        return !!e;
-      },
-      setSky: (on: boolean) => this.setLayerVisible(this.skyCfg?.id ?? 'gaia-sky', on),
-      // --- Solar System hook (captures / tests)
-      solar: {
-        entries: () => this.solar.entries.map((e) => ({ name: e.name, alt: e.alt, kind: e.kind, distAU: e.dist_pc / 4.84813681109536e-6 })),
-        go: (name: string, opts: { dist?: number; yawDeg?: number; pitchDeg?: number; instant?: boolean } = {}) => {
-          const e = this.solar.entries.find((x) => x.name === name || x.alt.includes(name));
-          if (!e) return false;
-          const v = { ...this.solar.viewFor(e), ...(opts.dist ? { dist: opts.dist } : {}) };
-          if (opts.yawDeg !== undefined) v.yaw += (opts.yawDeg * Math.PI) / 180;
-          if (opts.pitchDeg !== undefined) v.pitch = (opts.pitchDeg * Math.PI) / 180;
-          this.showSolar(e);
-          if (opts.instant) {
-            this.nav.setView(v);
-            this.solar.attach(this.solar.bodyIdOf(e));
-          } else this.flySolar(e, v);
-          return true;
-        },
-        setTime: (iso: string) => this.solar.clock.set(Date.parse(iso)),
-        setSpeed: (s: number) => this.solar.clock.setSpeed(s),
-        pause: (p: boolean) => this.solar.clock.setPaused(p),
-        now: () => new Date(this.solar.clock.now()).toISOString(),
-        pickAt: (x: number, y: number) => this.solar.pickAt(x, y)?.name ?? null,
-        screen: () => Object.fromEntries(this.solar.bodies.map((b) => [b.def.id, b.screen])),
-        search: (q: string) => searchCatalog(this.catalog, q).map((r) => `${r.entry.name} <- ${r.matched}`),
-        layer: this.solar,
-        lookDown: (lat: number, lon: number, altKm = 3000) => {
-          this.nav.setView(flyTargetForLatLon(lat, lon, this.solar.clock.now(), altKm));
-          this.solar.attach('earth');
-        },
-      },
-      // --- Black hole hook (captures / tests)
-      bh: { ...this.bh.debugApi(), experience: (name: string) => {
-        const h = this.bh.find(name);
-        return h ? this.bh.experience(h, this.nav) : Promise.resolve(false);
-      }, setView: (v: Partial<View>) => {
-        this.nav.minDist = 1e-14; // the black hole hook sets the real floor (1.5 r_s) on the next frame
-        this.nav.setView(v);
-      },
-      /** mean GPU time per rendered frame (ms) over `ms` of continuous rendering; needs ?gputime (timestamp queries) */
-      gpuMs: async (ms = 3000) => {
-        // three resolves the GPU duration of the most recent frame: sample it once per frame
-        this.continuous = true;
-        const t0 = performance.now();
-        const r0 = this.totalRenders;
-        const v: number[] = [];
-        while (performance.now() - t0 < ms) {
-          await new Promise((res) => requestAnimationFrame(res));
-          const d = await this.renderer.resolveTimestampsAsync('render');
-          if (typeof d === 'number' && d > 0) v.push(d);
-        }
-        this.continuous = false;
-        v.sort((a, b) => a - b);
-        const q = (p: number) => (v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : null);
-        return { medianMs: q(0.5), p90Ms: q(0.9), samples: v.length, frames: this.totalRenders - r0, wallMs: performance.now() - t0 };
-      } },
-      setUncertainty: (on: boolean) => {
-        this.streamer.uncertainty = on;
-        ($('unc-on') as HTMLInputElement).checked = on;
-        this.dirty = true;
-      },
-    };
+  /** test / capture hooks (window.__atlas), in their own chunk; waits for the black hole module */
+  private async exposeDebugApi() {
+    await this.loadBlackHoles();
+    const m = await import('./debug/api');
+    m.installDebugApi(this);
   }
 }
 

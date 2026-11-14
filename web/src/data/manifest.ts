@@ -31,8 +31,12 @@ export interface ModelLayerConfig {
   title: string;
   visible: boolean;
   credit?: string;
-  /** sky only: image URL and its pixel size */
+  /** sky only: full-resolution image URL (JPEG: the fallback every browser decodes) */
   image?: string;
+  /** sky only: the same image as WebP (smaller), tried before `image` */
+  imageWebp?: string;
+  /** sky only: small preview shown until the full image is in (progressive loading) */
+  preview?: string;
 }
 
 export type LayerConfig = PointLayerConfig | ModelLayerConfig;

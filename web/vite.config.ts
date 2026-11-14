@@ -58,7 +58,21 @@ function tiles(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [tiles()],
-  // three/webgpu (WebGPU + WebGL2 backends + TSL) is ~0.9 MB minified on its own
-  build: { target: 'es2022', chunkSizeWarningLimit: 1100 },
+  build: {
+    target: 'es2022',
+    // three/webgpu (WebGPU + WebGL2 backends + TSL) is ~0.9 MB minified on its own and gets its own
+    // vendor chunk (cached across app releases); everything else must stay well under this
+    chunkSizeWarningLimit: 1000,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'three', test: /[\\/]node_modules[\\/]three[\\/]/, priority: 20 },
+            { name: 'vendor', test: /[\\/]node_modules[\\/](?!three[\\/])/, priority: 10 },
+          ],
+        },
+      },
+    },
+  },
   server: { port: 5173, strictPort: false },
 });

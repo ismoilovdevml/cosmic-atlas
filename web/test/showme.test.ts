@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SHOW_ME_TOUR, needsHere, resolveBeat, type TourContext } from '../src/tour/tours';
+import { SHOW_ME_TOUR, needsHere } from '../src/tour/showme';
+import { resolveBeat, type TourContext } from '../src/tour/tours';
 import { flyTargetForLatLon } from '../src/solar';
 
 const base: TourContext = {

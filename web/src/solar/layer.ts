@@ -39,6 +39,8 @@ const FADE_PC: [number, number] = [0.05, 0.3];
 export const SOLAR_LABEL_MAX = 0.3;
 /** minimum drawn radius in device px (planets / small bodies) */
 const MIN_PX = { big: 2.2, small: 1.6 };
+/** true radius (CSS px) from which a body's textures are fetched (see queueTex) */
+const TEX_MIN_PX = 0.4;
 const ORBIT_SAMPLES = { planet: 2048, moon: 512 };
 const JD_UNIX0 = 2440587.5;
 
@@ -142,6 +144,8 @@ export class SolarSystem {
   private lastScreen = new Map<object, { x: number; y: number }>();
   private earth4k: 'no' | 'loading' | 'yes' = 'no';
   private loader = new THREE.TextureLoader();
+  /** texture loads per body, started once the body is resolved on screen (none at the first frame) */
+  private texQueue = new Map<BodyId, (() => void)[]>();
   private lastFollow: Vec3 | null = null;
   private orbitCursor = 0;
 
@@ -156,6 +160,13 @@ export class SolarSystem {
   }
 
   // ------------------------------------------------------------------ construction
+
+  /** a body's texture is fetched when it first spans TEX_MIN_PX on screen; until then its flat colour is drawn */
+  private queueTex(id: BodyId, file: string, onLoad: (t: THREE.Texture) => void) {
+    const q = this.texQueue.get(id) ?? [];
+    q.push(() => this.loadTex(file, onLoad));
+    this.texQueue.set(id, q);
+  }
 
   private loadTex(file: string, onLoad: (t: THREE.Texture) => void) {
     this.loader.load(`${this.assetBase}${file}`, (tex) => {
@@ -180,7 +191,7 @@ export class SolarSystem {
       const ph = new THREE.DataTexture(new Uint8Array([...new THREE.Color(def.color).toArray().map((v) => Math.round(v * 255)), 255]), 1, 1);
       ph.needsUpdate = true;
       texNode = texture(ph, uv());
-      this.loadTex(def.texture, (tex) => {
+      this.queueTex(def.id, def.texture, (tex) => {
         texNode.value = tex;
         this.drawnMs = NaN; // re-render
       });
@@ -190,7 +201,7 @@ export class SolarSystem {
       const blk = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
       blk.needsUpdate = true;
       nightNode = texture(blk, uv());
-      this.loadTex(def.nightTexture, (tex) => {
+      this.queueTex(def.id, def.nightTexture, (tex) => {
         nightNode.value = tex;
         this.drawnMs = NaN;
       });
@@ -278,7 +289,7 @@ export class SolarSystem {
     const ph = new THREE.DataTexture(new Uint8Array([200, 180, 150, 0]), 1, 1);
     ph.needsUpdate = true;
     const tex = texture(ph, uv());
-    this.loadTex(def.rings!.texture, (t) => {
+    this.queueTex(def.id, def.rings!.texture, (t) => {
       tex.value = t;
       this.drawnMs = NaN;
     });
@@ -541,6 +552,14 @@ export class SolarSystem {
       }
       const sc = vis > 0.05 ? project(p) : null;
       b.screen = sc ? { ...sc, rpx: (s / dist) * pxCss, dist } : null;
+      // true (not inflated) radius: the texture starts to show through the dot colour below ~1 device px
+      if (b.screen && vis > 0.003 && (b.rpc / dist) * pxCss > TEX_MIN_PX) {
+        const q = this.texQueue.get(b.def.id);
+        if (q) {
+          this.texQueue.delete(b.def.id);
+          for (const load of q) load();
+        }
+      }
       b.entry.dist_pc = Math.hypot(...p);
       // labels hide when the body sits within ~10 css px of its parent (LabelLayer: 2·size/r·f < 1)
       b.label.sizePc = b.def.id === 'sun' ? 1e-3 : sep / 20;

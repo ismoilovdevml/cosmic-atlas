@@ -101,6 +101,8 @@
       "title": "Gaia all-sky image",
       "visible": true,
       "image": "sky/gaia_dr3_sky_l9.jpg",
+      "imageWebp": "sky/gaia_dr3_sky_l9.webp",
+      "preview": "sky/gaia_dr3_sky_l9_lo.jpg",
       "credit": "Gaia DR3 integrated flux (ESA/Gaia/DPAC)"
     }
   ]
