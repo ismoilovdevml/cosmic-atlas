@@ -251,6 +251,7 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border-radius
   color: var(--ink-dim); background: rgba(4, 6, 11, 0.6); border: 1px solid var(--hairline); border-radius: var(--r-ctl);
   display: grid; grid-template-columns: auto auto; gap: 0 12px; pointer-events: none; }
 .stats b { color: var(--ink); font-weight: 500; text-align: right; }
+.stats[hidden] { display: none; }
 body.has-info .stats { top: auto; bottom: calc(96px + var(--timectl-h, 72px) + 8px); }
 
 .caption { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 14; margin: 0; max-width: min(560px, calc(100vw - 32px));
