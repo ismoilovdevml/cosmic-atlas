@@ -5,7 +5,7 @@
 
 Layout on the repo: <layer>/meta.json and <layer>/n/<name[:shard]>/<name><suffix>, so no folder holds
 more than a few hundred files (HF advises < 10k per folder). Files are hard-linked into a staging
-folder (no extra disk), then sent with upload_large_folder, which resumes after an interruption.
+folder (no extra disk), then sent with upload_folder (batched commits, resumes when re-run).
 
 Prints the base URL pinned to the uploaded commit, to pass to
   scripts/make_lite_tiles.py OUT --remote <layer>=<base>
@@ -90,7 +90,10 @@ def main() -> None:
     api = HfApi(token=token())
     repo = a.repo or f"{api.whoami()['name']}/cosmic-atlas-tiles"
     api.create_repo(repo, repo_type="dataset", exist_ok=True)
-    api.upload_large_folder(repo_id=repo, repo_type="dataset", folder_path=str(a.stage))
+    # huggingface_hub >= 1.0: upload_folder streams through hf_xet, commits big folders in batches and
+    # resumes when re-run; only this layer (and the card) are sent from the shared staging folder
+    api.upload_folder(repo_id=repo, repo_type="dataset", folder_path=str(a.stage),
+                      allow_patterns=[f"{layer}/**", "README.md"], commit_message=f"Upload {layer} tiles")
     sha = api.repo_info(repo, repo_type="dataset").sha
     print(f"uploaded to https://huggingface.co/datasets/{repo} at {sha}")
     print(f"remote base: https://huggingface.co/datasets/{repo}/resolve/{sha}/{layer}")
