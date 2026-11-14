@@ -200,3 +200,26 @@ def test_lite_copies_velocity_stream_of_kept_nodes(tmp_path):
     for nd in m["nodes"]:
         assert (out / "v" / "n" / f"{nd['name']}.vel.bin").stat().st_size == nd["count"] * 8
     assert len(list((out / "v" / "n").glob("*.vel.bin"))) == len(m["nodes"])
+
+
+def test_remote_layer_keeps_full_meta_and_flags_remote_nodes(tiles, tmp_path):
+    out = tmp_path / "hyb"
+    base = "https://example.org/tiles/gal"
+    ml.main([str(out), "--src", str(tiles), "--budget-mb", str(0.3 * _size(tiles) / 1e6),
+             "--remote", f"gal={base}/", "--remote-shard", "2"])
+    full, hyb = _meta(tiles, "gal"), _meta(out, "gal")
+    assert hyb["remote"] == {"base": base, "shard": 2}
+    assert [n["name"] for n in hyb["nodes"]] == [n["name"] for n in full["nodes"]]
+    assert hyb["count"] == full["count"] and "dropped" not in json.dumps(hyb)
+    local = [n["name"] for n in hyb["nodes"] if not n.get("remote")]
+    remote = [n["name"] for n in hyb["nodes"] if n.get("remote")]
+    assert local and remote and "r" in local
+    # only local nodes are copied, and the local set is closed toward the root
+    on_disk = {p.name.split(".")[0] for p in (out / "gal" / "n").iterdir()}
+    assert on_disk == set(local)
+    assert all(n[:-1] in local for n in local if len(n) > 1)
+
+
+def test_remote_needs_https(tiles, tmp_path):
+    with pytest.raises(SystemExit):
+        ml.main([str(tmp_path / "x"), "--src", str(tiles), "--remote", "gal=http://example.org/x"])

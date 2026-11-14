@@ -28,6 +28,26 @@ export interface NodeMeta {
   dropped?: NodeAgg;
   /** velocity stream only: fastest stored speed of this node's points, km/s (rounded up) */
   vmax?: number;
+  /** hybrid lite sets: this node's files are not on this host but under LayerMeta.remote.base */
+  remote?: 1;
+}
+
+/**
+ * meta.json `remote` (hybrid lite sets, scripts/make_lite_tiles.py --remote): nodes flagged `remote`
+ * are fetched from `base` as `n/<first shard chars of the name>/<name><suffix>`, so no folder on the
+ * remote host holds more than a few hundred files.
+ */
+export interface RemoteMeta {
+  base: string;
+  shard: number;
+}
+
+/** URL of one node file of a layer at `layerUrl` (no trailing slash) */
+export function nodeFileUrl(layerUrl: string, meta: Pick<LayerMeta, 'remote'> | null, node: Pick<NodeMeta, 'name' | 'remote'>,
+  suffix: '.bin' | '.ext.bin' | '.vel.bin'): string {
+  const r = meta?.remote;
+  if (node.remote && r) return `${r.base.replace(/\/$/, '')}/n/${node.name.slice(0, r.shard)}/${node.name}${suffix}`;
+  return `${layerUrl}/n/${node.name}${suffix}`;
 }
 
 /** meta.json `velocity` (contract section 3, `.vel.bin`): present only when the stream exists */
@@ -67,6 +87,8 @@ export interface LayerMeta {
   note?: string;
   /** stars-gaia-preview: how much of the planned download it is built from */
   preview?: { chunks: number; chunksPlanned: number; skyFraction: number };
+  /** hybrid lite sets: where the nodes flagged `remote` live */
+  remote?: RemoteMeta;
   nodes: NodeMeta[];
 }
 
@@ -100,6 +122,12 @@ export function parseMeta(json: unknown): LayerMeta {
     if (v.unit !== 'km/s' || v.frame !== 'galactic') fail(`velocity unit/frame '${v.unit}'/'${v.frame}'`);
     if (v.encoding !== VEL_ENCODING || v.bytesPerPoint !== 8) fail(`velocity encoding '${v.encoding}' / ${v.bytesPerPoint} B`);
     if (!Array.isArray(v.sunVelocity) || v.sunVelocity.length !== 3 || !v.sunVelocity.every(Number.isFinite)) fail('velocity.sunVelocity');
+  }
+  if (m.remote !== undefined) {
+    const r = m.remote;
+    // https only; plain http just for a local test host
+    if (typeof r.base !== 'string' || !/^(https:\/\/|http:\/\/(127\.0\.0\.1|localhost)[:/])/.test(r.base)) fail(`remote.base '${r.base}' is not an https URL`);
+    if (!Number.isInteger(r.shard) || r.shard < 1 || r.shard > 8) fail(`remote.shard ${r.shard}`);
   }
   if (!Array.isArray(m.nodes) || m.nodes.length === 0) fail('no nodes');
   for (const n of m.nodes!) {

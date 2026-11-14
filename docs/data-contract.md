@@ -148,6 +148,24 @@ M = 4.83 − 2.5 log10(mass/M☉) (member count if no mass), colour a BP−RP-li
 `clusters.json` card of a picked point (nearest entry within 0.05 pc); the full catalogue with facts would
 be 2.3 MB, so far unnamed moving groups exist only in this layer.
 
+### 3b. Hybrid layers: shallow nodes here, deep nodes on a second host
+
+A layer too big for the page host (Gaia: ~1.8 GB against GitHub Pages' 1 GB) is split by
+`scripts/make_lite_tiles.py OUT --remote <layer>=<base>`. Its `meta.json` keeps **every** node, so
+nothing is dropped and no `dropped` blobs appear; nodes whose files were not copied carry
+`"remote": 1`, and the layer gets
+
+```json
+"remote": { "base": "https://huggingface.co/datasets/<user>/cosmic-atlas-tiles/resolve/<commit>/stars-gaia", "shard": 3 }
+```
+
+The viewer fetches a remote node's files from `<base>/n/<name[:shard]>/<name><suffix>` (suffix `.bin`,
+`.ext.bin` or `.vel.bin`); local nodes stay at `n/<name><suffix>` beside the meta. The shard keeps every
+remote folder to a few hundred files. `base` must be https (plain http is accepted only for
+127.0.0.1/localhost, for tests) and is pinned to one upload commit, so its URLs never change and can be
+cached for ever. `scripts/upload_tiles_hf.py data/tiles/<layer>` writes the whole layer in that layout
+and prints the base. The local nodes form a set closed toward the root (breadth-first, as for lite sets).
+
 ## 4. Small catalogues (`data/tiles/catalogs/*.json`, committed when < 2 MB)
 
 Named objects for labels and instant search: `named-stars.json`, `local-group.json`,

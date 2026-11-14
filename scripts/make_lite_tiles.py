@@ -19,8 +19,14 @@ budget. 1 MB = 10^6 bytes.
 Files are never split. The run refuses if any file it would write is larger than --max-file-mb
 (default 95, under GitHub's 100 MiB per-file block).
 
+Hybrid layers (--remote LAYER=URL): the layer keeps its FULL meta.json; the nodes that do not fit
+are flagged `remote` and the viewer fetches them from URL as n/<name[:shard]>/<name><suffix> (contract
+section 3b; scripts/upload_tiles_hf.py puts the whole layer there in that layout). Nothing is dropped,
+so no `dropped` blobs are needed.
+
 usage: make_lite_tiles.py OUT [--src data/tiles] [--budget-mb 900] [--weight galaxies-desi=2]
                               [--exclude synthetic-stars] [--max-file-mb 95] [--force]
+                              [--remote stars-gaia=https://.../stars-gaia] [--remote-shard 3]
 """
 from __future__ import annotations
 
@@ -157,6 +163,14 @@ def lite_meta(meta: dict, kept: set[str]) -> dict:
     return m
 
 
+def hybrid_meta(meta: dict, kept: set[str], base: str, shard: int) -> dict:
+    """Full meta with every node; the ones not copied here are flagged remote."""
+    m = {k: v for k, v in meta.items() if k != "nodes"}
+    m["remote"] = {"base": base.rstrip("/"), "shard": shard}
+    m["nodes"] = [dict(nd) if nd["name"] in kept else dict(nd, remote=1) for nd in meta["nodes"]]
+    return m
+
+
 def conservation(full: dict, lite: dict) -> dict:
     """Check, from the metas alone, that the lite set still accounts for every point and all light."""
     fby = {nd["name"]: nd for nd in full["nodes"]}
@@ -181,7 +195,16 @@ def main(argv=None):
     ap.add_argument("--exclude", action="append", default=[], metavar="LAYER", help="layer to leave out, repeatable")
     ap.add_argument("--max-file-mb", type=float, default=95.0, help="refuse if any file is larger (default 95)")
     ap.add_argument("--force", action="store_true", help="replace OUT if it holds an earlier lite set")
+    ap.add_argument("--remote", action="append", default=[], metavar="LAYER=URL",
+                    help="hybrid layer: nodes that do not fit are fetched from this https base")
+    ap.add_argument("--remote-shard", type=int, default=3, help="remote folder = first N chars of the node name")
     a = ap.parse_args(argv)
+    remotes = {}
+    for r in a.remote:
+        k, _, url = r.partition("=")
+        if not url.startswith(("https://", "http://127.0.0.1:", "http://localhost:")):  # http: local tests only
+            raise SystemExit(f"--remote wants LAYER=https://..., got {r!r}")
+        remotes[k] = url
 
     src, out = Path(a.src), Path(a.out)
     budget, max_file = int(a.budget_mb * MB), int(a.max_file_mb * MB)
@@ -208,9 +231,9 @@ def main(argv=None):
         except (OSError, ValueError):
             return False
     layer_dirs = sorted(d for d in src.iterdir() if d.is_dir() and (d / "meta.json").is_file() and d.name not in a.exclude and is_octree(d))
-    unknown = set(weights) - {d.name for d in layer_dirs}
+    unknown = (set(weights) | set(remotes)) - {d.name for d in layer_dirs}
     if unknown:
-        raise SystemExit(f"--weight for unknown layer(s): {', '.join(sorted(unknown))}")
+        raise SystemExit(f"--weight/--remote for unknown layer(s): {', '.join(sorted(unknown))}")
     # everything that is not a layer (catalogues, provenance) is copied whole
     fixed = [p for p in src.rglob("*") if p.is_file() and p.name not in GENERATED
              and not any(d == p.parent or d in p.parents for d in layer_dirs)
@@ -221,10 +244,15 @@ def main(argv=None):
 
     plan, metas, report = [], {}, {}
     for k, L in layers.items():
-        kept = prune(L, alloc[k])
+        # a hybrid meta lists every node plus a `"remote":1` flag on most of them: reserve those bytes
+        flag_bytes = 12 * len(L["meta"]["nodes"]) + 1024 if k in remotes else 0
+        kept = prune(L, alloc[k] - flag_bytes)
         full_meta = L["meta"]
         if len(kept) == len(full_meta["nodes"]):
             meta_text = (L["dir"] / "meta.json").read_text()
+            cons = None
+        elif k in remotes:
+            meta_text = json.dumps(hybrid_meta(full_meta, kept, remotes[k], a.remote_shard), separators=(",", ":"))
             cons = None
         else:
             lm = lite_meta(full_meta, kept)
@@ -242,6 +270,8 @@ def main(argv=None):
                      "bytes": nbytes, "fullBytes": L["full"], "allocBytes": alloc[k]}
         if cons:
             report[k]["conservation"] = cons
+        if k in remotes and len(kept) < len(full_meta["nodes"]):
+            report[k]["remote"] = {"base": remotes[k], "shard": a.remote_shard, "nodes": len(full_meta["nodes"]) - len(kept)}
     plan += [(p, p.relative_to(src)) for p in fixed]
 
     # refuse before writing anything
@@ -276,7 +306,7 @@ def main(argv=None):
     (out / REPORT).write_text(json.dumps(summary, indent=1) + "\n")
 
     for k, r in report.items():
-        tag = "lite" if r["lite"] else "full"
+        tag = "hybrid" if r.get("remote") else "lite" if r["lite"] else "full"
         line = (f"[{k}] {tag}: {r['nodes']}/{r['fullNodes']} nodes (depth {r['maxDepth']}/{r['fullMaxDepth']}), "
                 f"{r['points']:,}/{r['fullPoints']:,} points, {r['bytes'] / MB:.1f}/{r['fullBytes'] / MB:.1f} MB")
         if r.get("conservation"):
