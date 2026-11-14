@@ -23,6 +23,13 @@ describe('deep link', () => {
     expect(back.sel).toMatchObject({ type: 'point', id });
     expect(BigInt((back.sel as { id: string }).id)).toBe(4472832130942575872n);
   });
+  it('round-trips the star epoch in years and rejects values off the slider', () => {
+    expect(parseHash(formatHash({ epochYr: -1e6 })).epochYr).toBe(-1e6);
+    expect(parseHash(formatHash({ epochYr: 1293500 / 1.0 })).epochYr).toBeUndefined(); // > 1 Myr
+    expect(parseHash(formatHash({ epochYr: 12345.678 })).epochYr).toBe(12350);
+    expect(formatHash({ epochYr: 0 })).toBe('');
+    expect(parseHash('#ty=abc').epochYr).toBeUndefined();
+  });
   it('round-trips the thin-slab setting', () => {
     expect(parseHash(formatHash({ slab: 25 })).slab).toBe(25);
     expect(parseHash(formatHash({ slab: 0 })).slab).toBeUndefined();

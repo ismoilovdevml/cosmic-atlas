@@ -67,15 +67,16 @@ def own_light(node: dict, by: dict) -> float:
 
 
 # --------------------------------------------------------------------------- planning
-def node_files(name: str) -> tuple[str, str]:
-    return f"n/{name}.bin", f"n/{name}.ext.bin"
+def node_files(name: str, vel: bool = False) -> tuple[str, ...]:
+    """files of one node; `vel` adds the optional velocity stream (meta.json has `velocity`)"""
+    return (f"n/{name}.bin", f"n/{name}.ext.bin") + ((f"n/{name}.vel.bin",) if vel else ())
 
 
 def scan_layer(d: Path) -> dict:
     meta = json.loads((d / "meta.json").read_text())
     cost = {}
     for nd in meta["nodes"]:
-        cost[nd["name"]] = sum((d / f).stat().st_size for f in node_files(nd["name"]))
+        cost[nd["name"]] = sum((d / f).stat().st_size for f in node_files(nd["name"], "velocity" in meta))
     extra = [p for p in d.iterdir() if p.is_file() and p.name != "meta.json"]
     meta_bytes = (d / "meta.json").stat().st_size + sum(p.stat().st_size for p in extra)
     return {"dir": d, "meta": meta, "cost": cost, "meta_bytes": meta_bytes, "extra": extra,
@@ -223,7 +224,7 @@ def main(argv=None):
             meta_text = json.dumps(lm, separators=(",", ":"))
             cons = conservation(full_meta, lm)
         metas[k] = meta_text
-        files = [(L["dir"] / f, Path(k) / f) for n in sorted(kept) for f in node_files(n)]
+        files = [(L["dir"] / f, Path(k) / f) for n in sorted(kept) for f in node_files(n, "velocity" in L["meta"])]
         files += [(p, Path(k) / p.name) for p in L["extra"]]
         plan += files
         nbytes = len(meta_text.encode()) + sum(s.stat().st_size for s, _ in files)

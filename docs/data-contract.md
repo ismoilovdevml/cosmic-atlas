@@ -35,6 +35,7 @@ UTC time, row count, cuts, and citation (paper + DOI).
 data/tiles/<layer>/meta.json
 data/tiles/<layer>/n/<node>.bin      # render records, always loaded for visible nodes
 data/tiles/<layer>/n/<node>.ext.bin  # pick records, loaded only on click/hover
+data/tiles/<layer>/n/<node>.vel.bin  # optional velocities, loaded only while the time slider is off "now"
 ```
 
 Octree, Potree-style naming: root `r`, children `r0`..`r7`, grandchildren `r00`.. etc.
@@ -91,6 +92,52 @@ cosmic web) — and deeper nodes add the rest: rendering a node never requires i
 | 12 | float32 | `color` (BP-RP) or redshift `z` for galaxies |
 | 16 | float32 | `dist_lo` — 16th percentile distance, pc (NaN if unknown) |
 | 20 | float32 | `dist_hi` — 84th percentile distance, pc (NaN if unknown) |
+
+### `.vel.bin` velocity record — optional, 8 bytes, little endian, same point order
+
+Written by `build_tiles.py --velocity helio|lsr` (default `auto` = `helio` when the raw table has
+`pmra`/`pmdec`). Layers without it keep working: the viewer only reads this stream when
+`meta.velocity` exists, and only for drawn nodes while the time slider is away from "now".
+
+| offset | type | field |
+|---|---|---|
+| 0 | float16 ×3 | `vx, vy, vz` — space velocity, **km/s**, contract Galactic axes (§1) |
+| 6 | float16 | `q` — what is known: `1` = full 3D (proper motion + distance + radial velocity), `0` = no radial velocity: only the tangential part is stored (the line-of-sight motion is unknown, the viewer fades these points as \|Δt\| grows), `-1` = no proper motion either (stored as 0, the point stays put) |
+
+- Conversion (vectorised numpy, `space_velocity_galactic`): `v_icrs = k·d·(pmra·ê_α + pmdec·ê_δ) + rv·r̂`,
+  `v_gal = M @ v_icrs` with the §4 matrix, `k = 4.740470463533349e-3` km/s per (mas/yr · pc)
+  (`(1 mas/yr · 1 pc).to(km/s, dimensionless_angles())`, astropy), `pmra` = μ_α* (Gaia convention),
+  `d` = the same `dist_pc` as the position (r_med_geo for Gaia). Checked against
+  `SkyCoord(...).galactic.velocity` and `GalacticLSR` to < 1e-9 relative in `tests/test_build_tiles.py`.
+- Why float16 ×4 rather than ×3: the 4th slot carries `q`, and 8 B keeps every record 4-byte
+  aligned. float16 keeps 11 significant bits: relative error ≤ 2⁻¹¹ (0.05 %) per component, e.g.
+  ±0.004 km/s at 14 km/s → ±0.004 pc per Myr. For Gliese 710 this moves the predicted closest
+  approach from 0.0512 pc (float64) to 0.0533 pc (tile), well inside the literature scatter.
+- Frame origin: `helio` (default) = relative to the Sun, so the Sun stays at the origin and
+  `x(t) = x0 + v·t` is the position relative to the Sun. `lsr` = relative to the Local Standard of
+  Rest: the Sun's own motion (U, V, W)⊙ = (11.1, 12.24, 7.25) km/s (Schönrich, Binney & Dehnen 2010,
+  MNRAS 403, 1829; astropy `GalacticLSR` default) is added to every point and stored as
+  `meta.velocity.sunVelocity`. Gaia velocities are barycentric; Sun − barycentre (~0.01 km/s) is ignored.
+- 1 km/s for 1 Myr = 1.022712 pc (`pcPerKmsMyr`, Julian years).
+
+`meta.json` gains, only when the stream is written:
+
+```json
+"velocity": {"unit": "km/s", "frame": "galactic", "origin": "sun", "encoding": "vx_vy_vz_q_f16",
+             "bytesPerPoint": 8, "rvMissing": "tangential", "q": {"full": 1, "tangential": 0, "none": -1},
+             "sunVelocity": [0, 0, 0], "sunVelocityRef": null,
+             "counts": {"full": 34313, "tangential": 29827, "none": 0}, "pcPerKmsMyr": 1.022712165045695}
+```
+
+and every node a `vmax` (km/s, the fastest stored velocity in that node, rounded up to 0.1), so a
+viewer can grow the node's bounding sphere by `vmax·|Δt|` and not cull points that moved out of it.
+An optional top-level `note` (free text) carries caveats such as "preview, partial sky".
+
+**Viewer rule (§5):** the shader draws `inst + (v − sunVelocity)·Δt·1.022712` (pc, Δt in Myr), in
+float32 relative to the node centre, so motion is always shown relative to the Sun (the Solar
+System sits at the origin). Motion is linear: it ignores the Galaxy's gravity, which bends real
+paths; Bailer-Jones 2015 (A&A 575, A35) shows linear motion gives inaccurate, biased encounter
+parameters for many stars, so the viewer limits Δt to ±1 Myr and says so.
 
 ## 4. Small catalogues (`data/tiles/catalogs/*.json`, committed when < 2 MB)
 

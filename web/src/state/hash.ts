@@ -11,6 +11,8 @@
  *                                                   position (to find the node), never a record index
  *   &sel=cat:<url-encoded name>                     a named catalogue entry
  *   &doc=<slug>                                     the open docs article (web/public/docs/<lang>/<slug>.md)
+ *   &ty=<years>                                     star epoch: stars shown moved by this many years
+ *                                                   (−1e6 … 1e6, solar/epoch.ts); absent = now
  *   &focus=<url-encoded name>                       one-shot: fly to a named object or view, then dropped
  *   &layer=<layerId>                                one-shot: turn a layer on and fly to a view of it, then dropped
  *
@@ -45,6 +47,8 @@ export interface HashState {
   slab?: number;
   /** open docs article slug */
   doc?: string;
+  /** star epoch, years from now (absent / 0 = now) */
+  epochYr?: number;
   /** one-shot request to fly to a named object (docs `#focus=` links); never written back */
   focus?: string;
   /** one-shot request to show a layer (docs `#layer=` links); never written back */
@@ -67,6 +71,7 @@ export function formatHash(s: HashState): string {
   }
   if (s.slab !== undefined && s.slab > 0) parts.push(`slab=${+s.slab.toPrecision(4)}`);
   if (s.doc && /^[a-z0-9][a-z0-9-]*$/.test(s.doc)) parts.push(`doc=${s.doc}`);
+  if (s.epochYr && Number.isFinite(s.epochYr)) parts.push(`ty=${num(s.epochYr, 4)}`);
   if (s.sel) {
     parts.push(
       s.sel.type === 'cat'
@@ -108,6 +113,9 @@ export function parseHash(hash: string): HashState {
     } else if (key === 'slab') {
       const v = Number(val);
       if (Number.isFinite(v) && v > 0) out.slab = v;
+    } else if (key === 'ty') {
+      const v = Number(val);
+      if (Number.isFinite(v) && v !== 0 && Math.abs(v) <= 1e6) out.epochYr = v;
     } else if (key === 'doc') {
       if (/^[a-z0-9][a-z0-9-]{0,63}$/.test(val)) out.doc = val;
     } else if (key === 'layer') {

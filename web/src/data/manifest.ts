@@ -18,7 +18,10 @@ export interface PointLayerConfig {
   magOffset?: number;
   /** development data; hidden automatically once the named real layer is available */
   dev?: boolean;
-  fallbackFor?: string;
+  /** hidden automatically once any of these layers is available */
+  fallbackFor?: string | string[];
+  /** built from part of the data only (e.g. the Gaia chunks downloaded so far): tagged in the panel */
+  preview?: boolean;
   credit?: string;
 }
 

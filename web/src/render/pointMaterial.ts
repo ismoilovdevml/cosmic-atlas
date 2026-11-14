@@ -27,6 +27,7 @@ import {
   vec3, vec4, viewportSize,
 } from 'three/tsl';
 import { maskFactor } from './galaxyMask';
+import { RV_FADE_K, RV_FADE_MIN, RV_SIGMA_KMS } from '../solar/epoch';
 import { BASE_PX, E4, GAL_MAX_PX, K_GAUSS, KNEE, REF_PX_PER_RAD, STAR_MAX_PX, type PointKind } from './brightness';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -48,6 +49,10 @@ export interface PointUniforms {
   /** thin slab: view-space z of the plane through the focus, and its half-thickness (pc; huge = off) */
   slabZ: { value: number };
   slabHalf: { value: number };
+  /** star epoch (moving materials only): Δt in Myr × 1.022712 pc per (km/s · Myr) */
+  dtPc: { value: number };
+  /** velocity of the Sun in the layer's velocity frame, km/s (0 for heliocentric streams) */
+  sunVel: { value: THREE.Vector3 };
 }
 
 /** density-mode sprite diameter, CSS px */
@@ -59,6 +64,7 @@ export function createPointUniforms(): PointUniforms {
     mRef: uniform(0), pxPerRad: uniform(1000), dpr: uniform(1), opacity: uniform(1),
     sunView: uniform(new THREE.Vector3()), densityMix: uniform(0), densityK: uniform(0.3),
     fixedPx: uniform(DENSITY_SPRITE_PX), slabZ: uniform(0), slabHalf: uniform(SLAB_OFF),
+    dtPc: uniform(0), sunVel: uniform(new THREE.Vector3()),
   } as unknown as PointUniforms;
 }
 
@@ -116,8 +122,16 @@ export const kneeNode = (I: N): N => float(KNEE).mul(float(1.0).sub(exp(I.div(-K
 export const objectAlpha = () => uniform(1).onObjectUpdate(({ object }: any) => object?.userData?.alpha ?? 1);
 const objectSlot = () => uniform(0).onObjectUpdate(({ object }: any) => object?.userData?.slot ?? 0);
 
-export function createLayerMaterials(kind: PointKind, layerCode: number): LayerMaterials {
-  const uniforms = createPointUniforms();
+/**
+ * `moving`: the variant for the star epoch slider. Each point is drawn at
+ * inst + (vel.xyz − sunVel)·dtPc (pc, float32 relative to the node centre; the node centre − camera
+ * stays float64 on the CPU, so relative-to-eye precision is unchanged), and needs the per-instance
+ * `vel` attribute (vx, vy, vz km/s, q; tiles `.vel.bin`). Points whose radial velocity is unknown
+ * (q < 0.5) fade with their unknown line-of-sight shift, see epoch.ts rvFade (CPU twin).
+ * Pass the static set's `uniforms` so both variants follow the same exposure and view state.
+ */
+export function createLayerMaterials(kind: PointKind, layerCode: number, shared?: PointUniforms, moving = false): LayerMaterials {
+  const uniforms = shared ?? createPointUniforms();
   const U = uniforms as unknown as Record<string, N>;
   const isGal = kind === 'galaxy';
   const alpha: N = objectAlpha();
@@ -125,7 +139,9 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
 
   const inst = attribute('inst', 'vec3');
   const rgbl = attribute('rgbl', 'vec4');
-  const mv = modelViewMatrix.mul(vec4(inst, 1.0));
+  const vel: N = moving ? attribute('vel', 'vec4') : null;
+  const pos: N = moving ? inst.add(vel.xyz.sub(U.sunVel).mul(U.dtPc)) : inst;
+  const mv = modelViewMatrix.mul(vec4(pos, 1.0));
   const r = max(length(mv.xyz), 1e-7);
   const code = rgbl.w.mul(255.0);
   const M = isGal ? float(-14.0).sub(code.div(20.0)) : float(20.0).sub(code.div(10.0));
@@ -141,7 +157,13 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   // galaxies drawn as an oriented disk / thumbnail (galaxyShapes.ts) hand their light over from
   // these points through the shared dot-weight mask
   const dotW: N = isGal ? maskFactor(mv.xyz, U.sunView) : float(1.0);
-  const intensity: N = mix(ph.peak.mul(ph.fade), dPeak, dm).mul(U.opacity).mul(alpha).mul(slabWeight(mv.z, uniforms)).mul(dotW);
+  let rvW: N = float(1.0);
+  if (moving) {
+    const s = float(RV_SIGMA_KMS).mul(U.dtPc.abs()).div(max(length(mv.xyz.sub(U.sunView)), 1e-6));
+    const f = max(float(1.0).div(float(1.0).add(s.mul(RV_FADE_K).pow(2.0))), RV_FADE_MIN);
+    rvW = select(vel.w.greaterThan(0.5), float(1.0), f);
+  }
+  const intensity: N = mix(ph.peak.mul(ph.fade), dPeak, dm).mul(U.opacity).mul(alpha).mul(slabWeight(mv.z, uniforms)).mul(dotW).mul(rvW);
   const inFront: N = mv.z.lessThan(0.0);
   const drawKeep: N = intensity.greaterThan(DRAW_GATE).and(inFront);
 
@@ -163,7 +185,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   const material = new THREE.PointsNodeMaterial({
     transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false,
   });
-  material.positionNode = inst;
+  material.positionNode = pos;
   material.sizeNode = select(drawKeep, sizeMixed.div(U.dpr), float(0.0));
   material.colorNode = Fn(() => {
     const u2 = shapeU2(uv().mul(2.0).sub(1.0));
@@ -173,7 +195,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
     return vColor.mul(kneeNode(vI.mul(gaussProfile(u2))));
   })();
   material.opacityNode = float(1.0);
-  material.name = `points-${kind}`;
+  material.name = `points-${kind}${moving ? '-moving' : ''}`;
 
   // ---- pick: same gate quantity, minimum footprint, brightest wins (depth = 1/(1+I))
   const pickKeep: N = intensity.greaterThan(PICK_GATE).and(inFront);
@@ -183,7 +205,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   const pickMaterial = new THREE.PointsNodeMaterial({
     transparent: false, depthTest: true, depthWrite: true, blending: THREE.NoBlending, sizeAttenuation: false,
   });
-  pickMaterial.positionNode = inst;
+  pickMaterial.positionNode = pos;
   pickMaterial.sizeNode = select(pickKeep, pickSize.div(U.dpr), float(0.0));
   pickMaterial.colorNode = Fn(() => {
     const p = uv().mul(2.0).sub(1.0);
@@ -194,7 +216,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
   })();
   pickMaterial.opacityNode = float(1.0);
   pickMaterial.depthNode = float(1.0).div(vPickI.add(1.0));
-  pickMaterial.name = `pick-${kind}`;
+  pickMaterial.name = `pick-${kind}${moving ? '-moving' : ''}`;
 
   // ---- distance-uncertainty quads along the Sun→point line of sight
   const unc = attribute('unc', 'vec2'); // dist_lo / d, dist_hi / d
@@ -238,7 +260,7 @@ export function createLayerMaterials(kind: PointKind, layerCode: number): LayerM
     return vUncC.mul(kneeNode(vUncI.mul(gaussProfile(across.mul(across))).mul(ends)));
   })();
   uncMaterial.opacityNode = float(1.0);
-  uncMaterial.name = `unc-${kind}`;
+  uncMaterial.name = `unc-${kind}${moving ? '-moving' : ''}`;
 
   return { material, pickMaterial, uncMaterial, uniforms };
 }

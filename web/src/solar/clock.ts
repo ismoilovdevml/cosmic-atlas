@@ -4,7 +4,8 @@
  * never jumps when the rate changes.
  */
 
-export const SPEEDS = [1, 1e4, 1e6] as const;
+/** ×1 (seconds) … 1 Julian year per second */
+export const SPEEDS = [1, 1e4, 1e6, 31_557_600] as const;
 
 export class SimClock {
   private simBase: number;

@@ -2,6 +2,7 @@
 
 Input : data/raw/<layer>/*.parquet with contract columns (ra, dec, dist_pc, mag, color, kind, id ...)
 Output: data/tiles/<layer>/meta.json + n/<node>.bin (render) + n/<node>.ext.bin (pick)
+        + n/<node>.vel.bin (optional space velocities, when the input has pmra/pmdec; --velocity)
 
 Algorithm: points are ordered by importance (stars: luminosity, galaxies: seeded shuffle), then a
 top-down split: each node keeps the first `capacity` points of its (still importance-ordered) list and
@@ -39,7 +40,23 @@ RENDER_DTYPE = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4"),
                          ("r", "u1"), ("g", "u1"), ("b", "u1"), ("lum", "u1")])
 EXT_DTYPE = np.dtype([("id", "<u8"), ("mag", "<f4"), ("color", "<f4"),
                       ("dist_lo", "<f4"), ("dist_hi", "<f4")])
-assert RENDER_DTYPE.itemsize == 16 and EXT_DTYPE.itemsize == 24
+# optional velocity stream n/<node>.vel.bin (data-contract.md section 3): vx, vy, vz in km/s
+# (Galactic Cartesian), q = what is known about the velocity (VEL_Q_*), all IEEE float16
+VEL_DTYPE = np.dtype([("vx", "<f2"), ("vy", "<f2"), ("vz", "<f2"), ("q", "<f2")])
+assert RENDER_DTYPE.itemsize == 16 and EXT_DTYPE.itemsize == 24 and VEL_DTYPE.itemsize == 8
+VEL_ENCODING = "vx_vy_vz_q_f16"
+VEL_Q_FULL = 1.0      # proper motion + parallax/distance + radial velocity: full 3D space velocity
+VEL_Q_TANGENTIAL = 0.0  # no radial velocity: only the on-sky (tangential) part, line of sight unknown
+VEL_Q_NONE = -1.0     # no proper motion either: stored as 0, the point does not move
+
+# k = 1 mas/yr at 1 pc in km/s, from astropy: (1 mas/yr * 1 pc).to(km/s, dimensionless_angles())
+KMS_PER_MASYR_PC = 4.740470463533349e-3
+# 1 km/s for 1 Myr in pc: (1 km/s * 1 Myr).to(pc), Julian year
+PC_PER_KMS_MYR = 1.022712165045695
+# Solar motion relative to the Local Standard of Rest, (U, V, W) km/s in the contract's Galactic
+# axes (+x to the Galactic Centre, +y with rotation, +z to the NGP): Schoenrich, Binney & Dehnen 2010,
+# MNRAS 403, 1829 (also astropy's GalacticLSR default v_bary)
+SUN_LSR_SCHOENRICH2010 = np.array([11.1, 12.24, 7.25])
 
 MAX_DEPTH = 24
 
@@ -53,6 +70,51 @@ def radec_dist_to_galactic_xyz(ra_deg, dec_deg, dist_pc) -> np.ndarray:
     cd = np.cos(dec)
     icrs = np.stack([cd * np.cos(ra), cd * np.sin(ra), np.sin(dec)], axis=1) * d[:, None]
     return icrs @ ICRS_TO_GAL.T
+
+
+def space_velocity_galactic(ra_deg, dec_deg, dist_pc, pmra_masyr, pmdec_masyr, rv_kms,
+                            frame: str = "helio") -> tuple[np.ndarray, np.ndarray]:
+    """Galactic Cartesian space velocity (km/s), shape (N, 3), and the quality code q per point.
+
+    v = k d (pmra e_ra + pmdec e_dec) + rv r_hat in ICRS axes, rotated to Galactic with ICRS_TO_GAL;
+    pmra is mu_alpha* (= mu_alpha cos dec, as Gaia gives it), k = 4.74047e-3 km/s per mas/yr per pc.
+    Vectorised; matches astropy SkyCoord(...).galactic.velocity (tests/test_build_tiles.py).
+    Missing rv -> tangential part only, q = VEL_Q_TANGENTIAL. Missing proper motion -> 0, q = VEL_Q_NONE.
+    frame 'helio': relative to the Sun (Gaia is barycentric; Sun - barycentre is ~0.01 km/s, ignored).
+    frame 'lsr'  : relative to the LSR, i.e. heliocentric + the Sun's own motion (Schoenrich et al. 2010).
+    """
+    ra = np.radians(np.asarray(ra_deg, dtype=np.float64))
+    dec = np.radians(np.asarray(dec_deg, dtype=np.float64))
+    d = np.asarray(dist_pc, dtype=np.float64)
+    pmra = np.asarray(pmra_masyr, dtype=np.float64)
+    pmdec = np.asarray(pmdec_masyr, dtype=np.float64)
+    rv = np.asarray(rv_kms, dtype=np.float64)
+    has_pm = np.isfinite(pmra) & np.isfinite(pmdec) & np.isfinite(d)
+    has_rv = np.isfinite(rv)
+    pmra, pmdec, rv = np.where(has_pm, pmra, 0.0), np.where(has_pm, pmdec, 0.0), np.where(has_rv & has_pm, rv, 0.0)
+    sa, ca, sd, cd = np.sin(ra), np.cos(ra), np.sin(dec), np.cos(dec)
+    e_ra = np.stack([-sa, ca, np.zeros_like(ra)], axis=1)
+    e_dec = np.stack([-sd * ca, -sd * sa, cd], axis=1)
+    r_hat = np.stack([cd * ca, cd * sa, sd], axis=1)
+    kd = KMS_PER_MASYR_PC * np.where(has_pm, d, 0.0)
+    v_icrs = (kd * pmra)[:, None] * e_ra + (kd * pmdec)[:, None] * e_dec + rv[:, None] * r_hat
+    v = v_icrs @ ICRS_TO_GAL.T
+    if frame == "lsr":
+        v = v + SUN_LSR_SCHOENRICH2010
+    elif frame != "helio":
+        raise ValueError(f"velocity frame {frame!r}")
+    q = np.where(~has_pm, VEL_Q_NONE, np.where(has_rv, VEL_Q_FULL, VEL_Q_TANGENTIAL))
+    return v, q
+
+
+def closest_approach(xyz_pc, v_kms) -> tuple[np.ndarray, np.ndarray]:
+    """Linear-motion closest approach to the origin: time (Myr, + = future) and distance (pc).
+    x(t) = x0 + v t with t in Myr and v in km/s (1 km/s * 1 Myr = PC_PER_KMS_MYR pc)."""
+    x = np.atleast_2d(np.asarray(xyz_pc, dtype=np.float64))
+    v = np.atleast_2d(np.asarray(v_kms, dtype=np.float64)) * PC_PER_KMS_MYR
+    vv = np.einsum("ij,ij->i", v, v)
+    t = np.where(vv > 0, -np.einsum("ij,ij->i", x, v) / np.where(vv > 0, vv, 1.0), 0.0)
+    return t, np.linalg.norm(x + v * t[:, None], axis=1)
 
 
 # --------------------------------------------------------------------------- colours
@@ -229,7 +291,7 @@ def subtree_aggregates(nodes, xyz, rgb, lin_l) -> dict:
 # --------------------------------------------------------------------------- main
 def load_layer(layer: str, files: list[Path]):
     cols_wanted = ["id", "ra", "dec", "dist_pc", "dist_lo_pc", "dist_hi_pc", "mag", "color", "kind",
-                   "source_id", "targetid", "z"]
+                   "source_id", "targetid", "z", "pmra", "pmdec", "radial_velocity"]
     parts = []
     for f in files:
         schema = pq.read_schema(f)
@@ -255,6 +317,10 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=20261113)
     ap.add_argument("--glob", default="*.parquet", help="input file pattern inside --src")
     ap.add_argument("--exclude", action="append", default=[], help="glob(s) to skip, repeatable")
+    ap.add_argument("--velocity", choices=["auto", "off", "helio", "lsr"], default="auto",
+                    help="write n/<node>.vel.bin: 'helio' = relative to the Sun, 'lsr' = relative to the LSR "
+                         "(Sun's motion from Schoenrich et al. 2010 added); 'auto' = helio when pmra/pmdec exist")
+    ap.add_argument("--note", default=None, help="free-text caveat stored in meta.json (e.g. partial sky)")
     a = ap.parse_args(argv)
 
     src = Path(a.src) if a.src else ROOT / "data/raw" / a.layer
@@ -291,6 +357,16 @@ def main(argv=None):
         rgb = galaxy_rgb(z, kind)
         ext_color = z
     ids = numeric_ids(cols)
+    vel_frame = a.velocity
+    if vel_frame == "auto":
+        vel_frame = "helio" if ("pmra" in cols and "pmdec" in cols) else "off"
+    if vel_frame != "off":
+        if not ("pmra" in cols and "pmdec" in cols):
+            sys.exit(f"--velocity {vel_frame}: input has no pmra/pmdec columns")
+        rv = np.asarray(cols.get("radial_velocity", np.full(n, np.nan)), dtype=np.float64)
+        vel, vel_q = space_velocity_galactic(cols["ra"], cols["dec"], dist, cols["pmra"], cols["pmdec"], rv, vel_frame)
+    else:
+        vel = vel_q = None
 
     rng = np.random.default_rng(a.seed)
     if a.order == "lum":
@@ -300,6 +376,8 @@ def main(argv=None):
         order = rng.permutation(n)
     xyz, rgb, lum, ids, mag, ext_color = xyz[order], rgb[order], lum[order], ids[order], mag[order], ext_color[order]
     dlo, dhi = dlo[order], dhi[order]
+    if vel is not None:
+        vel, vel_q = vel[order], vel_q[order]
     # linear luminosity (units of an M=0 source) recovered from the lum code, for subtree aggregates
     m_from_code = (20.0 - lum / 10.0) if a.kind_model == "star" else (-14.0 - lum / 20.0)
     lin_l = 10.0 ** (-0.4 * m_from_code)
@@ -326,9 +404,17 @@ def main(argv=None):
         ext["dist_lo"], ext["dist_hi"] = dlo[idx].astype(np.float32), dhi[idx].astype(np.float32)
         ext.tofile(out / "n" / f"{name}.ext.bin")
         mask = sum(1 << c for c in range(8) if f"{name}{c}" in names)
-        meta_nodes.append({"name": name, "center": [round(float(v), 6) for v in center],
-                           "half": float(half), "count": int(len(idx)), "children": mask,
-                           "agg": agg[name]})
+        node = {"name": name, "center": [round(float(v), 6) for v in center],
+                "half": float(half), "count": int(len(idx)), "children": mask, "agg": agg[name]}
+        if vel is not None:
+            vr = np.empty(len(idx), dtype=VEL_DTYPE)
+            v16 = vel[idx].astype(np.float16)
+            vr["vx"], vr["vy"], vr["vz"], vr["q"] = v16[:, 0], v16[:, 1], v16[:, 2], vel_q[idx].astype(np.float16)
+            vr.tofile(out / "n" / f"{name}.vel.bin")
+            # fastest point of this node (as stored), km/s, rounded up: lets the viewer grow the node's
+            # bounding sphere by vmax |dt| so moving points are not culled with their node
+            node["vmax"] = float(np.ceil(np.max(np.linalg.norm(v16.astype(np.float64), axis=1), initial=0.0) * 10) / 10)
+        meta_nodes.append(node)
         total += len(idx)
     assert total == n, (total, n)
 
@@ -342,6 +428,23 @@ def main(argv=None):
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "nodes": meta_nodes,
     }
+    if a.note:
+        meta["note"] = a.note
+    if vel is not None:
+        n_full = int(np.sum(vel_q == VEL_Q_FULL))
+        n_tan = int(np.sum(vel_q == VEL_Q_TANGENTIAL))
+        meta["velocity"] = {
+            "unit": "km/s", "frame": "galactic", "origin": "sun" if vel_frame == "helio" else "lsr",
+            "encoding": VEL_ENCODING, "bytesPerPoint": VEL_DTYPE.itemsize,
+            "rvMissing": "tangential",
+            "q": {"full": VEL_Q_FULL, "tangential": VEL_Q_TANGENTIAL, "none": VEL_Q_NONE},
+            # velocity of the Sun in this stream's frame: add it to the Sun, or subtract it from every
+            # point to get motion relative to the Sun (the viewer does the latter)
+            "sunVelocity": [0.0, 0.0, 0.0] if vel_frame == "helio" else [float(x) for x in SUN_LSR_SCHOENRICH2010],
+            "sunVelocityRef": None if vel_frame == "helio" else "Schoenrich, Binney & Dehnen 2010, MNRAS 403, 1829",
+            "counts": {"full": n_full, "tangential": n_tan, "none": int(n - n_full - n_tan)},
+            "pcPerKmsMyr": PC_PER_KMS_MYR,
+        }
     (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
     size = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     print(f"[{a.layer}] wrote {total} points, {len(meta_nodes)} nodes, {size/1e6:.1f} MB -> {out} ({time.time()-t0:.1f}s)")

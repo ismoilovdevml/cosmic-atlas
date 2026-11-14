@@ -132,6 +132,7 @@ h2 { margin: 0; font: 600 13px/1.3 var(--sans); letter-spacing: 0.01em; color: v
 .tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--hairline-strong); color: var(--ink-dim); white-space: nowrap; }
 .tag.model { color: var(--model); border-color: rgba(143, 178, 207, 0.45); }
 .tag.synthetic { color: var(--brass); border-color: var(--brass-dim); }
+.tag.preview { color: var(--brass-bright); border-color: var(--brass-dim); border-style: dashed; }
 .layer .meta { margin: 2px 0 0 20px; }
 .layer input[type='range'] { margin: 6px 0 0 20px; width: calc(100% - 20px); }
 
@@ -372,6 +373,22 @@ body.has-docs .caption { display: none; }
 .timectl .t-now { border: 1px solid var(--brass-dim); border-radius: var(--r-ctl); color: var(--brass-bright); background: rgba(201, 166, 107, 0.12); }
 .timectl .t-now[aria-pressed='true'] { background: rgba(201, 166, 107, 0.3); }
 .timectl button:hover { color: var(--ink); }
+/* two rows (Solar System clock, star epoch) + the honesty note under them */
+.timectl { flex-direction: column; align-items: stretch; gap: 4px; border-radius: 18px; padding: 6px 8px 6px 12px; width: min(560px, calc(100vw - 32px)); }
+.timectl .t-row { display: flex; align-items: center; gap: 6px; }
+.timectl .t-row[hidden], .timectl .t-note[hidden] { display: none; }
+.timectl .t-solar { justify-content: flex-end; }
+.timectl .t-tag { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+.timectl .t-track { position: relative; flex: 1; min-width: 120px; padding-bottom: 14px; }
+.timectl .t-track input[type='range'] { width: 100%; margin: 0; accent-color: var(--brass); }
+.timectl .t-ticks { position: absolute; left: 7px; right: 7px; bottom: 0; height: 12px; pointer-events: none; }
+.timectl .t-ticks span { position: absolute; transform: translateX(-50%); font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; }
+.timectl .t-ticks span:first-child { transform: none; }
+.timectl .t-ticks span:last-child { transform: translateX(-100%); }
+.timectl .t-epoch { font-size: 12.5px; color: var(--ink); white-space: nowrap; min-width: 8.5ch; text-align: right; font-variant-numeric: tabular-nums; }
+.timectl.t-moved .t-epoch { color: var(--brass-bright); }
+.timectl .t-note { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-dim); }
+.timectl.t-moved .t-note { color: var(--ink); }
 
 /* ---------- small screens ---------- */
 @media (max-width: 900px) {
@@ -408,7 +425,8 @@ body.has-docs .caption { display: none; }
   .docs-article h1 { font-size: 26px; }
   .docs-lede { font-size: 17px; }
   .docs-body { font-size: 16.5px; }
-  .timectl { right: 8px; left: 8px; bottom: 112px; justify-content: space-between; padding-left: 10px; }
+  .timectl { right: 8px; left: 8px; bottom: 112px; width: auto; padding-left: 10px; }
+  .timectl .t-solar { justify-content: space-between; }
   .timectl .t-date { min-width: 0; font-size: 12px; }
 }
 @keyframes docs-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }

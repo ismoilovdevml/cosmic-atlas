@@ -35,7 +35,7 @@ import { GpuPicker } from './render/pick';
 import { PostPass } from './render/post';
 import { formatHash, parseHash, type SelRef } from './state/hash';
 import { factRows, planetRows } from './objects/facts';
-import { findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
+import { PC_PER_KMS_MYR, VEL_Q, closestApproach, findExtId, nodePath, parseRenderRecords, readExtRecord } from './tiles/format';
 import { NodeState, PointLayer, Streamer, type TileNode } from './tiles/streamer';
 import { SCALE_TOUR, SHOW_ME_TOUR, needsHere, resolveBeat, resolveTarget, type Beat, type Tour, type TourContext } from './tour/tours';
 import { ScaleRail } from './ui/rail';
@@ -43,6 +43,8 @@ import { ScaleRail } from './ui/rail';
 import { SOLAR_LABEL_MAX, SolarSystem, TimeBar, flyTargetForLatLon, observerGalacticXyz, solarInfo, tr as solarTr, type SolarEntry } from './solar';
 // --- Black hole hook (web/src/blackhole): lensing post pass, disk, HUD, approach to 1.5 r_s
 import { BlackHoleFeature } from './blackhole';
+import { StarEpoch } from './solar/epoch';
+import { formatEpoch } from './solar/timebar';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const DEG = 180 / Math.PI;
@@ -129,6 +131,12 @@ class App {
   solar = new SolarSystem();
   private timebar!: TimeBar;
   private solarSel: SolarEntry | null = null;
+  // --- star epoch (4D time slider): stars moved along their space velocities, Δt Myr
+  epoch = new StarEpoch();
+  private epochRefreshT = 0;
+  private epochRefreshTimer = 0;
+  /** catalogue labels that sit at today's position (hidden while the epoch is far from now) */
+  private epochLabels: LabelItem[] = [];
   private solarInfoT = 0;
   // --- Black hole hook
   bh = new BlackHoleFeature();
@@ -179,7 +187,8 @@ class App {
     this.shapes.thumbsEnabled = new URLSearchParams(location.search).get('thumbs') !== 'off';
     // --- Solar System hook: the layer, its time bar, and clicks on its labels
     this.scene.add(this.solar.root);
-    this.timebar = new TimeBar(this.solar.clock);
+    this.timebar = new TimeBar(this.solar.clock, this.epoch);
+    this.epoch.onChange(() => this.onEpoch());
     document.body.appendChild(this.timebar.el);
     const onClock = this.solar.clock.onChange;
     this.solar.clock.onChange = () => {
@@ -209,6 +218,7 @@ class App {
     else this.nav.setView({ focus: [0, 0, 0], dist: 6, yaw: (-150 * Math.PI) / 180, pitch: 0.38 });
     this.pendingSel = h.sel ?? null;
     if (h.slab) this.setSlab(h.slab);
+    if (h.epochYr) this.epoch.set(h.epochYr / 1e6);
     if (h.doc) void this.docs.open(h.doc, { push: false });
     window.addEventListener('hashchange', () => this.onHashChange());
 
@@ -242,6 +252,7 @@ class App {
     if (this.manifest) this.renderLayerPanel();
     if (this.labels) this.buildLabels();
     this.refreshOutputs();
+    this.timebar?.relabel();
     if (!$('info').hidden) this.infoRefresh?.();
     if (this.tourAbort && this.tourBeat) this.showCaption(this.tourBeat);
     const tb = $('tour').querySelector('span')!;
@@ -276,10 +287,12 @@ class App {
     await Promise.all(this.layers.map((L) => L.init(known)));
     // dev layers step aside when the real layer they stand in for exists
     for (const L of this.layers) {
-      if (L.cfg.fallbackFor) L.superseded = this.layers.some((o) => o.cfg.id === L.cfg.fallbackFor && o.status === 'ready');
+      const fb = L.cfg.fallbackFor;
+      if (fb) L.superseded = this.layers.some((o) => (Array.isArray(fb) ? fb.includes(o.cfg.id) : o.cfg.id === fb) && o.status === 'ready');
       if (L.status === 'error') console.error(`[layers] ${L.cfg.id}: ${L.error}`);
     }
     this.streamer.layers = this.layers;
+    this.streamer.setEpoch(this.epoch.myr);
     this.renderLayerPanel();
     this.dirty = true;
   }
@@ -383,12 +396,16 @@ class App {
       const what = m.lite && m.fullCount
         ? t('layers.lite', { a: fmtCount(m.count), b: fmtCount(m.fullCount) })
         : t(L.kind === 'star' ? 'layers.stars' : 'layers.galaxies', { n: m.count, nText: fmtCount(m.count) });
+      // preview layers (part of a download) say how much of the sky they cover
+      const metaText = L.cfg.preview && m.preview
+        ? t('layers.preview', { stars: what, pct: fmtFixed(m.preview.skyFraction * 100, 0) })
+        : what;
       row({
         id: L.cfg.id,
         title: title(L.cfg),
         swatch: L.kind,
-        tag: L.cfg.dev ? ['synthetic', t('tag.synthetic')] : m.lite ? ['lite', t('tag.lite')] : undefined,
-        meta: `${what}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
+        tag: L.cfg.dev ? ['synthetic', t('tag.synthetic')] : L.cfg.preview ? ['preview', t('tag.preview')] : m.lite ? ['lite', t('tag.lite')] : undefined,
+        meta: `${metaText}${L.cfg.credit ? `, ${L.cfg.credit}` : ''}`,
         checked: L.visible,
         opacity: L.opacity,
         onOpacity: (v) => (L.opacity = v),
@@ -482,6 +499,9 @@ class App {
     for (const m of this.mw.labels) items.push({ name: tOr(MW_LABEL_KEYS[m.name] ?? '', m.name), xyz: m.xyz, kind: 'model', absMag: null, minScale: 4000, maxScale: 2e5, sizePc: 2000 });
     this.labels.setItems(items);
     this.labelItems = items;
+    // catalogue objects are drawn at today's position: their labels step aside when the stars move
+    this.epochLabels = items.filter((it) => !this.solar.labelItems.includes(it) && it.kind !== 'model');
+    this.applyEpochLabels();
     if (this.hereLabel) items.push(this.hereLabel);
     this.dirty = true;
   }
@@ -843,11 +863,22 @@ class App {
     await this.showPoint(n, hit.index, xyz, fly, n.data.rgbl[hit.index * 4 + 3]);
   }
 
-  private async showPoint(n: TileNode, i: number, xyz: Vec3, fly: boolean, lum: number) {
+  /** `x0` = the catalogue position (epoch 0); the card shows the point at the current star epoch */
+  private async showPoint(n: TileNode, i: number, x0: Vec3, fly: boolean, lum: number) {
     const L = n.layer;
     const kind = L.kind;
     const M = absMagFromLum(lum, kind);
+    // --- star epoch: velocity (relative to the Sun) and the position at the slider time
+    const ep = this.epoch.myr;
+    const velAll = L.hasVelocity ? await this.streamer.velocities(n) : null;
+    const sv = L.meta?.velocity?.sunVelocity ?? [0, 0, 0];
+    const vel: Vec3 | null = velAll ? [velAll[i * 4] - sv[0], velAll[i * 4 + 1] - sv[1], velAll[i * 4 + 2] - sv[2]] : null;
+    const q = velAll ? velAll[i * 4 + 3] : NaN;
+    const moved = !!vel && ep !== 0;
+    const k = ep * PC_PER_KMS_MYR;
+    const xyz: Vec3 = moved ? [x0[0] + vel![0] * k, x0[1] + vel![1] * k, x0[2] + vel![2] * k] : x0;
     const dist = Math.hypot(...xyz);
+    const dist0 = Math.hypot(...x0);
     const flyView: Partial<View> = { focus: xyz, dist: kind === 'star' ? Math.max(0.2, Math.min(5, dist * 0.02)) : 2e5 };
     if (fly) void this.nav.flyTo(flyView);
     const synthetic = !!L.cfg.dev;
@@ -860,21 +891,29 @@ class App {
     } catch (e) {
       rows.push([t('row.catalogueRecord'), t('row.unavailable', { msg: (e as Error).message })]);
     }
-    const ref: SelRef | null = ext ? { type: 'point', layer: L.cfg.id, id: ext.id.toString(), xyz } : null;
-    this.selection = { xyz, title, fly: flyView, ref, lo: ext?.distLo, hi: ext?.distHi };
+    // the deep link keeps the catalogue position (it finds the octree node); the reticle follows the
+    // moved star; the distance error bar is for today's line of sight, so it is not drawn when moved
+    const ref: SelRef | null = ext ? { type: 'point', layer: L.cfg.id, id: ext.id.toString(), xyz: x0 } : null;
+    this.selection = { xyz, title, fly: flyView, ref, lo: moved ? undefined : ext?.distLo, hi: moved ? undefined : ext?.distHi };
     const lb = galToLB(xyz);
     const rd = galToRadec(xyz);
+    const rd0 = galToRadec(x0);
+    const ly = (d: number) => (kind === 'star' && formatLy(d) ? ` (${formatLy(d)})` : '');
+    if (moved) {
+      rows.push([t('row.epoch'), formatEpoch(ep)], [t('row.distAtEpoch'), `${formatDistance(dist, 4)}${ly(dist)}`]);
+    }
     const distRows = (label: string) => {
-      rows.push([label, `${formatDistance(dist, 4)}${kind === 'star' && formatLy(dist) ? ` (${formatLy(dist)})` : ''}`]);
+      rows.push([moved ? t('row.distNow') : label, `${formatDistance(dist0, 4)}${ly(dist0)}`]);
       if (ext && Number.isFinite(ext.distLo)) {
         const hiOk = Number.isFinite(ext.distHi);
-        const frac = hiOk ? (ext.distHi - ext.distLo) / 2 / dist : NaN;
+        const frac = hiOk ? (ext.distHi - ext.distLo) / 2 / dist0 : NaN;
         rows.push([t('row.range'), hiOk ? `${formatRange(ext.distLo, ext.distHi)} (±${fmtFixed(frac * 100, frac < 0.1 ? 1 : 0)} %)` : t('row.noUpper', { d: formatDistance(ext.distLo) })]);
       }
     };
     if (kind === 'star') {
       if (ext) rows.push([t('row.apparentG'), fmtFixed(ext.mag, 2)], [t('row.bpRp'), isFinite(ext.color) ? fmtFixed(ext.color, 2) : t('common.na')]);
       distRows(t('row.distMedian'));
+      if (vel) rows.push(...this.velocityRows(x0, vel, q));
       rows.push([t('row.brightnessCode'), t('row.renderingProxy', { m: fmtFixed(M, 1) })]);
     } else {
       if (ext) rows.push([t('row.apparentMag'), fmtFixed(ext.mag, 2)], [t('row.redshift'), fmtFixed(ext.color, 4)]);
@@ -883,7 +922,8 @@ class App {
     }
     rows.push(...this.positionRows(lb, rd.ra, rd.dec));
     const links: [string, string][] = [
-      [t('link.simbadPos'), `https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=${rd.ra.toFixed(5)}%20${rd.dec >= 0 ? '%2B' : ''}${rd.dec.toFixed(5)}&CooFrame=ICRS&Radius=10&Radius.unit=arcsec`],
+      // catalogue (today's) position: SIMBAD knows the star where it is now
+      [t('link.simbadPos'), `https://simbad.cds.unistra.fr/simbad/sim-coo?Coord=${rd0.ra.toFixed(5)}%20${rd0.dec >= 0 ? '%2B' : ''}${rd0.dec.toFixed(5)}&CooFrame=ICRS&Radius=10&Radius.unit=arcsec`],
     ];
     if (ext && L.meta?.idPrefix?.startsWith('Gaia DR3')) {
       links.push([t('link.gaia'), `https://vizier.cds.unistra.fr/viz-bin/VizieR-5?-source=I/355/gaiadr3&Source=${ext.id.toString()}`]);
@@ -893,18 +933,36 @@ class App {
     }
     // the article: the layer's own kind (layers.json `kind`, e.g. lg_galaxy) or its colour mode
     const docKind = (L.cfg as { kind?: string }).kind ?? kind;
-    this.infoRefresh = () => void this.showPoint(n, i, xyz, false, lum);
+    this.infoRefresh = () => void this.showPoint(n, i, x0, false, lum);
     this.openInfo({
       kind: t(synthetic ? 'info.point.synthetic' : kind === 'star' ? 'info.point.star' : 'info.point.galaxy', { layer: layerTitle(L.cfg) }),
       title,
       italic: kind === 'galaxy',
       rows,
-      note: synthetic ? t('info.syntheticNote') : '',
+      note: synthetic ? t('info.syntheticNote') : moved ? t('info.epochNote') : '',
       links,
       fly: flyView,
       doc: docSlugFor({ kind: docKind }),
     });
     this.dirty = true;
+  }
+
+  /** space velocity and the straight-line closest approach to the Sun (velocity relative to the Sun) */
+  private velocityRows(x0: Vec3, v: Vec3, q: number): [string, string][] {
+    const speed = Math.hypot(...v);
+    const d0 = Math.hypot(...x0) || 1;
+    const vr = (x0[0] * v[0] + x0[1] * v[1] + x0[2] * v[2]) / d0;
+    const out: [string, string][] = [];
+    if (q === VEL_Q.full) out.push([t('row.velocity'), t('row.velocityFull', { v: fmtFixed(speed, 1), vr: fmtFixed(vr, 1) })]);
+    else if (q === VEL_Q.tangential) out.push([t('row.velocity'), t('row.velocityTangential', { v: fmtFixed(speed, 1) })]);
+    else out.push([t('row.velocity'), t('row.velocityNone')]);
+    if (q === VEL_Q.full) {
+      const ca = closestApproach(x0, v);
+      const when = formatEpoch(Math.abs(ca.tMyr)).replace(/^[+−]/, '');
+      const d = `${formatDistance(ca.dPc, 3)}${formatLy(ca.dPc) ? ` (${formatLy(ca.dPc)})` : ''}`;
+      out.push([t('row.closest'), t(ca.tMyr >= 0 ? 'row.closestValue' : 'row.closestPast', { d, t: when })]);
+    }
+    return out;
   }
 
   /** Galactic l, b and ICRS RA, Dec rows, in the current number format */
@@ -1115,14 +1173,47 @@ class App {
   private solarUiTick(t: number) {
     const camSun = Math.hypot(...this.nav.camPos());
     const show = this.solar.visible && this.solar.fade > 0.05 && camSun < 0.3;
-    if (this.timebar.el.hidden === show) this.timebar.el.hidden = !show;
-    if (show) this.timebar.tick();
+    // the star row: whenever a drawn layer can move and the view is at star scale
+    const stars = camSun < 2e4 && this.layers.some((L) => L.active && L.hasVelocity);
+    this.timebar.setRows(show, stars);
     if (this.solarSel && !$('info').hidden && this.solar.clock.rate !== 0 && t - this.solarInfoT > 1000) {
       this.solarInfoT = t;
       const info = solarInfo(this.solar, this.solarSel);
       const dds = $('info-rows').querySelectorAll('dd');
       if (dds.length === info.rows.length) info.rows.forEach(([, v], i) => (dds[i].textContent = localNums(v)));
     }
+  }
+
+  // ------------------------------------------------------------------ star epoch (4D time slider)
+
+  /** the slider moved: shader offset, labels, URL, and the open info card (throttled to ~8 Hz) */
+  private onEpoch() {
+    this.streamer.setEpoch(this.epoch.myr);
+    this.applyEpochLabels();
+    this.dirty = true;
+    this.scheduleHash();
+    if ($('info').hidden || this.selection?.ref?.type !== 'point') return;
+    const now = performance.now();
+    window.clearTimeout(this.epochRefreshTimer);
+    const run = () => {
+      this.epochRefreshT = performance.now();
+      this.infoRefresh?.();
+    };
+    if (now - this.epochRefreshT > 120) run();
+    else this.epochRefreshTimer = window.setTimeout(run, 120);
+  }
+
+  /**
+   * Catalogue objects (labels, named stars) carry no velocity, so they stay at today's position.
+   * A label hides once a typical star (50 km/s) would have moved more than 1 % of its distance.
+   */
+  private applyEpochLabels() {
+    const reach = 100 * 50 * Math.abs(this.epoch.myr) * PC_PER_KMS_MYR;
+    for (const it of this.epochLabels) {
+      const d = Math.hypot(...it.xyz);
+      it.hidden = reach > 0 && d > 1e-6 && d < reach; // the Sun (d = 0) keeps its label
+    }
+    this.dirty = true;
   }
 
   // ------------------------------------------------------------------ search & UI
@@ -1629,6 +1720,7 @@ class App {
       // the anchor already selects its object, so sel=cat:<same name> would only repeat it
       sel: at && this.selection?.ref?.type === 'cat' && this.selection.ref.name === at ? undefined : this.selection?.ref ?? undefined,
       slab: this.slabMpc > 0 ? this.slabMpc : undefined,
+      epochYr: this.epoch.myr ? this.epoch.myr * 1e6 : undefined,
       doc: this.docs.current ?? undefined,
     });
     if (location.hash !== h) history.replaceState(null, '', h);
@@ -1686,6 +1778,7 @@ class App {
     const h = parseHash(location.hash);
     if (h.view) this.applyHashView(h.view, true);
     if ((h.slab ?? 0) !== this.slabMpc) this.setSlab(h.slab ?? 0);
+    if ((h.epochYr ?? 0) / 1e6 !== this.epoch.myr) this.epoch.set((h.epochYr ?? 0) / 1e6);
     if (h.doc && h.doc !== this.docs.current) void this.docs.open(h.doc);
     else if (!h.doc && this.docs.isOpen && !h.focus && !h.layer) this.docs.close();
     await this.layersReady;
@@ -1718,6 +1811,35 @@ class App {
         this.dirty = true;
       },
       setLayer: (id: string, on: boolean) => this.setLayerVisible(id, on),
+      /** star epoch, Myr from now (the 4D time slider) */
+      setEpoch: (myr: number) => this.epoch.set(myr),
+      epoch: () => this.epoch.myr,
+      /**
+       * test hook: the brightest on-screen moving point of a layer, its catalogue id and its CPU-moved
+       * position projected to CSS px (to check that the GPU pick finds it at the same place)
+       */
+      movedProbe: async (layerId: string) => {
+        const cam = this.nav.camPos();
+        let best: { id: string; x: number; y: number; xyz: Vec3; lum: number } | null = null;
+        for (const n of this.streamer.drawn()) {
+          if (n.layer.cfg.id !== layerId || !n.data || !this.streamer.moving(n) || !n.velData) continue;
+          const ext = await n.layer.loadExt(n);
+          const sv = n.layer.meta!.velocity!.sunVelocity;
+          const k = this.epoch.myr * PC_PER_KMS_MYR;
+          for (let i = 0; i < n.meta.count; i++) {
+            const lum = n.data.rgbl[i * 4 + 3];
+            if (best && lum <= best.lum) continue;
+            const c = n.meta.center;
+            const p = n.data.positions;
+            const v = n.velData;
+            const xyz: Vec3 = [0, 1, 2].map((a) => c[a] + p[i * 3 + a] + (v[i * 4 + a] - sv[a]) * k) as Vec3;
+            const s = this.project(xyz, cam);
+            if (!s || s.x < 40 || s.y < 40 || s.x > window.innerWidth - 40 || s.y > window.innerHeight - 200) continue;
+            best = { id: readExtRecord(ext, i, n.layer.extStride).id.toString(), x: s.x, y: s.y, xyz, lum };
+          }
+        }
+        return best;
+      },
       shapes: () => this.shapes.stats(),
       /** view of a catalogue galaxy from the Sun's side, its D25 major axis filling `fill` of the height */
       galaxyView: (name: string, fill = 0.6, fromSun = false) => {

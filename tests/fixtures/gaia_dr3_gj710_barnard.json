@@ -1,0 +1,22 @@
+{
+  "provenance": {
+    "service": "https://gaia.ari.uni-heidelberg.de/tap (sync; ESA gea.esac.esa.int was queue-limited at the time, VizieR/CDS timed out)",
+    "query": "SELECT g.source_id, g.ra, g.dec, g.parallax, g.parallax_error, g.pmra, g.pmra_error, g.pmdec, g.pmdec_error, g.radial_velocity, g.radial_velocity_error, g.phot_g_mean_mag, g.bp_rp, g.ruwe, d.r_med_geo, d.r_lo_geo, d.r_hi_geo FROM gaiadr3.gaia_source AS g JOIN gaiaedr3_complements.distances AS d ON d.source_id=g.source_id WHERE g.source_id IN (4270814637616488064, 4472832130942575872)",
+    "fetched_utc": "2026-11-13T20:10:00Z",
+    "epoch": "J2016.0 (Gaia DR3 ref_epoch)",
+    "simbad_check": "simbad.harvard.edu 2026-11-13T20:14Z: Barnard's star pmra -801.551, pmdec 10362.394 mas/yr (2020yCat.1350....0G), plx 546.9759 mas, RV -110.11 km/s (2018MNRAS.475.1960F); GJ 710 = HD 168442 pmra -0.414, pmdec -0.108, plx 52.3963, RV -14.468 (2018A&A...616A...7S)",
+    "citation": "Gaia Collaboration, Vallenari et al. 2023, A&A 674, A1; Bailer-Jones et al. 2021, AJ 161, 147"
+  },
+  "stars": [
+    {"name": "Gliese 710", "source_id": 4270814637616488064, "ra": 274.96183629691126, "dec": -1.938612759804832,
+     "parallax": 52.396292205290564, "parallax_error": 0.01710990071296692, "pmra": -0.4140637404226508, "pmra_error": 0.019432956352829933,
+     "pmdec": -0.10847507667730025, "pmdec_error": 0.01656503602862358, "radial_velocity": -14.419984817504883,
+     "radial_velocity_error": 0.2563098967075348, "phot_g_mean_mag": 9.063088417053223, "bp_rp": 1.6937246322631836,
+     "ruwe": 0.9128552675247192, "r_med_geo": 19.07213020324707, "r_lo_geo": 19.063879013061523, "r_hi_geo": 19.08028793334961},
+    {"name": "Barnard's Star", "source_id": 4472832130942575872, "ra": 269.44850252543836, "dec": 4.739420051112412,
+     "parallax": 546.975939730948, "parallax_error": 0.04011635482311249, "pmra": -801.5509783684709, "pmra_error": 0.0318208672106266,
+     "pmdec": 10362.394206546573, "pmdec_error": 0.036070454865694046, "radial_velocity": -110.46822357177734,
+     "radial_velocity_error": 0.13125522434711456, "phot_g_mean_mag": 8.193974494934082, "bp_rp": 2.8336968421936035,
+     "ruwe": 1.084850549697876, "r_med_geo": 1.82810640335083, "r_lo_geo": 1.8279749155044556, "r_hi_geo": 1.8282252550125122}
+  ]
+}

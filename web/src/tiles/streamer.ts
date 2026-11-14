@@ -20,7 +20,7 @@
 
 import * as THREE from 'three/webgpu';
 import type { Vec3 } from '../math/frames';
-import { parseMeta, parseRenderRecords, readExtRecord, type LayerMeta, type NodeMeta, type RenderRecords } from './format';
+import { PC_PER_KMS_MYR, parseMeta, parseRenderRecords, parseVelocityRecords, readExtRecord, type LayerMeta, type NodeMeta, type RenderRecords } from './format';
 import type { PointLayerConfig } from '../data/manifest';
 import { fetchJson } from '../data/tilebase';
 import { createBlobMaterial, createLayerMaterials, makeNodeGeometry, QUAD, type LayerMaterials, type PointUniforms } from '../render/pointMaterial';
@@ -53,6 +53,10 @@ export interface TileNode {
   ext: Promise<ArrayBuffer> | null;
   extBuf: ArrayBuffer | null;
   uncReady: boolean;
+  /** velocity stream (.vel.bin), fetched only while the star epoch is off "now" and the node is in the cut */
+  vel: Promise<Float32Array> | null;
+  /** decoded velocities (vx, vy, vz km/s, q) per point, also bound as the `vel` attribute */
+  velData: Float32Array | null;
   ownAlpha: number;
   blobAlpha: number;
   slot: number;
@@ -67,6 +71,8 @@ export class PointLayer {
   root: TileNode | null = null;
   readonly byName = new Map<string, TileNode>();
   readonly mats: LayerMaterials;
+  /** moving-point variant (shares `mats.uniforms`), built once the layer has a velocity stream */
+  matsMove: LayerMaterials | null = null;
   readonly group = new THREE.Group();
   readonly pickGroup = new THREE.Group();
   readonly blobMesh: THREE.Mesh;
@@ -101,6 +107,11 @@ export class PointLayer {
 
   get active() {
     return this.status === 'ready' && this.visible && !this.superseded && this.opacity > 0;
+  }
+
+  /** the layer has per-point velocities (meta.velocity, tiles .vel.bin) */
+  get hasVelocity() {
+    return !!this.meta?.velocity && !!this.matsMove;
   }
 
   get extStride() {
@@ -139,7 +150,7 @@ export class PointLayer {
       for (const m of this.meta.nodes) {
         this.byName.set(m.name, {
           layer: this, meta: m, children: [], parent: null, state: NodeState.Unloaded, points: null, pick: null,
-          data: null, lastUsed: -1, priority: 0, ext: null, extBuf: null, uncReady: false, ownAlpha: 0, blobAlpha: 0,
+          data: null, lastUsed: -1, priority: 0, ext: null, extBuf: null, uncReady: false, vel: null, velData: null, ownAlpha: 0, blobAlpha: 0,
           slot: 0, ownL: 0,
         });
       }
@@ -157,10 +168,14 @@ export class PointLayer {
         if (!dm) continue;
         p.children.push({
           layer: this, meta: dm, children: [], parent: p, state: NodeState.Unloaded, points: null, pick: null, data: null,
-          lastUsed: -1, priority: 0, ext: null, extBuf: null, uncReady: false, ownAlpha: 0, blobAlpha: 0, slot: 0, ownL: 0,
+          lastUsed: -1, priority: 0, ext: null, extBuf: null, uncReady: false, vel: null, velData: null, ownAlpha: 0, blobAlpha: 0, slot: 0, ownL: 0,
         });
       }
       for (const n of this.byName.values()) n.ownL = ownLight(n); // virtual children keep ownL = 0
+      if (this.meta.velocity) {
+        this.matsMove = createLayerMaterials(this.cfg.colorMode, this.code, this.mats.uniforms, true);
+        this.uniforms.sunVel.value.fromArray(this.meta.velocity.sunVelocity);
+      }
       this.root = this.byName.get('r') ?? null;
       if (!this.root) throw new Error('no root node r');
       this.status = 'ready';
@@ -214,6 +229,8 @@ export interface StreamStats {
   fading: boolean;
   /** drawn nodes currently using the distance-uncertainty material */
   uncNodes: number;
+  /** drawn nodes whose points move with the star epoch (velocity stream bound) */
+  movingNodes: number;
 }
 
 class MaxHeap<T extends { priority: number }> {
@@ -266,6 +283,8 @@ export class Streamer {
   cacheFactor = 1.6;
   /** "distance uncertainty" display mode */
   uncertainty = false;
+  /** star epoch, Myr from now (solar/epoch.ts); 0 = the catalogue positions */
+  private epoch = 0;
   /**
    * a subtree may be drawn as a blob only when its light is unresolved: 2 × RMS radius projects to at
    * most this many device px. Larger subtrees are queued for loading instead; if the budget does not
@@ -283,7 +302,7 @@ export class Streamer {
   private freeSlots: number[] = [];
   stats: StreamStats = {
     visibleNodes: 0, drawnNodes: 0, drawnPoints: 0, wantedPoints: 0, loadedNodes: 0, loadedPoints: 0, blobs: 0,
-    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, dropped: {}, fading: false, uncNodes: 0,
+    inFlight: 0, queued: 0, failed: 0, nearestPc: Infinity, farthestPc: 0, light: {}, pending: {}, dropped: {}, fading: false, uncNodes: 0, movingNodes: 0,
   };
 
   /**
@@ -317,6 +336,31 @@ export class Streamer {
     return ((2 * rms) / d) * pxPerRad;
   }
 
+  get epochMyr() {
+    return this.epoch;
+  }
+
+  /** move the star layers to Δt Myr: sets the shader offset; velocity streams load lazily in update() */
+  setEpoch(myr: number) {
+    this.epoch = myr;
+    for (const L of this.layers) L.uniforms.dtPc.value = myr * PC_PER_KMS_MYR;
+  }
+
+  /** does this node need its velocity stream to be drawn honestly at the current epoch? */
+  private needVel(n: TileNode): boolean {
+    return this.epoch !== 0 && n.layer.hasVelocity;
+  }
+
+  /** loaded, and (when the epoch is off "now" and the layer has velocities) its velocities are in */
+  private ready(n: TileNode): boolean {
+    return n.state === NodeState.Loaded && (!this.needVel(n) || !!n.velData);
+  }
+
+  /** the node's points move with the epoch in this frame */
+  moving(n: TileNode): boolean {
+    return this.needVel(n) && !!n.velData;
+  }
+
   nodeForSlot(slot: number): TileNode | null {
     return this.slots[slot] ?? null;
   }
@@ -332,7 +376,9 @@ export class Streamer {
   private inFrustum(n: TileNode, v: StreamView): boolean {
     const c = n.meta.center;
     this.sphere.center.set(c[0] - v.camPos[0], c[1] - v.camPos[1], c[2] - v.camPos[2]);
-    this.sphere.radius = n.meta.half * SQRT3;
+    // points may have moved out of their cube: grow the sphere by the node's fastest point
+    const drift = this.needVel(n) ? (n.meta.vmax ?? 0) * Math.abs(this.epoch) * PC_PER_KMS_MYR : 0;
+    this.sphere.radius = n.meta.half * SQRT3 + drift;
     return v.frustum.intersectsSphere(this.sphere);
   }
 
@@ -362,6 +408,10 @@ export class Streamer {
       farthest = Math.max(farthest, pr.dist + 2 * n.meta.half * SQRT3);
       if (n.state === NodeState.Unloaded) toLoad.push(n);
       if (n.state !== NodeState.Loaded) continue;
+      if (this.needVel(n) && !n.velData) {
+        this.loadVel(n); // drawn (and refined) once its velocities are in; its blob covers the gap
+        continue;
+      }
       for (const ch of n.children) {
         if (isDroppedNode(ch.meta) || !this.inFrustum(ch, v)) continue;
         const p = this.projected(ch, v.camPos, v.pxPerRad).px;
@@ -387,7 +437,7 @@ export class Streamer {
       pendingL[L.cfg.id] = 0;
       droppedL[L.cfg.id] = 0;
       const walk = (n: TileNode) => {
-        if (cut.has(n) && n.state === NodeState.Loaded) {
+        if (cut.has(n) && this.ready(n)) {
           ownTarget.add(n);
           for (const c of n.children) walk(c);
         } else if (this.blobOk(n, v)) blobTarget.add(n);
@@ -416,6 +466,7 @@ export class Streamer {
     let drawnPoints = 0;
     let drawnNodes = 0;
     let uncNodes = 0;
+    let movingNodes = 0;
     for (const n of this.loaded) {
       const on = n.ownAlpha > 0.001 && n.layer.active;
       if (n.points) {
@@ -427,9 +478,12 @@ export class Streamer {
           n.pick!.position.copy(n.points.position);
           n.points.userData.alpha = n.pick!.userData.alpha = n.ownAlpha;
           const unc = this.uncertainty && n.uncReady;
-          const mat = unc ? n.layer.mats.uncMaterial : n.layer.mats.material;
+          const mats = this.moving(n) ? n.layer.matsMove! : n.layer.mats;
+          const mat = unc ? mats.uncMaterial : mats.material;
           if (n.points.material !== mat) n.points.material = mat;
+          if (n.pick!.material !== mats.pickMaterial) n.pick!.material = mats.pickMaterial;
           if (unc) uncNodes++;
+          if (mats === n.layer.matsMove) movingNodes++;
           drawnPoints += n.meta.count;
           drawnNodes++;
         }
@@ -511,7 +565,7 @@ export class Streamer {
     this.stats = {
       visibleNodes: cut.size, drawnNodes, drawnPoints, wantedPoints: budgetUsed, loadedNodes: this.loaded.size, loadedPoints,
       blobs, inFlight: this.inFlight, queued: toLoad.length, failed: this.failed, nearestPc: nearest, farthestPc: farthest,
-      light, pending, dropped, fading, uncNodes,
+      light, pending, dropped, fading, uncNodes, movingNodes,
     };
     return this.stats;
   }
@@ -541,7 +595,51 @@ export class Streamer {
     this.onLoaded();
   }
 
-  /** nodes currently drawn (own points visible) */
+  /** fetch and bind a node's velocity stream (once per load of the node) */
+  private loadVel(n: TileNode) {
+    if (n.vel) return;
+    const L = n.layer;
+    const p = fetch(L.url(`n/${n.meta.name}.vel.bin`))
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then((b) => parseVelocityRecords(b, n.meta.count));
+    n.vel = p;
+    p.then((v) => {
+      if (n.vel !== p || !n.points) return; // unloaded meanwhile
+      (n.points.geometry as THREE.InstancedBufferGeometry).setAttribute('vel', new THREE.InstancedBufferAttribute(v, 4));
+      n.velData = v;
+      this.onLoaded();
+    }).catch((e) => {
+      // kept as the failed promise: no retry storm; the node is not drawn away from "now" (its
+      // stars' positions at that epoch are unknown), its blob keeps the light
+      this.failed++;
+      console.warn(`[tiles] ${L.cfg.id}/${n.meta.name}.vel.bin: ${(e as Error).message}`);
+    });
+  }
+
+  /**
+   * A node's velocities for the info card / picking: the bound stream when loaded, else fetched
+   * once (a node that is not drawn is not bound). null when the layer has none or the fetch fails.
+   */
+  async velocities(n: TileNode): Promise<Float32Array | null> {
+    if (!n.layer.hasVelocity) return null;
+    if (n.velData) return n.velData;
+    if (n.state === NodeState.Loaded) {
+      this.loadVel(n);
+      return n.vel!.catch(() => null);
+    }
+    try {
+      const r = await fetch(n.layer.url(`n/${n.meta.name}.vel.bin`));
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return parseVelocityRecords(await r.arrayBuffer(), n.meta.count);
+    } catch {
+      return null;
+    }
+  }
+
+    /** nodes currently drawn (own points visible) */
   drawn(): TileNode[] {
     return [...this.loaded].filter((n) => n.points?.visible);
   }
@@ -623,6 +721,8 @@ export class Streamer {
     n.ext = null;
     n.extBuf = null;
     n.uncReady = false;
+    n.vel = null;
+    n.velData = null;
     n.ownAlpha = 0;
     n.state = NodeState.Unloaded;
     this.loaded.delete(n);

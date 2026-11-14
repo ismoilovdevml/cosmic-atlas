@@ -26,6 +26,22 @@ export interface NodeMeta {
    * dropped from the set. agg.L = own + Σ kept children agg.L + dropped.L.
    */
   dropped?: NodeAgg;
+  /** velocity stream only: fastest stored speed of this node's points, km/s (rounded up) */
+  vmax?: number;
+}
+
+/** meta.json `velocity` (contract section 3, `.vel.bin`): present only when the stream exists */
+export interface VelocityMeta {
+  unit: 'km/s';
+  frame: 'galactic';
+  /** 'sun' = heliocentric; 'lsr' = relative to the LSR (the Sun moves with `sunVelocity`) */
+  origin: 'sun' | 'lsr';
+  encoding: typeof VEL_ENCODING;
+  bytesPerPoint: 8;
+  rvMissing: 'tangential';
+  /** velocity of the Sun in the stream's frame, km/s (subtract it for motion relative to the Sun) */
+  sunVelocity: [number, number, number];
+  counts?: { full: number; tangential: number; none: number };
 }
 
 export interface LayerMeta {
@@ -45,6 +61,12 @@ export interface LayerMeta {
   lite?: boolean;
   fullCount?: number;
   fullNodes?: number;
+  /** optional per-point space velocities (`n/<node>.vel.bin`) */
+  velocity?: VelocityMeta;
+  /** free-text caveat, e.g. "preview, partial sky: ..." */
+  note?: string;
+  /** stars-gaia-preview: how much of the planned download it is built from */
+  preview?: { chunks: number; chunksPlanned: number; skyFraction: number };
   nodes: NodeMeta[];
 }
 
@@ -52,6 +74,12 @@ export const RENDER_RECORD = 'xyz_f32_rgb_u8_lum_u8';
 /** v1 pick record (16 B) and the current one with distance percentiles (24 B) */
 export const EXT_RECORD_V1 = 'id_u64_mag_f32_color_f32';
 export const EXT_RECORD = 'id_u64_mag_f32_color_f32_distlo_f32_disthi_f32';
+/** velocity record: vx, vy, vz (km/s, Galactic), q, all float16 */
+export const VEL_ENCODING = 'vx_vy_vz_q_f16';
+/** 1 km/s for 1 Myr in pc (Julian years; astropy (1 km/s * 1 Myr).to(pc)) */
+export const PC_PER_KMS_MYR = 1.022712165045695;
+/** velocity quality codes (the record's 4th value) */
+export const VEL_Q = { full: 1, tangential: 0, none: -1 } as const;
 
 /** Validate meta.json against the contract. Throws with a specific message on mismatch. */
 export function parseMeta(json: unknown): LayerMeta {
@@ -67,6 +95,12 @@ export function parseMeta(json: unknown): LayerMeta {
   if (m.extRecord !== undefined && !String(m.extRecord).startsWith(EXT_RECORD_V1)) fail(`extRecord '${m.extRecord}'`);
   if (m.extRecord !== undefined && !(Number(m.extBytesPerPoint) >= 16 && Number(m.extBytesPerPoint) % 4 === 0))
     fail(`extBytesPerPoint ${m.extBytesPerPoint}`);
+  if (m.velocity !== undefined) {
+    const v = m.velocity;
+    if (v.unit !== 'km/s' || v.frame !== 'galactic') fail(`velocity unit/frame '${v.unit}'/'${v.frame}'`);
+    if (v.encoding !== VEL_ENCODING || v.bytesPerPoint !== 8) fail(`velocity encoding '${v.encoding}' / ${v.bytesPerPoint} B`);
+    if (!Array.isArray(v.sunVelocity) || v.sunVelocity.length !== 3 || !v.sunVelocity.every(Number.isFinite)) fail('velocity.sunVelocity');
+  }
   if (!Array.isArray(m.nodes) || m.nodes.length === 0) fail('no nodes');
   for (const n of m.nodes!) {
     if (!/^r[0-7]*$/.test(n.name)) fail(`bad node name '${n.name}'`);
@@ -127,6 +161,72 @@ export function parseRenderRecords(buf: ArrayBuffer, expectedCount?: number): Re
     rgbl[i * 4 + 3] = u8[o + 3];
   }
   return { count, positions, rgbl };
+}
+
+/** IEEE 754 binary16 -> number (exact; subnormals, inf, NaN included) */
+export function halfToFloat(h: number): number {
+  const s = h & 0x8000 ? -1 : 1;
+  const e = (h >> 10) & 0x1f;
+  const f = h & 0x3ff;
+  if (e === 0) return s * f * 2 ** -24;
+  if (e === 31) return f ? NaN : s * Infinity;
+  return s * (1 + f / 1024) * 2 ** (e - 15);
+}
+
+let _half: Float32Array | undefined;
+/** all 65 536 binary16 values as float32 (256 KB, built once) */
+function halfTable(): Float32Array {
+  if (!_half) {
+    _half = new Float32Array(65536);
+    for (let i = 0; i < 65536; i++) _half[i] = halfToFloat(i);
+  }
+  return _half;
+}
+
+/**
+ * Decode a `.vel.bin` (8 B/point: vx, vy, vz in km/s, q; little-endian float16) into one float32
+ * vec4 per point, ready for a GPU instance attribute.
+ */
+export function parseVelocityRecords(buf: ArrayBuffer, expectedCount?: number): Float32Array {
+  if (buf.byteLength % 8 !== 0) throw new Error(`.vel.bin length ${buf.byteLength} is not a multiple of 8`);
+  const count = buf.byteLength / 8;
+  if (expectedCount !== undefined && expectedCount !== count)
+    throw new Error(`.vel.bin has ${count} points, meta.json says ${expectedCount}`);
+  const T = halfTable();
+  const out = new Float32Array(count * 4);
+  if (isLittleEndian()) {
+    const u16 = new Uint16Array(buf);
+    for (let i = 0; i < out.length; i++) out[i] = T[u16[i]];
+  } else {
+    const dv = new DataView(buf);
+    for (let i = 0; i < out.length; i++) out[i] = T[dv.getUint16(i * 2, true)];
+  }
+  return out;
+}
+
+/**
+ * Position (pc, contract frame) of point `i` of a node at Δt Myr: x0 + (v − v_sun)·Δt·1.0227, in
+ * float64 (the CPU twin of the moving point shader). `vel` = parseVelocityRecords output.
+ */
+export function movedPosition(
+  center: readonly number[], positions: Float32Array, vel: Float32Array | null, i: number, dtMyr: number,
+  sunVelocity: readonly number[] = [0, 0, 0],
+): [number, number, number] {
+  const k = vel && dtMyr ? dtMyr * PC_PER_KMS_MYR : 0;
+  const o = i * 4;
+  return [
+    center[0] + positions[i * 3] + (k ? (vel![o] - sunVelocity[0]) * k : 0),
+    center[1] + positions[i * 3 + 1] + (k ? (vel![o + 1] - sunVelocity[1]) * k : 0),
+    center[2] + positions[i * 3 + 2] + (k ? (vel![o + 2] - sunVelocity[2]) * k : 0),
+  ];
+}
+
+/** Linear closest approach to the Sun: time (Myr, + = future) and distance (pc). */
+export function closestApproach(x: readonly number[], vKms: readonly number[]): { tMyr: number; dPc: number } {
+  const v = vKms.map((c) => c * PC_PER_KMS_MYR);
+  const vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  const t = vv > 0 ? -(x[0] * v[0] + x[1] * v[1] + x[2] * v[2]) / vv : 0;
+  return { tMyr: t, dPc: Math.hypot(x[0] + v[0] * t, x[1] + v[1] * t, x[2] + v[2] * t) };
 }
 
 export interface ExtRecord {

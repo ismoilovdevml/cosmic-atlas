@@ -180,3 +180,23 @@ def test_refuses_to_overwrite_unknown_dirs(tiles, tmp_path):
 def test_refuses_when_roots_do_not_fit(tiles, tmp_path):
     with pytest.raises(SystemExit, match="exceeds"):
         ml.main([str(tmp_path / "out"), "--src", str(tiles), "--budget-mb", "0.01"])
+
+
+def test_lite_copies_velocity_stream_of_kept_nodes(tmp_path):
+    rng = np.random.default_rng(9)
+    n = 6000
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    pd.DataFrame({"id": [f"S {i}" for i in range(n)], "source_id": np.arange(n, dtype=np.int64),
+                  "ra": rng.uniform(0, 360, n), "dec": rng.uniform(-80, 80, n), "dist_pc": rng.uniform(1, 500, n),
+                  "mag": rng.uniform(0, 15, n), "color": 1.0, "kind": "star", "pmra": rng.normal(0, 100, n),
+                  "pmdec": rng.normal(0, 100, n), "radial_velocity": rng.normal(0, 30, n)}).to_parquet(raw / "a.parquet")
+    src = tmp_path / "tiles"
+    bt.main(["v", "--src", str(raw), "--out", str(src / "v"), "--capacity", "300"])
+    out = tmp_path / "lite"
+    ml.main([str(out), "--src", str(src), "--budget-mb", str(0.4 * _size(src) / 1e6)])
+    m = _meta(out, "v")
+    assert m["lite"] and "velocity" in m
+    for nd in m["nodes"]:
+        assert (out / "v" / "n" / f"{nd['name']}.vel.bin").stat().st_size == nd["count"] * 8
+    assert len(list((out / "v" / "n").glob("*.vel.bin"))) == len(m["nodes"])
