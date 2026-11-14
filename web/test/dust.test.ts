@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import {
   DustGrid, clampToData, dataBounds, decodeLog, rayInterval, relativeFactor, sampleCode, texCoord, voxelCentre, voxelOf, voxelOffset,
   type DustMeta, type GridDesc,
@@ -122,7 +122,12 @@ describe.skipIf(!meta)('dust ray geometry', () => {
 
 describe.skipIf(!haveBins)('dust data: known clouds where the literature puts them', () => {
   const m = meta!;
-  const grid = new DustGrid(m, new Uint8Array(readFileSync(resolve(DIR, m.fine.file))), new Uint8Array(readFileSync(resolve(DIR, m.aux.file))));
+  // read in beforeAll: vitest still runs the body of a skipped describe while collecting tests, and
+  // the textures are gitignored (CI has meta.json but not the .bin files)
+  let grid!: DustGrid;
+  beforeAll(() => {
+    grid = new DustGrid(m, new Uint8Array(readFileSync(resolve(DIR, m.fine.file))), new Uint8Array(readFileSync(resolve(DIR, m.aux.file))));
+  });
   // (l, b) and literature distance; the same list as scripts/build_dust.py CLOUDS
   const clouds: [string, number, number, number, number][] = [
     ['Taurus', 169.6, -16.1, 141, 25],
