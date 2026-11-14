@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use Cosmic Atlas, please cite it as below, and cite the surveys whose data you used (see README and each layer's PROVENANCE.json)."
+title: "Cosmic Atlas: a 3D map of the real universe in the browser"
+type: software
+authors:
+  - alias: ismoilovdevml
+repository-code: "https://github.com/ismoilovdevml/cosmic-atlas"
+url: "https://ismoilovdevml.github.io/cosmic-atlas/"
+license: MIT
+abstract: >-
+  A browser 3D map of the universe built only from open survey data: the Solar System at its
+  real positions, Gaia DR3 stars with space velocities, 3D dust, star clusters, the Local Group,
+  15 million DESI DR1 galaxies and quasars, gravitational-wave localisation volumes, FRBs,
+  neutrinos and the Planck CMB, streamed as octree tiles with distance uncertainty and a cited
+  source for every number. WebGPU, with a WebGL2 fallback; interface and articles in Uzbek,
+  English and Russian.
+keywords:
+  - astronomy
+  - astrophysics
+  - data visualization
+  - Gaia
+  - DESI
+  - cosmology
+  - WebGPU
+  - 3D map

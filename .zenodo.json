@@ -1,0 +1,11 @@
+{
+  "title": "Cosmic Atlas: a 3D map of the real universe in the browser",
+  "upload_type": "software",
+  "description": "<p>A browser 3D map of the universe built only from open survey data: the Solar System at its real positions, Gaia DR3 stars with space velocities, 3D dust, star clusters, the Local Group, 15 million DESI DR1 galaxies and quasars, gravitational-wave localisation volumes, FRBs, neutrinos and the Planck CMB. Large layers stream as octree tiles with distance uncertainty, and every number on screen has a cited source. WebGPU with a WebGL2 fallback; interface and articles in Uzbek, English and Russian.</p><p>Live: <a href=\"https://ismoilovdevml.github.io/cosmic-atlas/\">ismoilovdevml.github.io/cosmic-atlas</a>. Data keep their own licences; Gaia is CC BY-NC 3.0 IGO, so the project is non-commercial.</p>",
+  "creators": [{ "name": "ismoilovdevml" }],
+  "license": "MIT",
+  "keywords": ["astronomy", "astrophysics", "data visualization", "Gaia", "DESI", "cosmology", "WebGPU", "3D map"],
+  "related_identifiers": [
+    { "identifier": "https://ismoilovdevml.github.io/cosmic-atlas/", "relation": "isDocumentedBy", "resource_type": "other" }
+  ]
+}

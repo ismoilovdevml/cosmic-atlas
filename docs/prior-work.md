@@ -273,3 +273,25 @@ No surveyed browser app shows distance uncertainty. OpenSpace's 0.20.1 changelog
 Gaia DR3 distance method; the current TNG web explorer; OpenSpace's "Star Distance Uncertainty"
 dataset; the DOIs for GCNS, 2MRS, CF4 and Edenhofer (cited from memory and standard journal patterns,
 not opened); and the Gaia bulk-file CDN.
+
+## 7. Update 2026-11-14: new browser maps found on Zenodo
+
+A search of the Zenodo API (records with DOIs) turned up four projects published in the last
+weeks. Each was read from its Zenodo record; the live sites were not tested.
+
+| Project | What it is | Data | Licence | What we take from it |
+|---|---|---|---|---|
+| **Stellata** (A. Marshall, zenodo.org/records/24223346, v7.1.22, 2026-11-14) | Browser 3D universe you fly through; "nothing invented or procedurally generated", true colour and naked-eye apparent brightness | ~980,000 stars and objects: Solar System, nearby stars and multiple systems, interstellar dust and molecular clouds, Milky Way, nearest galaxies | AGPL-3.0 | Direct competitor at Solar-System-to-Local-Group scale. Its "everything at the brightness your eye would see" rule matches ours; it has multiple-star systems, which we do not. |
+| **Cosmic Web Atlas** (M. Karatum, zenodo.org/records/23611209, 2026-10-24) | Single-HTML Three.js model of large-scale structure from the Local Group to the CMB | 2MRS (43,482) in supergalactic coordinates, fetched from VizieR at run time; a 600,043-object DESI DR1 sample | MIT | Supergalactic coordinates and the CMB as the outer frame. We stream all 15.1 M DESI objects; a supergalactic grid and Laniakea are worth adding. |
+| **Oviz** (C. Swiggum, zenodo.org/records/23887334, v0.1.0, 2026-11-02) | Python package that writes an interactive HTML figure of the Milky Way in 3D, on the sky and through time | Gaia phase-space data, 3D volumes, sky imagery; orbits integrated with galpy; Aladin Lite projection | MIT | Real Galactic orbits instead of straight lines for the time slider, and saved "view states" for papers and talks. |
+| **Interactive 3D visualization of the 10 Mpc Groups Catalog** (D. Pomarède, zenodo.org/records/23726804, 2026-10-28) | HTML 3D view of nearby galaxy groups with hover metadata and category toggles | 10 Mpc Groups Catalog | CC BY 4.0 | Galaxy groups as a layer between the Local Group and the cosmic web. |
+
+Earlier, related: Cosmic Web Explorer (N. Schuster et al., zenodo.org/records/20723875, AGPL-3.0;
+redshift-space distortions toggle) and Luxar (L. Royer, narrated interactive tours, records 22825093).
+
+**Zenodo for this project** (tested 2026-11-14 from Tashkent): file content served from
+`/api/records/<id>/files/<name>/content` supports HTTP Range (206) and CORS `*` with `range` allowed
+in preflight, about 0.4 s to first byte and ~0.95 MB/s per connection. Anonymous requests carry an
+`X-RateLimit-Limit` of 133 per window, far below the ~1,000 tile requests of one tour, so Zenodo is
+not a live tile origin. It is the right place for a citable DOI per release (GitHub integration,
+`.zenodo.json` and `CITATION.cff` in the repo) and for a permanent archive of the built tile sets.
