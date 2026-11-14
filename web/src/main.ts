@@ -543,8 +543,10 @@ export class App {
     const { entries } = await loadCatalogs(urls);
     // --- Solar System hook: probe tracks, then bodies + probes join search (live xyz) and labels
     if (!this.tilesIndex || this.tilesIndex.catalogs.includes('spacecraft.json')) await this.solar.loadSpacecraft(`${this.tileBase}catalogs/spacecraft.json`);
+    // --- Surface hook: named Moon / Mars features join search (scripts/build_planet_features.py)
+    if (!this.tilesIndex || this.tilesIndex.catalogs.includes('planet-features.json')) await this.solar.loadFeatures(`${this.tileBase}catalogs/planet-features.json`);
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
-    this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
+    this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...(this.solar.featureEntries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
     this.gw.setEntries(this.catalog); // --- GW hook
     if (this.gw.events.length) this.renderLayerPanel(); // --- GW hook: its row needs the events
@@ -581,6 +583,8 @@ export class App {
       it.name = tOr(`body.${en.toLowerCase()}`, en);
     }
     items.push(...this.solar.labelItems);
+    for (const it of this.solar.featureLabels) it.name = it.names[getLang()]; // --- Surface hook: feature labels
+    items.push(...this.solar.featureLabels);
     for (const e of entries) {
       if (!e.xyz) continue;
       const d = e.dist_pc;
@@ -1214,6 +1218,7 @@ export class App {
     }
     $('info-fly').onclick = () => void this.nav.flyTo(o.fly);
     this.bh?.infoFor(o.title, $('info-fly').parentElement!, this.nav); // --- Black hole hook: "Experience it" button
+    this.solar.infoFor(null, $('info-fly').parentElement!, () => ''); // --- Surface hook: showSolar adds the Photo/Relief switch
     $('info').hidden = false;
     document.body.classList.add('has-info');
     this.scheduleHash();
@@ -1305,6 +1310,7 @@ export class App {
     const rows = info.rows.map(([k, v]) => [k, localNums(v)] as [string, string]);
     this.openInfo({ kind: info.kind, title, italic: false, rows, note: info.note, links: [], fly, doc: info.docs });
     $('info-fly').onclick = () => this.flySolar(e);
+    this.solar.infoFor(e, $('info-fly').parentElement!, (m) => t(`surface.${m}`)); // --- Surface hook
     this.dirty = true;
   }
 
@@ -1314,7 +1320,7 @@ export class App {
     const id = this.solar.bodyIdOf(e);
     void this.nav.flyTo(view ?? this.solar.viewFor(e)).then((ok) => {
       if (ok && id) {
-        this.nav.view.focus = [...this.solar.positionOf(id)] as Vec3;
+        this.nav.view.focus = this.solar.focusAfterFlight(e); // --- Surface hook: body centre, or the feature on its surface
         this.solar.attach(id);
       }
     });

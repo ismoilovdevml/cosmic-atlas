@@ -381,7 +381,7 @@
   "solar.note.body": "Oʻrin vaqt panelida koʻrsatilgan vaqt uchun astronomy-engine {version} boʻyicha. Radius: IAU WGCCRE 2015 (Archinal va boshq. 2018). Massa va davr: NASA sayyoralar maʼlumotnomalari.",
   "solar.note.craft": "Yoʻl: JPL Horizons geliotsentrik vektorlari, har 30 kunda ({span}), kubik Ermit interpolyatsiyasi.",
   "solar.note.moons_missing": "Fobos va Deymos koʻrsatilmagan: astronomy-engineʼda ularning efemeridasi yoʻq.",
-  "solar.credit": "Quyosh sistemasi: oʻrinlar astronomy-engine 2.1.19 (MIT, Don Cross) boʻyicha; zondlar yoʻli JPL Horizons; teksturalar: Solar System Scope (CC BY 4.0), Yer: NASA Blue Marble Next Generation (NASA Earth Observatory).",
+  "solar.credit": "Quyosh sistemasi: oʻrinlar astronomy-engine 2.1.19 (MIT, Don Cross) boʻyicha; zondlar yoʻli JPL Horizons; teksturalar: Solar System Scope (CC BY 4.0), Yer: NASA Blue Marble Next Generation (NASA Earth Observatory). Oy va Mars sirti: LRO WAC mozaikasi va LOLA relyefi (NASA/GSFC/ASU), Viking MDIM 2.1 rangli mozaikasi va MOLA relyefi (NASA/JPL/USGS), NASA Moon/Mars Trek orqali; MRO CTX mozaikasi (NASA/JPL/MSSS/The Murray Lab, Esri serveri); nomlar: IAU/USGS sayyoralar nomenklaturasi gazetteri.",
   "tour.scale.earth.title": "Yer va Oy",
   "tour.scale.earth.text": "Sayyoramiz va uning yoʻldoshi Oy, oʻrtacha 384 400 km oraliqda. Yorugʻlik bu masofani 1,3 soniyada bosib oʻtadi.",
   "tour.scale.mars.title": "Mars",
@@ -525,5 +525,16 @@
   "link.gwosc": "GWOSC hodisa sahifasi",
   "link.vizierCluster": "Hunt & Reffert 2024 yozuvi (VizieR)",
   "cluster.pointTitle": "Hunt & Reffert toʻdasi, ID {id}",
-  "cluster.pointNote": "Hunt & Reffert 2023/24 katalogidagi harakatlanuvchi guruh, faqat nuqtalar qatlamida koʻrsatilgan: yulduzlari birga harakatlanadi, lekin tortishish ularni ushlab turmaydi. Nomi, yoshi va aʼzolari VizieR yozuvida."
+  "cluster.pointNote": "Hunt & Reffert 2023/24 katalogidagi harakatlanuvchi guruh, faqat nuqtalar qatlamida koʻrsatilgan: yulduzlari birga harakatlanadi, lekin tortishish ularni ushlab turmaydi. Nomi, yoshi va aʼzolari VizieR yozuvida.",
+  "kind.surface_feature": "Sirt relyef shakli",
+  "kind.landing_site": "Qoʻnish joyi",
+  "facts.on_body": "Qayerda",
+  "facts.feature_type": "Turi (IAU)",
+  "facts.latlon": "Kenglik, sharqiy uzunlik",
+  "facts.diameter_km": "Diametri",
+  "facts.named_after": "Nomi kelib chiqishi (IAU, inglizcha)",
+  "solar.note.feature": "Oʻrni: IAU/USGS sayyoralar nomenklaturasi gazetteri (planetosentrik koordinatalar), koʻrsatilgan vaqtga IAU aylanish modeli bilan buriladi. Sirt tasviri tekis (balandliksiz).",
+  "solar.note.lander": "Qoʻnish oʻrni: NSSDCA (Apollo: LRO oʻlchagan oy modullari oʻrni, Wagner va boshq. 2017) yoki Vikipediya keltirgan missiya sahifalari (Mars qoʻnuvchilari). Eski Mars qoʻnuvchilari taxminan bir kilometrga siljigan boʻlishi mumkin.",
+  "surface.relief": "Relyefni koʻrsatish",
+  "surface.photo": "Suratni koʻrsatish"
 }

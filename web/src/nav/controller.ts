@@ -14,7 +14,9 @@ import * as THREE from 'three/webgpu';
 import type { Vec3 } from '../math/frames';
 import { easeInOut, makeZoomPath, pathDuration, type ZoomPath } from '../math/flyto';
 
-export const MIN_DIST = 1e-11; // ~300 km: close enough to stand over a planet (Solar System layer)
+// ~6 km: low enough to fly 10 km over the Moon and Mars (their followed-body floor, solar/layer.ts
+// SURFACE_MIN_ALT_KM, keeps the camera above the ground; it was 1e-11 = 300 km)
+export const MIN_DIST = 2e-13;
 export const MAX_DIST = 3e10;
 
 export interface View {

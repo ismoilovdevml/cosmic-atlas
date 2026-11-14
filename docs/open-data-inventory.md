@@ -179,6 +179,33 @@ row or cell that could not be confirmed says **unverified** and gives the reason
 | OpenStreetMap tiles | Street map | z0–19 | 6.7 kB | "Bulk download ('scrape') … prohibited"; attribution required | tile.openstreetmap.org | `*` | n/a | P2 | Heavy use forbidden |
 | **Solar System Scope textures** | Low-res fallback for every body | 2k/8k per body | Earth 8k 4.57 MB; Mars 2k 0.75 MB | "Attribution 4.0 International … for any purpose, even commercially" | solarsystemscope.com/textures/download/… | **none** | n/a | **P0** (re-host) | Ceres, Haumea, Makemake and Eris maps are **"fictional"**; do not use them |
 
+### Planetary surfaces in use (web/src/solar/surface, checked 2026-11-14)
+
+Every endpoint below was fetched with `curl -H 'Origin: https://example.org'` on 2026-11-14 and
+answered `Access-Control-Allow-Origin: *`. Tile matrices are from each WMTS capabilities document
+(Trek) or the MapServer JSON (CTX): all are geographic, origin (−180°, +90°), level 0 = 2 × 1 tiles
+of 180°, rows from the north. Trek tiles are 256 px, CTX tiles 512 px over the same geometry.
+
+| layer | levels used | finest | licence / credit (what was actually found) | notes |
+|---|---|---|---|---|
+| Moon LRO WAC global mosaic v2, 303 ppd (`LRO_WAC_Mosaic_Global_303ppd_v02`, jpg) | 0–8 | ~83 m/px at level 8 | LROC is NASA/GSFC/Arizona State University; NASA media are not copyrighted in the US. **No terms page on trek.nasa.gov** (its `textAbout.html` has none) | default Moon imagery |
+| Moon LOLA colour-shaded relief v6, 256 ppd (`LRO_LOLA_ClrShade_Global_256ppd_v06`, png) | 0–6 | ~118 m/px | NASA/GSFC (LOLA); same Trek caveat | "Show relief" button |
+| Mars Viking MDIM 2.1 colour mosaic, 232 m (`Mars_Viking_MDIM21_ClrMosaic_global_232m`, jpg) | 0–7 | ~325 m/px at level 7 | NASA/JPL/USGS; same Trek caveat | colour of Mars at every level |
+| Mars MOLA colour-shaded relief, 463 m (`Mars_MGS_MOLA_ClrShade_merge_global_463m`, jpg) | 0–7 | ~325 m/px | NASA/JPL/GSFC; same Trek caveat | "Show relief" button |
+| Mars MRO CTX global mosaic beta01, Murray Lab (Esri cache `astro.arcgis.com/…/OnMars/CTX/MapServer/tile/{z}/{y}/{x}`, greyscale png) | 5–12 | ~5 m/px at level 12 | murray-lab.caltech.edu/CTX (read 2026-11-14; the site's TLS chain is incomplete, fetched with `curl -k`): "The Murray Lab/Caltech grants free use of the V01 version of the mosaic for all purposes. Data credit should be to: NASA/JPL/MSSS/The Murray Lab." The Esri cache serves **beta01**, whose free-use grant is quoted in the HiPS properties above. Esri's own hosting terms: not checked | some tiles answer **HTTP 500 without a CORS header** (e.g. level 11 near Gale, 2026-11-14 11:30; the same tile answered 200 at 11:57). The viewer retries twice, then falls back to the coarser CTX tile |
+
+**Elevation: none.** No DEM tile service with CORS was found for the Moon: Trek lists
+`LRO_LOLA_DEM_Global_128ppd_v04` only as a 2.2 GB raw download (search API `TrekServices/ws/index/eq/searchItems`,
+`RASTER_TYPE raw`), and `…/LRO_LOLA_DEM_Global_256ppd_v06/1.0.0/WMTSCapabilities.xml` is a 404; the PADC
+HiPS mirror has only a colour hillshade for the Moon. For Mars, the only browser-reachable DEM is the PADC
+HiPS `CDS_P_Mars_MGS-MOLA-DEM` (FITS, 16-bit, order 4 × 512 px, CORS `*`, "Public domain, Please cite
+authors"): a HEALPix pyramid, not wired up. The surface is therefore a sphere with flat imagery.
+
+**Names:** IAU/USGS Gazetteer of Planetary Nomenclature centre-point shapefiles
+(`asc-planetarynames-data.s3.us-west-2.amazonaws.com/{MOON,MARS}_nomenclature_center_pts.zip`,
+Last-Modified 2026-11-13; USGS public domain), Wikidata ru/uz labels via P2824 (CC0), Apollo LM
+positions from NSSDCA. Built by `scripts/build_planet_features.py`.
+
 ## 5. Sky imagery and backgrounds
 
 The notes column opens with **Embeddable** (in a public non-commercial site): yes / with credit / no.

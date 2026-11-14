@@ -26,8 +26,12 @@ import { srgbToLinear } from '../render/brightness';
 import type { LabelItem } from '../render/labels';
 import { BODIES, BODY_BY_ID, CRAFT_NAMES, KM_PER_AU, type BodyDef, type BodyId } from './bodies';
 import { SimClock } from './clock';
-import { astroTime, bodyFrame, sampleOrbit, solarPositions } from './ephemeris';
+import { astroTime, bodyFrame, sampleOrbit, solarPositions, type BodyFrame } from './ephemeris';
 import { interpolateTrack, parseSpacecraft, trackSpan, type CraftEntry } from './spacecraft';
+import { labelSizeKm, parseFeatures, viewAltitudeKm, type PlanetFeature } from './features';
+import { bodyToGal, galToBody, latLonToBody } from './surface/geo';
+import { PlanetSurface, TileCache } from './surface/surface';
+import { isSurfaceBody, type SurfaceBody, type SurfaceMode } from './surface/tiles';
 
 /** scene units per parsec inside the Solar System group (see the header) */
 export const WORLD_PER_PC = 1e9;
@@ -43,6 +47,8 @@ const MIN_PX = { big: 2.2, small: 1.6 };
 const TEX_MIN_PX = 0.4;
 const ORBIT_SAMPLES = { planet: 2048, moon: 512 };
 const JD_UNIX0 = 2440587.5;
+/** lowest camera altitude over a body with streamed surface imagery (the focus on its surface) */
+export const SURFACE_MIN_ALT_KM = 8;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type U<T> = { value: T };
@@ -92,7 +98,18 @@ export interface SolarEntry {
   docs: string;
   ref: string;
   /** set on every Solar System entry, so main.ts can route clicks here */
-  solar: { type: 'body'; id: BodyId } | { type: 'craft'; id: number };
+  solar: { type: 'body'; id: BodyId } | { type: 'craft'; id: number } | { type: 'feature'; id: SurfaceBody; index: number };
+}
+
+type FeatureLabel = LabelItem & { names: PlanetFeature['names'] };
+
+/** a named surface feature placed on its body (features.ts) */
+interface FeatureR {
+  f: PlanetFeature;
+  /** body-fixed unit vector */
+  nB: Vec3;
+  entry: SolarEntry;
+  label: FeatureLabel;
 }
 
 export interface SolarUpdate {
@@ -148,6 +165,15 @@ export class SolarSystem {
   private texQueue = new Map<BodyId, (() => void)[]>();
   private lastFollow: Vec3 | null = null;
   private orbitCursor = 0;
+  /** streamed Moon / Mars surface imagery (surface/surface.ts) */
+  readonly tileCache = new TileCache();
+  readonly surfaces = new Map<BodyId, PlanetSurface>();
+  private surfaceDirty = false;
+  /** named surface features (search entries + labels), from planet-features.json */
+  readonly features: FeatureR[] = [];
+  readonly featureEntries: SolarEntry[] = [];
+  readonly featureLabels: FeatureLabel[] = [];
+  private lastFrame: { id: BodyId; f: BodyFrame } | null = null;
 
   constructor(private assetBase = 'solar/') {
     this.root.name = 'solar-system';
@@ -157,6 +183,87 @@ export class SolarSystem {
     this.simMs = this.clock.now();
     for (const def of BODIES) this.bodies.push(this.makeBody(def));
     for (const b of this.bodies) if (b.def.periodDays) this.makeOrbit(b);
+    for (const b of this.bodies) {
+      if (isSurfaceBody(b.def.id)) this.surfaces.set(b.def.id, new PlanetSurface(b.def.id, this.root, this.tileCache, b.uSun, b.uAlpha));
+    }
+    this.tileCache.onLoad = () => (this.surfaceDirty = true);
+  }
+
+  /** photo mosaic or colour-shaded relief on the Moon / Mars */
+  setSurfaceMode(id: BodyId, mode: SurfaceMode) {
+    this.surfaces.get(id)?.setMode(mode);
+    this.surfaceDirty = true;
+  }
+
+  /** info-card action: a Photo / Relief switch for the Moon, Mars and their features (null removes it) */
+  infoFor(e: SolarEntry | null, actions: HTMLElement, label: (mode: SurfaceMode) => string) {
+    let btn = actions.querySelector<HTMLButtonElement>('button.surface-mode');
+    const id = e ? this.bodyIdOf(e) : null;
+    const surf = id ? this.surfaces.get(id) : undefined;
+    if (!id || !surf) {
+      btn?.remove();
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn surface-mode';
+      actions.append(btn);
+    }
+    const b = btn;
+    const sync = () => (b.textContent = label(surf.mode === 'photo' ? 'relief' : 'photo'));
+    sync();
+    b.onclick = () => {
+      this.setSurfaceMode(id, surf.mode === 'photo' ? 'relief' : 'photo');
+      sync();
+    };
+  }
+
+  /** load data/tiles/catalogs/planet-features.json (scripts/build_planet_features.py) */
+  async loadFeatures(url: string): Promise<number> {
+    let json: unknown;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      json = await r.json();
+    } catch (e) {
+      console.warn(`[solar] planet features unavailable (${(e as Error).message})`);
+      return 0;
+    }
+    for (const f of parseFeatures(json)) {
+      const b = this.bodyR(f.body);
+      const xyz: Vec3 = [b.pos[0], b.pos[1], b.pos[2]];
+      const index = this.features.length;
+      const entry: SolarEntry = {
+        name: f.name, alt: [...new Set([...f.alt, f.names.en, f.names.uz, f.names.ru])].filter((n) => n !== f.name), kind: f.kind,
+        dist_pc: Math.hypot(...b.pos), xyz, docs: b.def.docs, ref: f.ref, solar: { type: 'feature', id: f.body, index },
+      };
+      const rKm = labelSizeKm(f) / 2;
+      const label: FeatureLabel = {
+        name: f.names.en, names: f.names, xyz, kind: f.kind,
+        // ranks labels by angular size (LabelLayer: apparent = absMag + 5 log10(r / 10 pc))
+        absMag: -5 * Math.log10(rKm) - 30, minScale: 0, maxScale: SOLAR_LABEL_MAX, sizePc: rKm * PC_PER_KM, hidden: true,
+        onClick: () => this.onSelect(entry),
+      };
+      this.features.push({ f, nB: latLonToBody(f.lat, f.lon), entry, label });
+      this.featureEntries.push(entry);
+      this.featureLabels.push(label);
+    }
+    // bigger first: LabelLayer keeps array order among equals
+    this.featureLabels.sort((a, b) => (b.sizePc ?? 0) - (a.sizePc ?? 0));
+    return this.features.length;
+  }
+
+  featureOf(e: SolarEntry): PlanetFeature | null {
+    return e.solar.type === 'feature' ? this.features[e.solar.index].f : null;
+  }
+
+  /** heliocentric pc of a feature at the current simulation time */
+  featurePos(e: SolarEntry): Vec3 {
+    const fr = this.features[(e.solar as { index: number }).index];
+    const b = this.bodyR(fr.f.body);
+    const n = bodyToGal(bodyFrame(fr.f.body, astroTime(this.simMs)), fr.nB);
+    return [b.pos[0] + n[0] * b.rpc, b.pos[1] + n[1] * b.rpc, b.pos[2] + n[2] * b.rpc];
   }
 
   // ------------------------------------------------------------------ construction
@@ -500,6 +607,12 @@ export class SolarSystem {
     }
 
     const m = new THREE.Matrix4();
+    this.tileCache.begin();
+    if (this.surfaceDirty) {
+      this.surfaceDirty = false;
+      maxMove = Math.max(maxMove, 1);
+    }
+    const frames = new Map<BodyId, BodyFrame>();
     for (const b of this.bodies) {
       const p = b.pos;
       const rel: Vec3 = [p[0] - cam[0], p[1] - cam[1], p[2] - cam[2]];
@@ -526,6 +639,20 @@ export class SolarSystem {
       );
       b.mesh.matrix.copy(m);
       b.mesh.matrixWorldNeedsUpdate = true;
+      frames.set(b.def.id, f);
+      // --- streamed surface (Moon, Mars): replaces the mesh while the body is big on screen
+      const surf = this.surfaces.get(b.def.id);
+      if (surf) {
+        const rpxDev = inflate > 1.001 ? 0 : (s / dist) * pxPerRad;
+        const fading = surf.update({
+          rel, f, rpc: b.rpc, camera: u.camera, pxPerRad, rpx: rpxDev, globalTex: (b.texNode?.value as THREE.Texture) ?? null,
+          visible: b.mesh.visible, now: performance.now(),
+        });
+        if (fading) maxMove = Math.max(maxMove, 1);
+        if (surf.active) b.mesh.visible = false;
+        // the planet's own label sits on its centre, under the surface labels: hide it close up
+        b.label.hidden = surf.active && s / dist > 0.4;
+      }
       b.uSun.value.copy(sunRel);
       if (b.ring) {
         b.ring.uAlpha.value = vis;
@@ -573,6 +700,8 @@ export class SolarSystem {
       else this.lastScreen.delete(b);
     }
     this.lastScreenMs = ms;
+    this.tileCache.end();
+    this.placeFeatures(cam, frames, pxCss, W);
 
     // Earth: sharper texture once it is big on screen
     const earth = this.bodies.find((b) => b.def.id === 'earth')!;
@@ -634,6 +763,34 @@ export class SolarSystem {
   }
   private lastScreenMs = 0;
 
+  /** feature labels: on the body at this frame's rotation, shown on the near side when big enough */
+  private placeFeatures(cam: Vec3, frames: Map<BodyId, BodyFrame>, pxCss: number, W: number) {
+    for (const fr of this.features) {
+      const id = fr.f.body;
+      const b = this.bodyR(id);
+      const xyz = fr.entry.xyz;
+      const surf = this.surfaces.get(id);
+      const f = frames.get(id);
+      if (!surf?.active || !f) {
+        xyz[0] = b.pos[0];
+        xyz[1] = b.pos[1];
+        xyz[2] = b.pos[2];
+        fr.label.hidden = true;
+        continue;
+      }
+      const n = bodyToGal(f, fr.nB);
+      xyz[0] = b.pos[0] + n[0] * b.rpc;
+      xyz[1] = b.pos[1] + n[1] * b.rpc;
+      xyz[2] = b.pos[2] + n[2] * b.rpc;
+      fr.entry.dist_pc = Math.hypot(...xyz);
+      const t: Vec3 = [cam[0] - xyz[0], cam[1] - xyz[1], cam[2] - xyz[2]];
+      const r = Math.hypot(...t);
+      const above = n[0] * t[0] + n[1] * t[1] + n[2] * t[2] > 0.02 * r;
+      const sizePx = ((labelSizeKm(fr.f) * PC_PER_KM) / Math.max(r, 1e-30)) * pxCss;
+      fr.label.hidden = !above || sizePx < 22 || sizePx > 3 * W;
+    }
+  }
+
   /** the closest drawn surface to the eye (pc), for the near plane */
   nearestSurfacePc(cam: Vec3): number {
     let best = Infinity;
@@ -656,9 +813,10 @@ export class SolarSystem {
     this.followId = id;
     this.lastFollow = null;
     this.lastFollowId = null;
+    this.lastFrame = null; // the view was just set at the current rotation: nothing to turn yet
   }
 
-  follow(nav: { view: { focus: Vec3; dist: number }; flying: boolean; distFloor: number }) {
+  follow(nav: { view: { focus: Vec3; dist: number; yaw: number; pitch: number }; flying: boolean; distFloor: number }) {
     this.advance(); // positions for this frame first, so the focus does not lag the body
     const id = this.followId;
     if (!id) {
@@ -683,7 +841,20 @@ export class SolarSystem {
       for (let k = 0; k < 3; k++) nav.view.focus[k] += p[k] - this.lastFollow[k];
     }
     this.lastFollow = [...p] as Vec3;
-    const off = Math.hypot(nav.view.focus[0] - p[0], nav.view.focus[1] - p[1], nav.view.focus[2] - p[2]);
+    let off = Math.hypot(nav.view.focus[0] - p[0], nav.view.focus[1] - p[1], nav.view.focus[2] - p[2]);
+    // a focus on the surface turns with the body (a crater stays under the camera while time runs)
+    const fr = bodyFrame(id, astroTime(this.simMs));
+    const lf = this.lastFrame?.id === id ? this.lastFrame.f : null;
+    if (lf && off > 0.5 * b.rpc && off < 1.5 * b.rpc && lf.x[0] !== fr.x[0]) {
+      const rel = bodyToGal(fr, galToBody(lf, [nav.view.focus[0] - p[0], nav.view.focus[1] - p[1], nav.view.focus[2] - p[2]]));
+      for (let k = 0; k < 3; k++) nav.view.focus[k] = p[k] + rel[k];
+      const cp = Math.cos(nav.view.pitch);
+      const d = bodyToGal(fr, galToBody(lf, [cp * Math.cos(nav.view.yaw), cp * Math.sin(nav.view.yaw), Math.sin(nav.view.pitch)]));
+      nav.view.yaw = Math.atan2(d[1], d[0]);
+      nav.view.pitch = Math.asin(Math.max(-1, Math.min(1, d[2])));
+      off = Math.hypot(...rel);
+    }
+    this.lastFrame = { id, f: fr };
     // panned or zoomed away from the body: let it go
     if (off > Math.max(0.5 * nav.view.dist, 3 * b.rpc)) {
       this.followId = null;
@@ -693,7 +864,9 @@ export class SolarSystem {
     // do not let the camera dive into the followed body. With the focus near the centre the camera
     // must stay outside the whole sphere; with the focus on the surface (a place on Earth, looked at
     // from above) it only has to stay a little above the ground.
-    nav.distFloor = off < 0.5 * b.rpc ? b.rpc * 1.08 : off < b.rpc * 1.02 ? b.rpc * 1.02 - off + b.rpc * 0.002 : 0;
+    // Bodies with streamed imagery (Moon, Mars) let the camera down to SURFACE_MIN_ALT_KM.
+    const minAlt = this.surfaces.has(id) ? SURFACE_MIN_ALT_KM * PC_PER_KM : b.rpc * 0.022;
+    nav.distFloor = off < 0.5 * b.rpc ? b.rpc * 1.08 : off < b.rpc * 1.02 ? b.rpc - off + minAlt : 0;
   }
 
   // ------------------------------------------------------------------ picking
@@ -726,6 +899,14 @@ export class SolarSystem {
       const r = Math.hypot(...p) || 1;
       return { focus: [...p] as Vec3, dist: 0.6 * PC_PER_AU, yaw: Math.atan2(-p[1] / r, -p[0] / r) + 0.6, pitch: 0.35 };
     }
+    if (e.solar.type === 'feature') {
+      // straight down onto the feature, from an altitude that frames it
+      const fr = this.features[e.solar.index];
+      const b = this.bodyR(fr.f.body);
+      const focus = this.featurePos(e);
+      const n = [0, 1, 2].map((k) => (focus[k] - b.pos[k]) / b.rpc);
+      return { focus, dist: viewAltitudeKm(fr.f, b.def.radiusKm) * PC_PER_KM, yaw: Math.atan2(n[1], n[0]), pitch: Math.asin(Math.max(-1, Math.min(1, n[2]))) };
+    }
     const id = e.solar.id;
     const def = BODY_BY_ID.get(id)!;
     const p = this.pos[id];
@@ -741,7 +922,34 @@ export class SolarSystem {
   }
 
   bodyIdOf(e: SolarEntry): BodyId | null {
-    return e.solar.type === 'body' ? e.solar.id : null;
+    return e.solar.type === 'body' || e.solar.type === 'feature' ? e.solar.id : null;
+  }
+
+  /** where the focus goes once a flight to `e` lands (the body moved meanwhile): its centre, or the feature */
+  focusAfterFlight(e: SolarEntry): Vec3 {
+    this.advance();
+    if (e.solar.type === 'feature') return this.featurePos(e);
+    const id = this.bodyIdOf(e);
+    return id ? ([...this.pos[id]] as Vec3) : ([...e.xyz] as Vec3);
+  }
+
+  /** a view straight down onto (lat, east lon) of a body from `altKm` above its mean sphere */
+  surfaceView(id: BodyId, lat: number, lon: number, altKm: number): { focus: Vec3; dist: number; yaw: number; pitch: number } {
+    this.advance();
+    const b = this.bodyR(id);
+    const n = bodyToGal(bodyFrame(id, astroTime(this.simMs)), latLonToBody(lat, lon));
+    const focus: Vec3 = [b.pos[0] + n[0] * b.rpc, b.pos[1] + n[1] * b.rpc, b.pos[2] + n[2] * b.rpc];
+    return { focus, dist: altKm * PC_PER_KM, yaw: Math.atan2(n[1], n[0]), pitch: Math.asin(Math.max(-1, Math.min(1, n[2]))) };
+  }
+
+  /** elevation of the Sun's centre (deg) above the local horizon of a surface point, now */
+  sunElevation(id: BodyId, lat: number, lon: number): number {
+    this.advance();
+    const b = this.bodyR(id);
+    const n = bodyToGal(bodyFrame(id, astroTime(this.simMs)), latLonToBody(lat, lon));
+    const s = [-b.pos[0], -b.pos[1], -b.pos[2]];
+    const r = Math.hypot(s[0], s[1], s[2]);
+    return (Math.asin((n[0] * s[0] + n[1] * s[1] + n[2] * s[2]) / r) * 180) / Math.PI;
   }
 
   craftOf(e: SolarEntry): CraftR | null {

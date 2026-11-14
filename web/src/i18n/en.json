@@ -381,7 +381,7 @@
   "solar.note.body": "Position from astronomy-engine {version} at the time shown in the time bar. Radius: IAU WGCCRE 2015 (Archinal et al. 2018). Mass and period: NASA planetary fact sheets.",
   "solar.note.craft": "Track: JPL Horizons heliocentric vectors every 30 days ({span}), cubic Hermite interpolation.",
   "solar.note.moons_missing": "Phobos and Deimos are not shown: astronomy-engine has no ephemeris for them.",
-  "solar.credit": "Solar System: positions from astronomy-engine 2.1.19 (MIT, Don Cross); probe tracks from JPL Horizons; textures: Solar System Scope (CC BY 4.0), Earth: NASA Blue Marble Next Generation (NASA Earth Observatory).",
+  "solar.credit": "Solar System: positions from astronomy-engine 2.1.19 (MIT, Don Cross); probe tracks from JPL Horizons; textures: Solar System Scope (CC BY 4.0), Earth: NASA Blue Marble Next Generation (NASA Earth Observatory). Moon and Mars surfaces: LRO WAC mosaic and LOLA relief (NASA/GSFC/ASU), Viking MDIM 2.1 colour and MOLA relief (NASA/JPL/USGS) via NASA Moon/Mars Trek; MRO CTX mosaic (NASA/JPL/MSSS/The Murray Lab, served by Esri); names: IAU/USGS Gazetteer of Planetary Nomenclature.",
   "tour.scale.earth.title": "Earth and the Moon",
   "tour.scale.earth.text": "Our planet and its Moon, 384,400 km apart on average. Light crosses that gap in 1.3 seconds.",
   "tour.scale.mars.title": "Mars",
@@ -525,5 +525,16 @@
   "link.gwosc": "GWOSC event page",
   "link.vizierCluster": "Hunt & Reffert 2024 record (VizieR)",
   "cluster.pointTitle": "Hunt & Reffert cluster ID {id}",
-  "cluster.pointNote": "A moving group from Hunt & Reffert 2023/24, shown in the point layer only: its stars move together but are not held together by gravity. Its name, age and member list are in the VizieR record."
+  "cluster.pointNote": "A moving group from Hunt & Reffert 2023/24, shown in the point layer only: its stars move together but are not held together by gravity. Its name, age and member list are in the VizieR record.",
+  "kind.surface_feature": "Surface feature",
+  "kind.landing_site": "Landing site",
+  "facts.on_body": "On",
+  "facts.feature_type": "Type (IAU)",
+  "facts.latlon": "Latitude, east longitude",
+  "facts.diameter_km": "Diameter",
+  "facts.named_after": "Name origin (IAU, English)",
+  "solar.note.feature": "Position: IAU/USGS Gazetteer of Planetary Nomenclature (planetocentric coordinates), turned with the IAU rotation model to the time shown. Surface imagery is flat (no elevation).",
+  "solar.note.lander": "Landing position: NSSDCA (Apollo: LRO-measured lunar-module positions, Wagner et al. 2017) or the mission pages cited by Wikipedia (Mars landers). Older Mars landers may be off by about a kilometre.",
+  "surface.relief": "Show relief",
+  "surface.photo": "Show photo"
 }

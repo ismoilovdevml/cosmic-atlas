@@ -381,7 +381,7 @@
   "solar.note.body": "Положение по astronomy-engine {version} на время, показанное на шкале времени. Радиус: IAU WGCCRE 2015 (Archinal et al. 2018). Масса и период: справочные листы NASA по планетам.",
   "solar.note.craft": "Траектория: гелиоцентрические векторы JPL Horizons с шагом 30 суток ({span}), кубическая интерполяция Эрмита.",
   "solar.note.moons_missing": "Фобос и Деймос не показаны: в astronomy-engine нет их эфемерид.",
-  "solar.credit": "Солнечная система: положения по astronomy-engine 2.1.19 (MIT, Don Cross); траектории зондов из JPL Horizons; текстуры: Solar System Scope (CC BY 4.0), Земля: NASA Blue Marble Next Generation (NASA Earth Observatory).",
+  "solar.credit": "Солнечная система: положения по astronomy-engine 2.1.19 (MIT, Don Cross); траектории зондов из JPL Horizons; текстуры: Solar System Scope (CC BY 4.0), Земля: NASA Blue Marble Next Generation (NASA Earth Observatory). Поверхности Луны и Марса: мозаика LRO WAC и рельеф LOLA (NASA/GSFC/ASU), цветная мозаика Viking MDIM 2.1 и рельеф MOLA (NASA/JPL/USGS) через NASA Moon/Mars Trek; мозаика MRO CTX (NASA/JPL/MSSS/The Murray Lab, сервер Esri); названия: газеттир планетной номенклатуры IAU/USGS.",
   "tour.scale.earth.title": "Земля и Луна",
   "tour.scale.earth.text": "Наша планета и её спутник Луна, в среднем в 384 400 км друг от друга. Свет проходит это расстояние за 1,3 секунды.",
   "tour.scale.mars.title": "Марс",
@@ -525,5 +525,16 @@
   "link.gwosc": "Страница события в GWOSC",
   "link.vizierCluster": "Запись Hunt & Reffert 2024 (VizieR)",
   "cluster.pointTitle": "Скопление Hunt & Reffert, ID {id}",
-  "cluster.pointNote": "Движущаяся группа из Hunt & Reffert 2023/24, показана только в слое точек: её звёзды движутся вместе, но гравитация их не удерживает. Название, возраст и список членов есть в записи VizieR."
+  "cluster.pointNote": "Движущаяся группа из Hunt & Reffert 2023/24, показана только в слое точек: её звёзды движутся вместе, но гравитация их не удерживает. Название, возраст и список членов есть в записи VizieR.",
+  "kind.surface_feature": "Деталь рельефа",
+  "kind.landing_site": "Место посадки",
+  "facts.on_body": "Где",
+  "facts.feature_type": "Тип (МАС)",
+  "facts.latlon": "Широта, восточная долгота",
+  "facts.diameter_km": "Диаметр",
+  "facts.named_after": "Происхождение названия (МАС, англ.)",
+  "solar.note.feature": "Положение: газеттир планетной номенклатуры IAU/USGS (планетоцентрические координаты), повёрнутое по модели вращения МАС на показанное время. Снимки поверхности плоские (без рельефа высот).",
+  "solar.note.lander": "Место посадки: NSSDCA (Apollo: положения лунных модулей по LRO, Wagner и др. 2017) или страницы миссий, на которые ссылается Википедия (марсианские аппараты). У старых марсианских аппаратов возможна ошибка около километра.",
+  "surface.relief": "Показать рельеф",
+  "surface.photo": "Показать снимок"
 }

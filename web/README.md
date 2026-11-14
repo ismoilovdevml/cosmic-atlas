@@ -63,11 +63,74 @@ node scripts/capture_labels.mjs ../figures labels <url>        # GC from 5 / 7 k
   (`scripts/build_spacecraft.py`), 30-day Horizons samples for 2000–2040, cubic Hermite in between
   (1–2 km off-grid in cruise; ~1.4 million km a day after New Horizons' 2007 Jupiter flyby, which
   30-day sampling cannot resolve). Drawn as markers with a faint trail since 2000.
-- **Navigation.** The minimum camera distance is now 1e-11 pc (~300 km). Flying to a body locks
+- **Navigation.** The minimum camera distance is now 2e-13 pc (~6 km; it was 1e-11 pc, ~300 km). Flying to a body locks
   the focus to it (it follows the body while time runs) and keeps the camera out of the planet.
 - **For "Show me":** `observerGalacticXyz(lat, lon, h, date)` and `flyTargetForLatLon(lat, lon,
   date?, altitudeKm?)` in `src/solar/ephemeris.ts`. Tashkent matches astropy
   `EarthLocation→GCRS→Galactic` to 20 m.
+
+### Moon and Mars surfaces (`src/solar/surface/`, `src/solar/features.ts`)
+
+Fly to the Moon or Mars and keep zooming: once the body's radius passes 160 device px, its single
+global texture gives way to streamed tiles, down to 8 km above the ground (`SURFACE_MIN_ALT_KM`;
+the global `MIN_DIST` is now 2e-13 pc ≈ 6 km).
+
+- **Sources** (all `Access-Control-Allow-Origin: *`, checked 2026-11-14; licences and caveats in
+  `docs/open-data-inventory.md`, "Planetary surfaces in use"): Moon LRO WAC mosaic v2 (levels 0–8,
+  ~83 m/px) or LOLA colour-shaded relief; Mars Viking MDIM 2.1 colour (levels 0–7, ~325 m/px) plus
+  the Murray Lab CTX mosaic (levels 5–12, ~5 m/px), or MOLA colour-shaded relief. The info card of
+  the Moon, Mars or any of their features has a **Show relief / Show photo** switch.
+- **Quadtree.** Patches follow the geographic tile pyramid (level 0 = 2 × 1 tiles of 180°). A patch
+  splits while one tile texel covers more than 1.4 device px; patches beyond the horizon or outside
+  the view are skipped (≤ 360 drawn). Each is a 33 × 33 grid plus a skirt, built in float64 relative to
+  its own centre. While active the patches replace the body mesh and cover the whole sphere: a patch
+  whose tile has not arrived samples its nearest loaded ancestor, or the global texture, through a
+  sub-rectangle, and its own tile cross-fades in over 350 ms, so nothing pops or leaves a hole.
+- **Requests.** `TileCache`: at most 6 fetches in flight, coarse levels and near tiles first, only
+  for what is on screen this frame; LRU eviction at 192 MB of GPU texture; failed tiles retried twice.
+- **Mars detail.** Viking gives the colour. Above level 5 the greyscale CTX tile modulates it by its
+  local contrast (CTX ÷ the same mosaic three levels coarser); below ~60 km altitude CTX gradually
+  sets the brightness itself (× 0.5, the measured Viking/CTX mean ratio) and Viking only the hue, so
+  Viking's 232 m blotches do not dominate a 10 km view. CTX "no data" leaves the Viking colour alone.
+- **Placement and light.** Vertices are placed with the same `bodyFrame()` as the body (IAU rotation
+  model) and lit per fragment from the Sun like the body, so the terminator matches. `test/surface.test.ts`
+  checks the transform against JPL Horizons sub-Earth and sub-solar points of the Moon (MOON_ME) and
+  Mars (IAU_MARS) at J2000.0 and 2026-11-13: sub-Earth ≤ 0.0021° (≤ 60 m), sub-solar ≤ 0.0058°
+  (≤ 0.34 km on Mars; Horizons applies the Sun's aberration and light time, we do not); Tycho, Apollo 11,
+  Olympus Mons and Gale round-trip to 1e-9° and sit at the right great-circle distance from the
+  sub-Earth point (≤ 0.0005°).
+- **No elevation.** No DEM tile service with CORS exists for the Moon; the Mars MOLA DEM is only a
+  HEALPix FITS pyramid (PADC). The surface is a sphere with flat imagery; mountains are only shading.
+- **Names.** `scripts/build_planet_features.py` → `data/tiles/catalogs/planet-features.json`: 882
+  entries (Moon 527 + Mars 340 IAU features, 5 Apollo LM sites, 10 Mars landers): per body the 300
+  largest non-satellite features, plus Uzbek-labelled ones, Russian-labelled ones ≥ 80 km, a few
+  famous small ones and every lunar "Statio". Labels turn with the body, show on the near side when
+  ≥ 22 px, and open an info card (type, lat/lon, diameter, name origin). Search finds "Tixo", "Тихо",
+  "Apollo 11", "Аполлон-11", "Curiosity", "Ulugʻbek". A followed focus on the surface turns with
+  the body while time runs.
+- **Captures.** `node scripts/capture_surface.mjs ../figures <url>` → `figures/surface-*.png`: Tycho,
+  the Apollo 11 site, Olympus Mons and Gale, straight down from 3–4 altitudes each (screen centre =
+  target, marked by a ring), at the first time from 2026-11-13 when the Sun is 20–45° up there.
+  Measured 2026-11-14 (1440 × 900, DPR 1, M4 Pro, WebGPU):
+
+  | view | requests | patches | deepest level | settle |
+  |---|---|---|---|---|
+  | Tycho 1500 / 300 / 60 km | 115 / 90 / 53 | 87 / 73 / 40 | 4 / 6 / 8 | 14 / 10 / 7 s |
+  | Apollo 11 300 / 60 / 12 km | 77 / 44 / 0 | 57 / 32 / 6 | 6 / 8 / 8 | 8 / 7 / 2 s |
+  | Olympus Mons 2500 / 800 / 150 km | 94 / 166 / 40 | 72 / 71 / 19 | 4 / 6 / 7 | 12 / 24 / 10 s |
+  | Gale 800 / 200 / 30 / 12 km | 169 / 58 / 17 / 52 | 69 / 27 / 16 / 26 | 6 / 7 / 9 / 11 | 30 / 14 / 6 / 13 s |
+
+  The whole run made 1,172 requests (81 MB); 23 CTX tiles failed after retries (HTTP 500 without CORS
+  from the Esri cache, levels 10–11 around Gale and Olympus Mons). The WebGL 2 fallback draws the
+  same Tycho views.
+- **Two three.js r186 pitfalls** (comments in `surface.ts`): one Texture object in two texture nodes
+  of one material while it compiles mixes up the bindings (every patch then showed its parent tile),
+  so each node starts on its own 1 × 1 placeholder; and a mip-biased second sample of a texture
+  another node also samples fails to compile (missing sampler), so the CTX low-pass is its ancestor tile.
+- **Not done.** Elevation (above); Moon detail finer than WAC (Kaguya TC 7 m on Trek: JAXA terms not
+  verified); Phobos and Deimos; Mercury, Venus and the outer moons (Trek / PADC HiPS exist); the
+  camera can still be orbited below the local horizon at low altitude (the floor limits distance,
+  not angle); deep links store the followed body, not the surface point.
 
 ### Black holes up close (`src/blackhole/`)
 

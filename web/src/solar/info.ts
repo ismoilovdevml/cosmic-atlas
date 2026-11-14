@@ -6,6 +6,8 @@ import { BODY_BY_ID, KM_PER_AU } from './bodies';
 import type { SolarEntry, SolarSystem } from './layer';
 import { tr } from './strings';
 import { AE_VERSION } from './ephemeris';
+import { getLang } from '../i18n';
+import { formatLatLon } from './features';
 
 const LIGHT_MIN_PER_AU = 499.00478383615643 / 60;
 const EARTH = BODY_BY_ID.get('earth')!;
@@ -62,6 +64,24 @@ export function solarInfo(sys: SolarSystem, e: SolarEntry): SolarInfo {
       title: e.name,
       rows,
       note: tr('solar.note.craft', { span: span ? `${isoDate(span[0])} to ${isoDate(span[1])}` : 'n/a' }) + (c?.on ? '' : ' Outside the track at this time.'),
+      docs: e.docs,
+    };
+  }
+  if (e.solar.type === 'feature') {
+    // a named place on the Moon or Mars (IAU Gazetteer / landing sites)
+    const f = sys.featureOf(e)!;
+    const ll = formatLatLon(f.lat, f.lon);
+    rows.push([tr('facts.on_body'), tr(`body.${f.body}`)]);
+    if (f.kind === 'surface_feature' && f.type) rows.push([tr('facts.feature_type'), f.type]);
+    rows.push([tr('facts.latlon'), `${ll.lat.toFixed(3)}°, ${ll.lon.toFixed(3)}°`]);
+    if (f.diam_km > 0) rows.push([tr('facts.diameter_km'), `${fmt(f.diam_km, f.diam_km < 10 ? 2 : 0)} ${tr('unit.km')}`]);
+    if (f.origin) rows.push([tr('facts.named_after'), f.origin]);
+    rows.push([tr('facts.dist_earth'), formatAuLight(dEarth)]);
+    return {
+      kind: tr(`kind.${f.kind}`),
+      title: f.names[getLang()] ?? f.name,
+      rows,
+      note: tr(f.kind === 'landing_site' && !f.gid ? 'solar.note.lander' : 'solar.note.feature'),
       docs: e.docs,
     };
   }

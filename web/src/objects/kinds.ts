@@ -33,6 +33,9 @@ export const KINDS: Record<string, KindInfo> = {
   dwarf_planet: { doc: 'solar-system',          label: 'kind.dwarf_planet', color: '#bdb3a3' },
   moon:         { doc: 'moon',                  label: 'kind.moon',         color: '#cfcfcf' },
   spacecraft:   { doc: 'spacecraft',            label: 'kind.spacecraft',   color: '#e8e8e8' },
+  // named places on the Moon and Mars (IAU gazetteer, landing sites); only labelled close to the body
+  surface_feature: { doc: 'moon',               label: 'kind.surface_feature', color: '#e6dccb', minScale: 0, maxScale: 0.3 },
+  landing_site: { doc: 'moon',                  label: 'kind.landing_site', color: '#ffd27a', minScale: 0, maxScale: 0.3 },
   message:      { doc: 'interstellar-message',  label: 'kind.message',      color: '#ffd1f0', minScale: 0, maxScale: 1000 },
   seti_signal:  { doc: 'seti',                  label: 'kind.seti_signal',  color: '#ffd1f0', minScale: 0, maxScale: 1e4 },
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },

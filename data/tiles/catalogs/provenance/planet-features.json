@@ -1,0 +1,41 @@
+{
+  "catalog": "data/tiles/catalogs/planet-features.json",
+  "bytes": 419468,
+  "started_utc": "2026-11-14T06:16:32Z",
+  "finished_utc": "2026-11-14T06:16:32Z",
+  "counts": {
+    "moon": {
+      "gazetteer_rows": 9087,
+      "selected": 527
+    },
+    "mars": {
+      "gazetteer_rows": 2055,
+      "selected": 340
+    },
+    "landers": {
+      "apollo_lm": 5,
+      "mars": 10
+    }
+  },
+  "entries": 882,
+  "selection": "non-satellite IAU features: 300 largest per body + Uzbek-labelled + Russian-labelled >= 80.0 km + ['Aristarchus', 'Copernicus', 'Eberswalde', 'Endeavour', 'Gale', 'Gusev', 'Holden', 'Jezero', 'Kepler', 'Shackleton', 'Tycho'] + all Statio + landers",
+  "service": {
+    "gazetteer": [
+      "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip",
+      "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MARS_nomenclature_center_pts.zip"
+    ],
+    "wikidata": "https://query.wikidata.org/sparql",
+    "apollo": "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html",
+    "mars_landers": "https://en.wikipedia.org/w/index.php?title=List_of_artificial_objects_on_Mars&action=raw"
+  },
+  "licences": {
+    "gazetteer": "USGS-produced data, U.S. public domain",
+    "wikidata": "CC0",
+    "nssdc": "NASA, U.S. public domain"
+  },
+  "coordinates": "planetocentric latitude, east longitude 0-360 (Moon 2000, Mars 2000)",
+  "caveats": [
+    "Viking 1/2, Pathfinder and Phoenix coordinates are older NSSDCA values (control networks of their time; may be off by ~1 km)",
+    "Uzbek names: Wikidata 'uz' labels where present (apostrophes normalised to U+02BB/U+02BC), else the IAU name; Tycho->Tixo and Copernicus->Kopernik are set by hand"
+  ]
+}

@@ -91,6 +91,29 @@ export function installDebugApi(app: App) {
         app.nav.setView(flyTargetForLatLon(lat, lon, app.solar.clock.now(), altKm));
         app.solar.attach('earth');
       },
+      // --- Surface hook (captures / tests): tile cache, feature views
+      surface: {
+        stats: () => ({ cache: { ...app.solar.tileCache.stats }, moon: { ...app.solar.surfaces.get('moon')!.stats }, mars: { ...app.solar.surfaces.get('mars')!.stats } }),
+        idle: () => app.solar.tileCache.idle,
+        log: () => [...app.solar.tileCache.log],
+        setMode: (body: 'moon' | 'mars', mode: 'photo' | 'relief') => app.solar.setSurfaceMode(body, mode),
+        /** straight down onto (lat, east lon) of the Moon or Mars from altKm, instantly */
+        lookDown: (body: 'moon' | 'mars', lat: number, lon: number, altKm: number) => {
+          const v = app.solar.surfaceView(body, lat, lon, altKm);
+          app.solar.attach(null);
+          app.nav.setView(v);
+          app.solar.attach(body);
+        },
+        /** Sun elevation (deg) at a surface point now */
+        sunElev: (body: 'moon' | 'mars', lat: number, lon: number) => app.solar.sunElevation(body, lat, lon),
+        feature: (name: string) => {
+          const e = app.solar.featureEntries.find((x) => x.name === name || x.alt.includes(name));
+          if (!e) return null;
+          const f = app.solar.featureOf(e)!;
+          return { name: e.name, body: f.body, lat: f.lat, lon: f.lon, diam_km: f.diam_km };
+        },
+        labels: () => [...document.querySelectorAll<HTMLElement>('.label')].filter((el) => el.style.visibility === 'visible' && +el.style.opacity > 0.5).map((el) => el.textContent),
+      },
     },
     // --- Black hole hook (captures / tests)
     bh: { ...(bh?.debugApi() ?? {}), experience: (name: string) => {

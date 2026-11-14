@@ -1,0 +1,70 @@
+{
+ "source": "JPL Horizons API, OBSERVER table, QUANTITIES='14,15,20,21' (14 = observer sub-point, 15 = Sun sub-point, 20 = range, 21 = one-way light time), CENTER='500@399' (geocentre), TIME_TYPE='TT', ANG_FORMAT='DEG'; fetched 2026-11-14",
+ "request": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='<id>'&EPHEM_TYPE='OBSERVER'&CENTER='500@399'&TLIST='2461357.5','2451545.0'&TLIST_TYPE='JD'&TIME_TYPE='TT'&QUANTITIES='14,15,20,21'&ANG_FORMAT='DEG'&CSV_FORMAT='YES'&OBJ_DATA='NO'",
+ "bodies": [
+  {
+   "name": "moon",
+   "id": 301,
+   "frame": "MOON_ME (DE441)",
+   "longitude_positive": "east",
+   "latitude": "planetodetic on the radii below",
+   "radii_km": [
+    1737.4,
+    1737.4,
+    1737.4
+   ],
+   "rows": [
+    {
+     "jd_tt": 2451545.0,
+     "obs_sub_lon": 5.026658,
+     "obs_sub_lat": -6.720906,
+     "sun_sub_lon": 242.190118,
+     "sun_sub_lat": 0.619977,
+     "delta_au": 0.00268997545281,
+     "lt_min": 0.02237184
+    },
+    {
+     "jd_tt": 2461357.5,
+     "obs_sub_lon": 0.130902,
+     "obs_sub_lat": 5.313208,
+     "sun_sub_lon": 138.818824,
+     "sun_sub_lat": -1.556377,
+     "delta_au": 0.00270970159535,
+     "lt_min": 0.0225359
+    }
+   ]
+  },
+  {
+   "name": "mars",
+   "id": 499,
+   "frame": "IAU_MARS",
+   "longitude_positive": "west",
+   "latitude": "planetodetic on the radii below",
+   "radii_km": [
+    3396.19,
+    3396.19,
+    3376.2
+   ],
+   "rows": [
+    {
+     "jd_tt": 2451545.0,
+     "obs_sub_lon": 69.283449,
+     "obs_sub_lat": -23.259153,
+     "sun_sub_lon": 34.814307,
+     "sun_sub_lat": -25.374234,
+     "delta_au": 1.84968383439833,
+     "lt_min": 15.38335137
+    },
+    {
+     "jd_tt": 2461357.5,
+     "obs_sub_lon": 341.836266,
+     "obs_sub_lat": 21.619455,
+     "sun_sub_lon": 19.039931,
+     "sun_sub_lat": 8.918721,
+     "delta_au": 1.332853893938,
+     "lt_min": 11.08500782
+    }
+   ]
+  }
+ ]
+}
