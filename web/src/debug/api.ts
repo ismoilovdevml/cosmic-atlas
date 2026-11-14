@@ -9,6 +9,8 @@ import { radecDistToGal, type Vec3 } from '../math/frames';
 import { PC_PER_KMS_MYR, readExtRecord } from '../tiles/format';
 import { searchCatalog } from '../data/resolve';
 import { flyTargetForLatLon } from '../solar';
+import type { Satellites } from '../solar/satellites';
+import type { SmallBodies } from '../solar/smallbodies';
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 
@@ -157,6 +159,51 @@ export function installDebugApi(app: App) {
         app.dirty = true;
       },
       pickAt: (x: number, y: number) => (app.showDustAt(x, y, false) ? app.selection?.title ?? null : null),
+    },
+    // --- Small bodies + satellites hook (captures / tests)
+    extras: {
+      /** per layer: visibility, fade, loaded classes and drawn counts */
+      stats: () => app.solar.extras.map((x) => {
+        const sb = x as unknown as SmallBodies;
+        const sat = x as unknown as Satellites;
+        return {
+          id: x.cfg.id, visible: x.visible, groupVisible: x.group.visible, entries: x.entries.length,
+          ...(sb.classes ? { classes: Object.fromEntries([...sb.classes].map(([k, c]) => [k, { state: c.state, count: c.meta.count, drawn: c.pts?.geometry.instanceCount ?? 0 }])), drawn: sb.drawnCount() } : {}),
+          ...(sat.sats ? { satellites: sat.sats.length, snapshot: sat.snapshotUtc } : {}),
+          meta: x.metaText(),
+        };
+      }),
+      /** draw at most n objects per orbit class (brightest first); 0 = all */
+      setCap: (n: number) => {
+        (app.solar.extra('small-bodies') as unknown as SmallBodies | undefined)?.setCap(n);
+        app.dirty = true;
+      },
+      /** fly (instantly) to a small body / satellite by name, then follow it */
+      go: (name: string, opts: { dist?: number; yawDeg?: number; pitchDeg?: number } = {}) => {
+        const e = app.solar.entries.find((x) => (x.name === name || x.alt.includes(name)) && (x.solar.type === 'minor' || x.solar.type === 'sat'));
+        if (!e) return false;
+        const v = { ...app.solar.viewFor(e) };
+        if (opts.dist) v.dist = opts.dist;
+        if (opts.yawDeg !== undefined) v.yaw = (opts.yawDeg * Math.PI) / 180;
+        if (opts.pitchDeg !== undefined) v.pitch = (opts.pitchDeg * Math.PI) / 180;
+        app.showSolar(e);
+        app.nav.setView(v);
+        app.solar.attachEntry(e);
+        app.dirty = true;
+        return true;
+      },
+      /** CPU pick at css px, with its wall time */
+      pick: (x: number, y: number) => {
+        const t0 = performance.now();
+        const e = app.solar.pickAt(x, y);
+        return { name: e?.name ?? null, kind: e?.kind ?? null, ms: performance.now() - t0 };
+      },
+      /** screen position (css px) of an entry */
+      screenOf: (name: string) => {
+        const e = app.solar.entries.find((x) => x.name === name || x.alt.includes(name));
+        return e ? app.project(e.xyz, app.nav.camPos()) : null;
+      },
+      info: () => ({ title: $('info-title')?.textContent, rows: [...document.querySelectorAll('#info-rows dt')].map((dt) => `${dt.textContent}: ${dt.nextElementSibling?.textContent}`), note: $('info-note')?.textContent }),
     },
     // --- Black hole hook (captures / tests)
     bh: { ...(bh?.debugApi() ?? {}), experience: (name: string) => {

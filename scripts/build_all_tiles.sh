@@ -30,4 +30,9 @@ build galaxies-2mrs --order random --kind-model galaxy --title "2MASS Redshift S
 build galaxies-cf4  --order random --kind-model galaxy --title "Cosmicflows-4"
 build local-group   --order random --kind-model galaxy --title "Local Group (McConnachie)"
 build local-volume  --order random --kind-model galaxy --title "Local Volume (UNGC)"
+# Solar System extra layers (orbits, not octrees), from cached downloads only (see each script)
+if [ -f data/cache/mpc/MPCORB.DAT.gz ]; then $PY scripts/build_small_bodies.py | tail -1
+else echo "[small-bodies] skipped: no data/cache/mpc/MPCORB.DAT.gz"; fi
+if [ -f data/cache/celestrak/gp_active.json ]; then (cd scripts && ../$PY build_satellites.py | tail -1)
+else echo "[satellites] skipped: no data/cache/celestrak/gp_active.json"; fi
 du -sh data/tiles/* | sort -h

@@ -1,0 +1,100 @@
+{
+ "source": "JPL Horizons API (https://ssd.jpl.nasa.gov/api/horizons.api), fetched 2026-11-14T06:52:15Z",
+ "request": "format=json&COMMAND=%27-125544%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27500%40399%27&TLIST=%272461358.41612726%27+%272461358.457793926%27+%272461358.66612726%27+%272461359.41612726%27+%272461361.41612726%27&TLIST_TYPE=%27JD%27&REF_PLANE=%27FRAME%27&REF_SYSTEM=%27ICRF%27&VEC_TABLE=%272%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&CSV_FORMAT=%27YES%27&OBJ_DATA=%27NO%27&TIME_TYPE=%27UT%27",
+ "horizons_target": "Target body name: International Space Station (spacecraft) (-125544) {source: iss}",
+ "note": "Horizons' ISS trajectory is itself TLE-based ('Trajectory is TLE-based' in its header)",
+ "frame": "ICRF equatorial, geocentric (500@399), geometric, km, JD UT",
+ "omm": {
+  "OBJECT_NAME": "ISS (ZARYA)",
+  "OBJECT_ID": "1998-067A",
+  "EPOCH": "2026-11-13T21:59:13.395264",
+  "MEAN_MOTION": 15.49359724,
+  "ECCENTRICITY": 0.00073816,
+  "INCLINATION": 51.6324,
+  "RA_OF_ASC_NODE": 279.1461,
+  "ARG_OF_PERICENTER": 22.6178,
+  "MEAN_ANOMALY": 337.5134,
+  "EPHEMERIS_TYPE": 0,
+  "CLASSIFICATION_TYPE": "U",
+  "NORAD_CAT_ID": 25544,
+  "ELEMENT_SET_NO": 999,
+  "REV_AT_EPOCH": 59496,
+  "BSTAR": 0.00016319629,
+  "MEAN_MOTION_DOT": 8.668e-05,
+  "MEAN_MOTION_DDOT": 0
+ },
+ "hours_after_epoch": [
+  0,
+  1,
+  6,
+  24,
+  72
+ ],
+ "vectors": [
+  {
+   "jd_ut": 2461358.41612726,
+   "xyz_km": [
+    1039.36922213203,
+    -6712.8817909098,
+    -2.409148058353039
+   ],
+   "vel_kms": [
+    4.714666109236794,
+    0.7367248649240958,
+    5.999816701360463
+   ]
+  },
+  {
+   "jd_ut": 2461358.457793926,
+   "xyz_km": [
+    -3951.595762610641,
+    3573.846270209158,
+    -4233.618685079129
+   ],
+   "vel_kms": [
+    -1.942008945450452,
+    -6.446572201560176,
+    -3.627763243900743
+   ]
+  },
+  {
+   "jd_ut": 2461358.66612726,
+   "xyz_km": [
+    -2315.910783368534,
+    -5183.544217104075,
+    -3740.393181075769
+   ],
+   "vel_kms": [
+    4.070785648957539,
+    -4.885270796360042,
+    4.263644649896974
+   ]
+  },
+  {
+   "jd_ut": 2461359.41612726,
+   "xyz_km": [
+    -580.4172702261137,
+    6775.533261670491,
+    -155.1762000311055
+   ],
+   "vel_kms": [
+    -4.73844418545603,
+    -0.5342107853118646,
+    -5.989172969411924
+   ]
+  },
+  {
+   "jd_ut": 2461361.41612726,
+   "xyz_km": [
+    369.1116749236067,
+    6777.898850903957,
+    -439.1987760300888
+   ],
+   "vel_kms": [
+    -4.788803241141463,
+    -0.1171784313346661,
+    -5.971619365764714
+   ]
+  }
+ ]
+}

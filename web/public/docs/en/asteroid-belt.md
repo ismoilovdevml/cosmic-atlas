@@ -9,7 +9,7 @@ sources:
   - JPL Small-Body Database Query API (queried 2026-11-13), https://ssd-api.jpl.nasa.gov/sbdb_query.api
   - JPL SBDB orbit-class definitions, https://ssd-api.jpl.nasa.gov/doc/sbdb_filter.html
   - NASA Planetary Fact Sheet (metric), https://nssdc.gsfc.nasa.gov/planetary/factsheet/
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 ## What is it?
@@ -65,3 +65,9 @@ The belt lies between the orbits of [Mars](#focus=Mars) and [Jupiter](#focus=Jup
 planet and zoom out until both orbits are visible: the asteroid belt fills the gap between them. Read
 about the planets on either side in [Mars](doc:mars) and [Jupiter](doc:jupiter), and about the icy
 bodies much farther out in [Pluto](doc:pluto) and [Solar System](doc:solar-system).
+
+With the [Asteroids and comets](#layer=small-bodies) layer on, every one of the 1.58 million asteroids
+in the Minor Planet Center's list is drawn at its place for the date in the time bar, coloured by
+its orbit: the belt in sand, near-Earth objects in orange, Jupiter's trojans in green, the Kuiper
+belt in blue. [Ceres](#focus=Ceres) and [Vesta](#focus=Vesta) are labelled; click any point to see
+its orbit. Comets have their own article, [Comet](doc:comet).

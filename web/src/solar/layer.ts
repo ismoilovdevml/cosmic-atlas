@@ -32,6 +32,10 @@ import { labelSizeKm, parseFeatures, viewAltitudeKm, type PlanetFeature } from '
 import { bodyToGal, galToBody, latLonToBody } from './surface/geo';
 import { PlanetSurface, TileCache } from './surface/surface';
 import { isSurfaceBody, type SurfaceBody, type SurfaceMode } from './surface/tiles';
+// --- Small bodies + satellites (extra layers drawn inside this group)
+import type { ExtraCtx, ExtraInfo, ExtraLayerConfig, SolarExtra } from './extra';
+import { Satellites, type SatRef } from './satellites';
+import { SmallBodies, type MinorRef } from './smallbodies';
 
 /** scene units per parsec inside the Solar System group (see the header) */
 export const WORLD_PER_PC = 1e9;
@@ -98,7 +102,7 @@ export interface SolarEntry {
   docs: string;
   ref: string;
   /** set on every Solar System entry, so main.ts can route clicks here */
-  solar: { type: 'body'; id: BodyId } | { type: 'craft'; id: number } | { type: 'feature'; id: SurfaceBody; index: number };
+  solar: { type: 'body'; id: BodyId } | { type: 'craft'; id: number } | { type: 'feature'; id: SurfaceBody; index: number } | MinorRef | SatRef;
 }
 
 type FeatureLabel = LabelItem & { names: PlanetFeature['names'] };
@@ -174,6 +178,13 @@ export class SolarSystem {
   readonly featureEntries: SolarEntry[] = [];
   readonly featureLabels: FeatureLabel[] = [];
   private lastFrame: { id: BodyId; f: BodyFrame } | null = null;
+  /** asteroids + comets, satellites (layers.json types "small-bodies", "satellites") */
+  readonly extras: SolarExtra[] = [];
+  /** a small body / satellite the focus is locked to (positions from its layer) */
+  followEntry: SolarEntry | null = null;
+  private extrasJoined = false;
+  private extraSel: SolarEntry | null = null;
+  private extraDrawnMs = NaN;
 
   constructor(private assetBase = 'solar/') {
     this.root.name = 'solar-system';
@@ -535,6 +546,68 @@ export class SolarSystem {
     return this.crafts.length;
   }
 
+  // ------------------------------------------------------------------ extra layers (small bodies, satellites)
+
+  /** create the layer for a layers.json entry of type "small-bodies" or "satellites" (null for other types) */
+  addExtra(cfg: ExtraLayerConfig): SolarExtra | null {
+    const x: SolarExtra | null = cfg.type === 'small-bodies' ? new SmallBodies(cfg) : cfg.type === 'satellites' ? new Satellites(cfg) : null;
+    if (!x) return null;
+    (x as SmallBodies | Satellites).onSelect = (e) => this.onSelect(e);
+    if (x instanceof Satellites) x.earthAt = (ms) => (ms === this.simMs ? this.pos.earth : solarPositions(ms).earth);
+    this.root.add(x.group);
+    this.extras.push(x);
+    return x;
+  }
+
+  extra(id: string): SolarExtra | undefined {
+    return this.extras.find((x) => x.cfg.id === id);
+  }
+
+  /** wait for the extra layers' search entries, then add them to entries / labelItems (once) */
+  async extrasReady(): Promise<void> {
+    await Promise.all(this.extras.map((x) => x.ready));
+    if (this.extrasJoined) return;
+    this.extrasJoined = true;
+    const have = new Set(this.entries.map((e) => e.name.toLowerCase()));
+    for (const x of this.extras) {
+      for (const e of x.entries) if (!have.has(e.name.toLowerCase())) this.entries.push(e);
+      this.labelItems.push(...x.labelItems);
+    }
+  }
+
+  private extraOf(e: SolarEntry): SolarExtra | null {
+    const t = e.solar.type;
+    if (t === 'minor') return this.extras.find((x) => x instanceof SmallBodies) ?? null;
+    if (t === 'sat') return this.extras.find((x) => x instanceof Satellites) ?? null;
+    return null;
+  }
+
+  /** card content for a small body or satellite (also selects it: orbit line + marker) */
+  extraInfo(e: SolarEntry): ExtraInfo | null {
+    const x = this.extraOf(e);
+    if (!x) return null;
+    if (this.extraSel !== e) {
+      for (const o of this.extras) o.select(o === x ? e : null);
+      this.extraSel = e;
+    }
+    return x.info(e, this.clock.now(), this.pos.earth);
+  }
+
+  /** the info card closed: drop the orbit line / marker */
+  selectExtra(e: SolarEntry | null) {
+    if (e === this.extraSel) return;
+    this.extraSel = e;
+    for (const o of this.extras) o.select(e && this.extraOf(e) === o ? e : null);
+  }
+
+  private extraCtx(u: SolarUpdate, ms: number, timeChanged: boolean): ExtraCtx {
+    return {
+      cam: u.cam, ms, camera: u.camera, pxPerRad: u.pxPerRad, focusDist: u.focusDist, dpr: u.dpr, width: u.width, height: u.height,
+      fade: this.fade, earth: this.pos.earth, timeChanged,
+    };
+  }
+  private lastCtx: ExtraCtx | null = null;
+
   // ------------------------------------------------------------------ per frame
 
   /** current positions (heliocentric pc, contract frame) */
@@ -759,6 +832,20 @@ export class SolarSystem {
       if (sc) this.lastScreen.set(c, sc);
       else this.lastScreen.delete(c);
     }
+
+    // --- extra layers: small bodies, satellites
+    const ctx = this.extraCtx(u, ms, timeChanged);
+    this.lastCtx = ctx;
+    let extraChanged = false;
+    for (const x of this.extras) if (x.update(ctx)) extraChanged = true;
+    if (extraChanged) maxMove = Math.max(maxMove, 1);
+    else if (timeChanged && this.extras.some((x) => x.group.visible)) {
+      // while the time runs, redraw once the fastest of them (~50 km/s) moved 0.25 px at the focus distance
+      const dtS = Math.abs(ms - this.extraDrawnMs) / 1000;
+      const px = Number.isFinite(dtS) ? ((50 * PC_PER_KM * dtS) / Math.max(u.focusDist, 1e-15)) * pxPerRad : Infinity;
+      if (px > 0.25) maxMove = Math.max(maxMove, 1);
+    }
+    if (maxMove > 0.25) this.extraDrawnMs = ms;
     return maxMove > 0.25;
   }
   private lastScreenMs = 0;
@@ -811,13 +898,41 @@ export class SolarSystem {
   /** lock the focus to a body from now on (the focus must already be on it, at the current time) */
   attach(id: BodyId | null) {
     this.followId = id;
+    this.followEntry = null;
     this.lastFollow = null;
     this.lastFollowId = null;
     this.lastFrame = null; // the view was just set at the current rotation: nothing to turn yet
   }
 
+  /** lock the focus to a small body or satellite (after a flight to it); null releases it */
+  attachEntry(e: SolarEntry | null) {
+    this.attach(null);
+    this.followEntry = e && this.extraOf(e) ? e : null;
+  }
+
+  /** follow a small body / satellite: same offset-keeping rule as for bodies, no surface floor */
+  private followExtra(nav: { view: { focus: Vec3; dist: number }; flying: boolean; distFloor: number }) {
+    const e = this.followEntry!;
+    nav.distFloor = 0;
+    const p = nav.flying ? null : this.extraOf(e)?.positionAt(e, this.simMs);
+    if (!p) {
+      this.followEntry = null;
+      this.lastFollow = null;
+      return;
+    }
+    if (this.lastFollow) for (let k = 0; k < 3; k++) nav.view.focus[k] += p[k] - this.lastFollow[k];
+    this.lastFollow = [...p] as Vec3;
+    e.xyz[0] = p[0]; e.xyz[1] = p[1]; e.xyz[2] = p[2];
+    const off = Math.hypot(nav.view.focus[0] - p[0], nav.view.focus[1] - p[1], nav.view.focus[2] - p[2]);
+    if (off > 0.5 * nav.view.dist) {
+      this.followEntry = null;
+      this.lastFollow = null;
+    }
+  }
+
   follow(nav: { view: { focus: Vec3; dist: number; yaw: number; pitch: number }; flying: boolean; distFloor: number }) {
     this.advance(); // positions for this frame first, so the focus does not lag the body
+    if (this.followEntry) return this.followExtra(nav);
     const id = this.followId;
     if (!id) {
       nav.distFloor = 0;
@@ -874,6 +989,10 @@ export class SolarSystem {
   /** CPU pick in css px: the body or probe under the cursor (within 8 px), nearest to the eye first */
   pickAt(x: number, y: number): SolarEntry | null {
     if (!this.root.visible) return null;
+    // a satellite dot wins over the planet disc behind it; asteroids only where nothing else is
+    const ctx = this.lastCtx;
+    const sat = ctx ? this.extras.find((l) => l instanceof Satellites)?.pickAt(x, y, ctx) : null;
+    if (sat) return sat.e;
     let best: { e: SolarEntry; score: number } | null = null;
     const consider = (e: SolarEntry, s: { x: number; y: number; rpx: number; dist: number } | null) => {
       if (!s) return;
@@ -886,7 +1005,9 @@ export class SolarSystem {
     };
     for (const b of this.bodies) consider(b.entry, b.screen);
     for (const c of this.crafts) consider(c.entry, c.screen);
-    return (best as { e: SolarEntry } | null)?.e ?? null;
+    const hit = (best as { e: SolarEntry } | null)?.e ?? null;
+    if (hit || !ctx) return hit;
+    return this.extras.find((l) => l instanceof SmallBodies)?.pickAt(x, y, ctx)?.e ?? null;
   }
 
   // ------------------------------------------------------------------ views
@@ -894,6 +1015,8 @@ export class SolarSystem {
   /** a flight target that frames the body, seen from its day side */
   viewFor(e: SolarEntry): { focus: Vec3; dist: number; yaw: number; pitch: number } {
     this.advance(); // the clock may have jumped since the last frame
+    const xl = this.extraOf(e);
+    if (xl) return xl.viewFor(e, this.simMs, this.pos.earth);
     if (e.solar.type === 'craft') {
       const p = e.xyz;
       const r = Math.hypot(...p) || 1;
@@ -907,6 +1030,7 @@ export class SolarSystem {
       const n = [0, 1, 2].map((k) => (focus[k] - b.pos[k]) / b.rpc);
       return { focus, dist: viewAltitudeKm(fr.f, b.def.radiusKm) * PC_PER_KM, yaw: Math.atan2(n[1], n[0]), pitch: Math.asin(Math.max(-1, Math.min(1, n[2]))) };
     }
+    if (e.solar.type !== 'body') return { focus: [...e.xyz] as Vec3, dist: 0.1 * PC_PER_AU, yaw: 0, pitch: 0.3 };
     const id = e.solar.id;
     const def = BODY_BY_ID.get(id)!;
     const p = this.pos[id];

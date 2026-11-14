@@ -53,6 +53,9 @@ Every searchable or clickable thing has a `kind`. The registry is `web/src/objec
 | `exoplanet` | confirmed exoplanet (drawn at its host star) | NASA Exoplanet Archive `pscomppars` | `exoplanet` |
 | `sun`, `planet`, `dwarf_planet`, `moon` | Solar System bodies, live positions | astronomy-engine (VSOP87-based analytic ephemerides, about ±1′; checked against JPL Horizons) | per body, e.g. `earth`, `mars` |
 | `spacecraft` | interstellar probes (Voyager 1/2, Pioneer 10/11, New Horizons) | JPL Horizons vectors | `spacecraft` |
+| `asteroid` | asteroid (MPCORB; the dwarf planets Ceres, Eris, Haumea, Makemake use `dwarf_planet`), two-body orbit at the time-bar date | IAU Minor Planet Center MPCORB | `asteroid-belt` |
+| `comet` | comet or interstellar object (ellipse, parabola or hyperbola) | IAU Minor Planet Center AllCometEls | `comet` |
+| `satellite` | Earth satellite (SGP4 from GP elements; JWST from Horizons) | CelesTrak GP snapshot, JPL Horizons | `satellite` |
 | `message` | message sent to the stars (Arecibo 1974, Cosmic Call...) | literature | `interstellar-message` |
 | `seti_signal` | candidate signal (Wow! 1977) | literature | `seti` |
 | `model` | Milky Way model features | Reid et al. 2019 | `milky-way` |
@@ -139,6 +142,6 @@ Kinds: `star`, `white-dwarf`, `galaxy`, `quasar`, `local-group`, `milky-way`, `s
 `interstellar-message`, `seti`, `gravitational-waves`, `fast-radio-burst`, `neutrino`.
 Sky and the early universe: `x-ray-sky`, `cmb`.
 Solar System: `solar-system`, `sun`, `mercury`, `venus`, `earth`, `moon`, `mars`, `jupiter`, `saturn`,
-`uranus`, `neptune`, `pluto`, `asteroid-belt`.
+`uranus`, `neptune`, `pluto`, `asteroid-belt`, `comet`, `satellite`.
 Highlights: `sgr-a-star`, `m87-black-hole`, `gaia-bh3`, `crab-nebula`, `proxima-b`, `trappist-1`,
 `voyager-1`, `arecibo-message`, `wow-signal`.

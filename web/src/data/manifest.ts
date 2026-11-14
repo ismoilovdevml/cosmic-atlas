@@ -47,7 +47,19 @@ export interface ModelLayerConfig {
   path?: string;
 }
 
-export type LayerConfig = PointLayerConfig | ModelLayerConfig;
+/** Solar System extra layers drawn by src/solar (asteroids + comets, Earth satellites) */
+export interface SolarExtraLayerConfig {
+  id: string;
+  type: 'small-bodies' | 'satellites';
+  title: string;
+  path: string;
+  visible: boolean;
+  credit?: string;
+  /** draw at most this many objects per orbit class (brightest first) */
+  maxPoints?: number;
+}
+
+export type LayerConfig = PointLayerConfig | ModelLayerConfig | SolarExtraLayerConfig;
 
 export interface Manifest {
   version: number;

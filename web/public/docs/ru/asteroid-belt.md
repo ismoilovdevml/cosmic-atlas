@@ -9,7 +9,7 @@ sources:
   - JPL Small-Body Database Query API (queried 2026-11-13), https://ssd-api.jpl.nasa.gov/sbdb_query.api
   - JPL SBDB orbit-class definitions, https://ssd-api.jpl.nasa.gov/doc/sbdb_filter.html
   - NASA Planetary Fact Sheet (metric), https://nssdc.gsfc.nasa.gov/planetary/factsheet/
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 ## Что это?
@@ -67,3 +67,9 @@ updated: 2026-11-13
 этих планет и отдалите камеру, пока не увидите обе орбиты: пояс астероидов заполняет промежуток между
 ними. О соседних планетах читайте в статьях [Марс](doc:mars) и [Юпитер](doc:jupiter), а о ледяных
 телах гораздо дальше — в статьях [Плутон](doc:pluto) и [Солнечная система](doc:solar-system).
+
+Со слоем [Астероиды и кометы](#layer=small-bodies) каждый из 1,58 миллиона астероидов из списка
+Центра малых планет нарисован на своём месте на дату на шкале времени, цветом по типу орбиты: пояс
+песочным, сближающиеся с Землёй объекты оранжевым, троянцы Юпитера зелёным, пояс Койпера синим.
+[Церера](#focus=Ceres) и [Веста](#focus=Vesta) подписаны; нажмите на любую точку, чтобы увидеть её
+орбиту. О кометах есть отдельная статья — [Комета](doc:comet).

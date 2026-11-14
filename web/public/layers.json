@@ -187,6 +187,22 @@
       "visible": true,
       "data": "neutrino-sky.json",
       "credit": "IceCat-1 (IceCube Collaboration 2023, ApJS 269, 25; CC0); KM3-230213A (KM3NeT Collaboration 2025, Nature 638, 376)"
+    },
+    {
+      "id": "small-bodies",
+      "type": "small-bodies",
+      "title": "Asteroids and comets",
+      "path": "tiles/small-bodies",
+      "visible": true,
+      "credit": "Orbits: IAU Minor Planet Center (MPCORB, AllCometEls); two-body propagation"
+    },
+    {
+      "id": "satellites",
+      "type": "satellites",
+      "title": "Earth satellites",
+      "path": "tiles/satellites",
+      "visible": true,
+      "credit": "CelesTrak GP data (T.S. Kelso), SGP4 by satellite.js; JWST: JPL Horizons"
     }
   ]
 }

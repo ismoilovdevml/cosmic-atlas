@@ -297,8 +297,8 @@ export class App {
       } else if (cfg.type === 'milky-way-model') {
         this.mwCfg = cfg;
         this.mw.visible = vis ?? cfg.visible;
-      } else if (this.msg.claims(cfg)) {
-        this.msg.addLayer(cfg, vis); // --- Messengers hook
+      } else if (cfg.type !== 'small-bodies' && cfg.type !== 'satellites' && this.msg.claims(cfg)) {
+        this.msg.addLayer(cfg as ModelLayerConfig, vis); // --- Messengers hook (small-bodies / satellites excluded above)
       } else if (cfg.type === 'sky') {
         this.skyCfg = cfg;
         this.msg.setSkyConfig(cfg); // --- Messengers hook: background chooser
@@ -310,6 +310,11 @@ export class App {
         this.gwCfg = cfg;
         this.gw.visible = vis ?? cfg.visible;
       } else if (cfg.type === 'dust') this.dust.configure(cfg, vis ?? cfg.visible); // --- Dust hook
+      else if (cfg.type === 'small-bodies' || cfg.type === 'satellites') {
+        // --- Small bodies hook: asteroids/comets and satellites are drawn by the Solar System layer
+        const x = this.solar.addExtra(cfg);
+        if (x && vis !== undefined) x.visible = vis;
+      }
     }
     if (hashLayers?.solar !== undefined) this.solar.visible = hashLayers.solar; // --- Solar System hook
     const known = this.tilesIndex ? new Set(this.tilesIndex.layers) : undefined;
@@ -393,6 +398,7 @@ export class App {
     out.solar = this.solar.visible; // --- Solar System hook
     if (this.dust.cfg && this.dust.status === 'ready') out[this.dust.cfg.id] = this.dust.visible; // --- Dust hook
     Object.assign(out, this.msg.visibility()); // --- Messengers hook
+    for (const x of this.solar.extras) out[x.cfg.id] = x.visible; // --- Small bodies hook
     return out;
   }
 
@@ -406,6 +412,7 @@ export class App {
     else if (this.gwCfg?.id === id) this.gw.visible = on; // --- GW hook
     else if (id === 'solar') this.solar.visible = on; // --- Solar System hook
     else if (this.dust.cfg?.id === id) this.dust.visible = on; // --- Dust hook
+    else if (this.solar.extra(id)) this.solar.extra(id)!.visible = on; // --- Small bodies hook
     else this.msg.setVisible(id, on); // --- Messengers hook
     const cb = document.getElementById(`lyr-${id}`) as HTMLInputElement | null;
     if (cb && cb.checked !== on) {
@@ -549,6 +556,13 @@ export class App {
       id: 'solar', title: solarTr('layer.solar'), swatch: 'solar', meta: solarTr('layer.solar.meta'),
       checked: this.solar.visible, opacity: this.solar.opacity, onOpacity: (v) => (this.solar.opacity = v),
     });
+    // --- Small bodies hook: asteroids/comets and satellites rows
+    for (const x of this.solar.extras) {
+      row({
+        id: x.cfg.id, title: title(x.cfg), swatch: 'solar', meta: `${x.metaText()}${x.cfg.credit ? `. ${x.cfg.credit}` : ''}`,
+        checked: x.visible, opacity: x.opacity, onOpacity: (v) => (x.opacity = v),
+      });
+    }
     for (const li of [...list.children]) if (!want.includes(li as HTMLLIElement)) li.remove();
     want.forEach((li, i) => {
       if (list.children[i] !== li) list.insertBefore(li, list.children[i] ?? null);
@@ -564,6 +578,7 @@ export class App {
       dc && this.dust.status === 'ready' ? `${title(dc)}: ${dc.credit}` : '', // --- Dust hook
       ...this.msg.credits(), // --- Messengers hook: every sky background, CMB, FRB, neutrino survey
       solarTr('solar.credit'), // --- Solar System hook
+      ...this.solar.extras.map((x) => `${title(x.cfg)}: ${x.cfg.credit ?? ''}`), // --- Small bodies hook
       t('credits.sesame'),
       t('credits.skymap'),
     ].filter(Boolean);
@@ -587,6 +602,8 @@ export class App {
     if (!this.tilesIndex || this.tilesIndex.catalogs.includes('spacecraft.json')) await this.solar.loadSpacecraft(`${this.tileBase}catalogs/spacecraft.json`);
     // --- Surface hook: named Moon / Mars features join search (scripts/build_planet_features.py)
     if (!this.tilesIndex || this.tilesIndex.catalogs.includes('planet-features.json')) await this.solar.loadFeatures(`${this.tileBase}catalogs/planet-features.json`);
+    await this.solar.extrasReady(); // --- Small bodies hook: named asteroids, comets, satellites join search and labels
+    this.renderLayerPanel();
     const solarNames = new Set(this.solar.entries.flatMap((e) => [e.name, ...e.alt]).map(normName));
     this.catalog = [...(this.solar.entries as unknown as CatalogEntry[]), ...(this.solar.featureEntries as unknown as CatalogEntry[]), ...entries.filter((e) => !solarNames.has(normName(e.name)))];
     await this.initGalaxyShapes();
@@ -1321,6 +1338,7 @@ export class App {
   private closeInfo() {
     this.solarSel = null; // --- Solar System hook
     if (this.gw.highlighted) this.gw.highlight(null); // --- GW hook
+    this.solar.selectExtra(null); // --- Small bodies hook: drop the selected orbit line
     $('info').hidden = true;
     document.body.classList.remove('has-info');
     this.selection = null;
@@ -1394,7 +1412,7 @@ export class App {
       if (ok && id) {
         this.nav.view.focus = this.solar.focusAfterFlight(e); // --- Surface hook: body centre, or the feature on its surface
         this.solar.attach(id);
-      }
+      } else if (ok) this.solar.attachEntry(e); // --- Small bodies hook: follow a satellite / asteroid
     });
   }
 

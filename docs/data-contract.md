@@ -218,6 +218,30 @@ Voxel (i, j, k) is the average over origin + [i, i+1) × voxel (x fastest, then 
 sits at the cell centre, so a GPU linear sampler at normalised coordinate (x − origin) / (dims × voxel)
 reads it exactly (`web/src/dust/grid.ts`, unit-tested). Outside r = 1248 pc the field is 0 (no data).
 
+### 4c. Solar System extra layers (`layers.json` types `small-bodies` and `satellites`)
+
+Not octree tiles: the positions depend on the simulation time, so the files hold orbits.
+
+`data/tiles/small-bodies/` (`scripts/build_small_bodies.py`, from MPCORB.DAT + AllCometEls.txt):
+
+| file | content |
+|---|---|
+| `<class>.bin` (`neo`, `main`, `trojan`, `centaur`, `tno`, `comet`) | N × 7 float32, interleaved: q (AU), e, i, Ω, ω (rad, J2000 ecliptic), tp (days, perihelion time − `ref_epoch_jd_tt`), H; then N × uint8 flags (low nibble sub-class, high nibble MPC U: 10 = E, 11 = D/F, 15 = blank). Sorted by H, brightest first |
+| `desig/<class>-<k>.txt` | one designation per line (MPC packed form; comets: full name), records k·65536 … k·65536 + 65535 |
+| `names.json` | search/label entries: name, number, class, record index, the same 7 elements, own epoch offset, U, arc |
+| `meta.json` | reference epoch, classes with counts/bytes/sub-class counts, sources and file times |
+| `MPCORB_HEADER.txt` | the MPCORB header, verbatim (its terms require it next to the data) |
+
+Elements are converted to the most common MPC epoch (K2669 = JD 2461200.5 TT for the file of
+2026-11-13) by two-body propagation in float64; the viewer then solves Kepler's equation for the
+time bar's date (`web/src/solar/kepler.ts`, GPU twin in `orbitpoints.ts`) and rotates J2000
+ecliptic → ICRS (ε = 84381.448″) → Galactic.
+
+`data/tiles/satellites/` (`scripts/build_satellites.py`): `gp.json` = `{fields, rows, group}` with
+the CelesTrak OMM keys SGP4 needs (group 0 stations, 1 Starlink, 2 other active), `jwst.json` = a
+geocentric Horizons track in the spacecraft-track shape (contract frame, pc and pc/day, daily),
+`meta.json` = snapshot time, counts, element-epoch range, sources.
+
 ## 5. Renderer rules (web/)
 
 - Node world position = `center` (float64 in JS) minus camera position (float64), uploaded as a

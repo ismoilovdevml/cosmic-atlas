@@ -16,6 +16,7 @@
     "@fontsource/ibm-plex-sans": "5.2.8",
     "@fontsource/spectral": "5.2.8",
     "astronomy-engine": "2.1.19",
+    "satellite.js": "7.1.0",
     "three": "0.186.1"
   },
   "devDependencies": {

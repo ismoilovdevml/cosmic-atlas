@@ -9,7 +9,7 @@ sources:
   - JPL Small-Body Database Query API (queried 2026-11-13), https://ssd-api.jpl.nasa.gov/sbdb_query.api
   - JPL SBDB orbit-class definitions, https://ssd-api.jpl.nasa.gov/doc/sbdb_filter.html
   - NASA Planetary Fact Sheet (metric), https://nssdc.gsfc.nasa.gov/planetary/factsheet/
-updated: 2026-11-13
+updated: 2026-11-14
 ---
 
 ## Bu nima?
@@ -70,3 +70,10 @@ sayyoradan biriga uching va ikkala orbita koʻringuncha uzoqlashing: asteroidlar
 boʻshliqni egallaydi. Ikki tomondagi sayyoralar haqida [Mars](doc:mars) va [Yupiter](doc:jupiter)
 maqolalarida, ancha uzoqdagi muzli jismlar haqida esa [Pluton](doc:pluto) va
 [Quyosh tizimi](doc:solar-system) maqolalarida oʻqing.
+
+[Asteroidlar va kometalar](#layer=small-bodies) qatlami yoqilganda Kichik sayyoralar markazi
+roʻyxatidagi 1,58 million asteroidning har biri vaqt panelidagi sana uchun oʻz oʻrnida, orbitasiga
+qarab rangda chiziladi: kamar qum rangida, Yerga yaqin obyektlar zargʻaldoq, Yupiter troyanlari
+yashil, Koyper kamari koʻk. [Tserera](#focus=Ceres) va [Vesta](#focus=Vesta) yorliq bilan
+belgilangan; orbitasini koʻrish uchun istalgan nuqtani bosing. Kometalar haqida alohida maqola bor:
+[Kometa](doc:comet).

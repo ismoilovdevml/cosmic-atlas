@@ -64,6 +64,10 @@ export const LAYER_VIEWS: Record<string, NamedView> = {
   'milky-way-model': NAMED_VIEWS['milky-way'],
   // the Solar System layer (src/solar) is not in layers.json; main.ts adds it to the panel
   solar: NAMED_VIEWS['solar-system'],
+  // asteroids and comets: the inner Solar System out to Jupiter's trojans, from 55° above the plane
+  'small-bodies': { target: { sun: true }, dist: 12 * 4.84813681109536e-6, pitchDeg: 55 },
+  // satellites: the Earth from 60,000 km, inside the 0.015 AU the layer is drawn within
+  satellites: { target: { body: 'earth', fallback: [0, 0, 0] }, dist: (60000 / 149597870.7) * 4.84813681109536e-6, pitchDeg: 25 },
   // the all-sky image is only drawn within ~2 kpc of the Sun
   'gaia-sky': { target: { sun: true }, dist: 1, pitchDeg: 10 },
   // Hunt & Reffert clusters thin out beyond ~3 kpc; the bright, nearby ones within 1 kpc

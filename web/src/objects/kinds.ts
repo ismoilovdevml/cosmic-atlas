@@ -36,6 +36,10 @@ export const KINDS: Record<string, KindInfo> = {
   // named places on the Moon and Mars (IAU gazetteer, landing sites); only labelled close to the body
   surface_feature: { doc: 'moon',               label: 'kind.surface_feature', color: '#e6dccb', minScale: 0, maxScale: 0.3 },
   landing_site: { doc: 'moon',                  label: 'kind.landing_site', color: '#ffd27a', minScale: 0, maxScale: 0.3 },
+  // small bodies (MPC orbits, src/solar/smallbodies.ts) and Earth satellites (CelesTrak, satellites.ts)
+  asteroid:     { doc: 'asteroid-belt',         label: 'kind.asteroid',     color: '#c8b48e', minScale: 0, maxScale: 1.5e-3 },
+  comet:        { doc: 'comet',                 label: 'kind.comet',        color: '#78f0e2', minScale: 0, maxScale: 1.5e-3 },
+  satellite:    { doc: 'satellite',             label: 'kind.satellite',    color: '#ffe2a8', minScale: 0, maxScale: 2e-7 },
   message:      { doc: 'interstellar-message',  label: 'kind.message',      color: '#ffd1f0', minScale: 0, maxScale: 1000 },
   seti_signal:  { doc: 'seti',                  label: 'kind.seti_signal',  color: '#ffd1f0', minScale: 0, maxScale: 1e4 },
   model:        { doc: 'milky-way',             label: 'kind.model',        color: '#b9c4d6' },

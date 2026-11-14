@@ -45,6 +45,9 @@ export interface SolarInfo {
 }
 
 export function solarInfo(sys: SolarSystem, e: SolarEntry): SolarInfo {
+  const extra = sys.extraInfo(e); // --- small bodies / satellites
+  if (extra) return extra;
+  if (e.solar.type !== 'body' && e.solar.type !== 'craft' && e.solar.type !== 'feature') throw new Error('unreachable');
   const earth: Vec3 = sys.positionOf('earth');
   const rows: [string, string][] = [];
   const dSun = Math.hypot(...e.xyz);
