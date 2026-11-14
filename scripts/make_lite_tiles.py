@@ -200,7 +200,14 @@ def main(argv=None):
             raise SystemExit(f"{out} is not empty (use --force to replace an earlier lite set)")
 
     t0 = time.time()
-    layer_dirs = sorted(d for d in src.iterdir() if d.is_dir() and (d / "meta.json").is_file() and d.name not in a.exclude)
+    # octree point layers can be pruned; other layer types (dust volume, small-body orbits, satellite
+    # elements: meta.json without "nodes") are copied whole like the catalogues below
+    def is_octree(d: Path) -> bool:
+        try:
+            return "nodes" in json.loads((d / "meta.json").read_text())
+        except (OSError, ValueError):
+            return False
+    layer_dirs = sorted(d for d in src.iterdir() if d.is_dir() and (d / "meta.json").is_file() and d.name not in a.exclude and is_octree(d))
     unknown = set(weights) - {d.name for d in layer_dirs}
     if unknown:
         raise SystemExit(f"--weight for unknown layer(s): {', '.join(sorted(unknown))}")
