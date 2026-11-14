@@ -22,7 +22,12 @@ number on screen comes with the catalogue it came from.
   SIMBAD, Gaia and the DESI viewer.
 - **See the uncertainty.** Distances are measurements, and the atlas shows each object's 16–84 %
   range.
-- **Watch the Solar System move** in real time, or run time forward ×10⁴ or ×10⁶.
+- **Watch the Solar System move** in real time, or run time forward ×10⁴ or ×10⁶: 1.58 million
+  asteroids, comets and 16,896 satellites follow their real orbits.
+- **Land on the Moon and Mars.** NASA surface imagery streams in as you descend, with named
+  craters, valleys and 21 landing sites.
+- **Move the stars in time**, up to a million years either way, along their measured Gaia
+  velocities.
 - **Show me**: fly from the cosmic web down to the place where you are. Your location stays in
   the browser and is never sent or stored.
 - **Visit a black hole.** The light around Sgr A*, M87* and Gaia BH3 is ray-traced in general
@@ -35,7 +40,11 @@ number on screen comes with the catalogue it came from.
 | | Objects | Source |
 |---|---|---|
 | Solar System | Sun, 8 planets, Pluto, the Moon, major moons, 5 interstellar probes | astronomy-engine (VSOP87, checked against JPL Horizons), JPL Horizons |
-| Stars | Gaia DR3 within 1 kpc *(being added)*, 653 named stars | ESA Gaia, Bailer-Jones et al. 2021, IAU |
+| Asteroids and comets | 1,580,450 asteroids and 4,666 comets on their orbits | IAU Minor Planet Center |
+| Earth satellites | 16,896, plus JWST | CelesTrak (SGP4), JPL Horizons |
+| Moon and Mars surfaces | 861 named features, 21 landing sites, streamed surface imagery | NASA Moon/Mars Trek (LRO, Viking, MRO CTX), IAU Gazetteer |
+| Stars | Gaia DR3 within 100 pc now, within 1 kpc *(being added)*; 653 named stars | ESA Gaia, Bailer-Jones et al. 2021, IAU |
+| Star clusters | 7,181 star clusters | Hunt & Reffert 2023/24, Baumgardt |
 | Exoplanets | 6,442 planets in 4,834 systems | NASA Exoplanet Archive |
 | Pulsars | 4,429 | ATNF Pulsar Catalogue |
 | Black holes | 40, from Sgr A* and M87* to Gaia BH3 | GRAVITY, EHT, Gaia, BlackCAT |
@@ -45,6 +54,11 @@ number on screen comes with the catalogue it came from.
 | All-sky galaxies | 43,463 + 55,877 | 2MRS, Cosmicflows-4 |
 | Messages to the stars | Arecibo 1974 and 30 more, plus the Wow! signal | cited per entry |
 | Interstellar dust | 3D dust clouds within 1.25 kpc (6 pc grid), dark in front of the stars, a glow from outside | Edenhofer et al. 2024 |
+| Gravitational waves | 282 merger events with their 90 % localisation volumes | LIGO/Virgo/KAGRA GWTC via GWOSC |
+| Fast radio bursts | 3,661 bursts on the sky, 101 with a host galaxy | CHIME/FRB Catalog 2, FRB host repository |
+| Neutrinos | 349 IceCube alerts with error regions, 2 identified sources, KM3-230213A | IceCat-1, KM3NeT |
+| Sky backgrounds | Gaia (visible), eROSITA (X-ray), Planck 857 GHz (dust) | ESA, MPE, Planck |
+| Cosmic microwave background | The Planck map as the edge of the observable universe, 13.8 billion years old light | Planck PR3 |
 
 ## Screenshots
 
@@ -56,6 +70,12 @@ number on screen comes with the catalogue it came from.
 | **M81**, with size and tilt from HyperLEDA | **The cosmic web**: DESI galaxies in a 50 Mpc slice |
 | ![Sgr A* with its accretion disk bent over and under the shadow](docs/images/blackhole-sgra.jpg) | ![Gaia BH3 bending the real Gaia sky into an Einstein ring](docs/images/blackhole-gaia-bh3.jpg) |
 | **Sgr A\***: the far side of the disk is bent over the shadow | **Gaia BH3** bends the real Milky Way around it |
+| ![Tycho crater on the Moon with its central peak](docs/images/moon-tycho.jpg) | ![Gale crater on Mars with the Curiosity landing site](docs/images/mars-gale.jpg) |
+| **Tycho** on the Moon, NASA LRO imagery | **Gale crater** on Mars, where Curiosity landed |
+| ![The asteroid belt and the two Jupiter Trojan swarms around the Sun](docs/images/asteroids.jpg) | ![Earth inside a shell of 16,896 satellites](docs/images/satellites.jpg) |
+| **The asteroid belt** and Jupiter's two Trojan swarms | **Earth** inside its shell of satellites |
+| ![Interstellar dust within 1.25 kpc seen from outside](docs/images/dust.jpg) | ![Star clusters along the Milky Way](docs/images/star-clusters.jpg) |
+| **3D dust** around the Sun, seen from 2.6 kpc | **Star clusters** in the Milky Way's disk |
 
 ![Left: Andromeda in the atlas, seen from the Sun. Right: an independent reprojection of the DSS image](docs/images/m31-vs-dss.jpg)
 *Accuracy check: Andromeda in the atlas (left) next to an independent reprojection of the
@@ -64,6 +84,10 @@ Digitized Sky Survey image (right). Size, angle and satellite galaxies match.*
 ![DESI DR1 galaxies in a 150 Mpc thick slice, out to 1 Gpc](docs/images/cosmic-web-1gpc.jpg)
 *DESI DR1 out to a billion parsecs. The dark wedges are parts of the sky the survey has not
 observed.*
+
+![The Planck CMB as a sphere around all galaxy surveys](docs/images/cmb.jpg)
+*The edge of the map: the Planck cosmic microwave background, drawn as a shell around every galaxy
+survey.*
 
 ## Run it locally
 
@@ -75,7 +99,8 @@ npm run dev        # http://localhost:5173
 
 The repository holds the code and the small catalogues. The large point layers (Gaia, DESI) are
 built from the original archives with the scripts in `scripts/` and `pipeline/`; see
-[docs/data-contract.md](docs/data-contract.md). To publish your own copy, see
+[docs/data-contract.md](docs/data-contract.md). The web tile set is archived on Zenodo:
+[10.5281/zenodo.24226088](https://doi.org/10.5281/zenodo.24226088). To publish your own copy, see
 [docs/deploy.md](docs/deploy.md).
 
 ## How it works
@@ -96,7 +121,8 @@ More detail: [web/README.md](web/README.md) (the viewer), [docs/prior-work.md](d
 ## Credits
 
 - **Data:** ESA/Gaia/DPAC, the DESI Collaboration, NASA Exoplanet Archive, ATNF, JPL, 2MRS,
-  Cosmicflows-4, HyperLEDA, CDS (SIMBAD, VizieR, HiPS), OpenNGC (CC BY-SA 4.0; our derived NGC
+  Cosmicflows-4, HyperLEDA, the IAU Minor Planet Center, CelesTrak, NASA Trek, LIGO/Virgo/KAGRA,
+  CHIME/FRB, IceCube, KM3NeT, eROSITA-DE, Planck, CDS (SIMBAD, VizieR, HiPS), OpenNGC (CC BY-SA 4.0; our derived NGC
   catalogues carry the same licence), and every paper cited in the
   catalogues.
 - **Images:** NASA Blue Marble and Black Marble 2016 night lights (public domain), Solar System
